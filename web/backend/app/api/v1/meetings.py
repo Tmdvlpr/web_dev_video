@@ -182,17 +182,21 @@ async def join_meeting(
 
     # Guests may not enter before the organizer
     if booking.user_id != current_user.id:
-        organizer_identity = f"user-{booking.user_id}"
-        sub = select(MeetingSession.id).where(MeetingSession.booking_id == booking_id)
-        org_res = await db.execute(
-            select(MeetingParticipantLog).where(
-                MeetingParticipantLog.session_id.in_(sub),
-                MeetingParticipantLog.participant_identity == organizer_identity,
-                MeetingParticipantLog.left_at.is_(None),
+        # Fast path: organizer already called /join (token issued, in-memory pre-auth)
+        organizer_pre_joined = booking.user_id in _join_authorized.get(booking_id, set())
+        if not organizer_pre_joined:
+            # Slow path: check webhook log (may lag 1-5s after organizer connects)
+            organizer_identity = f"user-{booking.user_id}"
+            sub = select(MeetingSession.id).where(MeetingSession.booking_id == booking_id)
+            org_res = await db.execute(
+                select(MeetingParticipantLog).where(
+                    MeetingParticipantLog.session_id.in_(sub),
+                    MeetingParticipantLog.participant_identity == organizer_identity,
+                    MeetingParticipantLog.left_at.is_(None),
+                )
             )
-        )
-        if not org_res.scalar_one_or_none():
-            raise HTTPException(403, "organizer_not_present")
+            if not org_res.scalar_one_or_none():
+                raise HTTPException(403, "organizer_not_present")
 
     # Pre-create room if meeting has already started (no-op if room exists)
     if now >= start:
