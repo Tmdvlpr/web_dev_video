@@ -1,0 +1,7 @@
+# LiveKit Egress config
+# API credentials are passed via env vars LIVEKIT_API_KEY and LIVEKIT_API_SECRET
+ws_url: ws://livekit:7880
+redis:
+  address: redis:6379
+health_port: 9090
+log_level: info

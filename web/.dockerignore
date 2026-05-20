@@ -1,0 +1,68 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation and examples
+*.md
+README*
+docs/
+*.pdf
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+.travis.yml
+
+# Development
+web/backend/app/.env
+.env.local
+.env.*.local
+node_modules/
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+coverage/
+.ruff_cache/
+.mypy_cache/
+
+# Build artifacts
+dist/
+build/
+out/
+.next/
+.vite/
+*.egg-info/
+
+# Logs
+*.log
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Project-specific
+pgdata/
+*.sqlite

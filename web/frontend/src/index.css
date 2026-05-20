@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Light theme ── */
+:root {
+  color-scheme: light;
+
+  --bg:              #e8ecf5;
+  --surface:         rgba(255,255,255,0.72);
+  --elevated:        rgba(255,255,255,0.55);
+  --border:          rgba(200,208,226,0.6);
+  --border-light:    rgba(200,208,226,0.3);
+  --text:            #111827;
+  --text-sec:        #374151;
+  --text-muted:      #6b7280;
+  --toolbar:         rgba(255,255,255,0.65);
+  --header:          rgba(255,255,255,0.60);
+  --hour-line:       rgba(200,208,226,0.6);
+  --hour-dash:       rgba(200,208,226,0.45);
+  --time-axis:       rgba(244,246,251,0.75);
+  --day-header:      rgba(255,255,255,0.70);
+  --day-header-today:rgba(236,232,255,0.80);
+  --day-grid:        rgba(255,255,255,0.50);
+  --day-grid-today:  rgba(245,242,255,0.60);
+  --day-grid-weekend:rgba(249,250,252,0.55);
+  --day-grid-past:   rgba(243,244,247,0.50);
+  --panel:           rgba(255,255,255,0.70);
+  --modal:           rgba(255,255,255,0.80);
+  --card:            rgba(255,255,255,0.97);
+  --input-bg:        rgba(244,246,251,0.70);
+  --input-border:    rgba(200,208,226,0.5);
+  --primary:         #1565a8;
+  --primary-hover:   #114e85;
+  --primary-light:   rgba(21,101,168,0.10);
+  --primary-border:  rgba(21,101,168,0.30);
+  --accent:          #0ea5e9;
+  --success:         #10b981;
+  --danger:          #ef4444;
+  --scrollbar-track: rgba(221,227,239,0.5);
+  --scrollbar-thumb: rgba(184,194,216,0.6);
+  --skeleton:        rgba(107,114,128,0.10);
+  --card-shadow:     0 2px 8px rgba(17,24,39,0.06), 0 4px 16px rgba(17,24,39,0.03);
+  --panel-shadow:    -12px 0 40px rgba(17,24,39,0.10);
+  --glass-blur:      12px;
+}
+
+/* ── Dark theme ── */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg:              #07070d;
+  --surface:         rgba(10,10,18,0.82);
+  --elevated:        rgba(28,28,46,0.90);
+  --border:          rgba(148,163,184,0.22);
+  --border-light:    rgba(148,163,184,0.08);
+  --text:            #f8fafc;
+  --text-sec:        #cbd5e1;
+  --text-muted:      #94a3b8;
+  --toolbar:         rgba(8,8,15,0.92);
+  --header:          rgba(8,8,15,0.90);
+  --hour-line:       rgba(148,163,184,0.28);
+  --hour-dash:       rgba(148,163,184,0.18);
+  --time-axis:       rgba(8,8,15,0.92);
+  --day-header:      rgba(8,8,15,0.92);
+  --day-header-today:rgba(21,101,168,0.20);
+  --day-grid:        rgba(9,9,16,0.60);
+  --day-grid-today:  rgba(21,101,168,0.08);
+  --day-grid-weekend:rgba(9,9,16,0.65);
+  --day-grid-past:   rgba(9,9,16,0.62);
+  --panel:           rgba(8,8,15,0.92);
+  --modal:           rgba(9,9,16,0.96);
+  --card:            rgba(14,14,24,0.98);
+  --input-bg:        rgba(16,16,26,0.60);
+  --input-border:    rgba(148,163,184,0.16);
+  --primary:         #5ba3df;
+  --primary-hover:   #3b82f6;
+  --primary-light:   rgba(91,163,223,0.22);
+  --primary-border:  rgba(91,163,223,0.50);
+  --accent:          #38bdf8;
+  --success:         #6ee7b7;
+  --danger:          #fca5a5;
+  --warning:         #fbbf24;
+  --scrollbar-track: rgba(8,8,15,0.6);
+  --scrollbar-thumb: rgba(22,22,35,0.7);
+  --skeleton:        rgba(148,163,184,0.08);
+  --card-shadow:     0 2px 10px rgba(0,0,0,0.35);
+  --panel-shadow:    -8px 0 40px rgba(0,0,0,0.45);
+  --glass-blur:      16px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: 15px;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.text-xs  { font-size: 13px !important; line-height: 1.45; }
+.text-sm  { font-size: 15px !important; line-height: 1.5; }
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Unbounded", "Manrope", system-ui, sans-serif;
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+::selection { background: var(--primary-light); color: var(--primary); }

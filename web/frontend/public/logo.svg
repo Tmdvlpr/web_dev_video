@@ -1,0 +1,29 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" rx="36" fill="#1565C0"/>
+
+  <!-- Left large arc: sweeps from top-left down and right -->
+  <path d="M18 30
+           C30 8, 72 4, 95 38
+           C115 68, 108 110, 85 148
+           C68 178, 30 192, 14 178"
+        stroke="white" stroke-width="18" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Right large arc: sweeps from top-right down and left -->
+  <path d="M110 10
+           C148 6, 188 30, 192 72
+           C196 112, 170 158, 138 182
+           C118 194, 98 188, 92 172"
+        stroke="white" stroke-width="18" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Inner left accent (thin diagonal) -->
+  <path d="M54 88 C60 108, 62 132, 50 158"
+        stroke="white" stroke-width="6" fill="none"
+        stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Inner right accent (thin diagonal) -->
+  <path d="M118 62 C124 84, 120 110, 108 136"
+        stroke="white" stroke-width="6" fill="none"
+        stroke-linecap="round" opacity="0.6"/>
+</svg>

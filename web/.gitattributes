@@ -1,0 +1,7 @@
+# Override root LFS rules — store web source files as regular git objects
+*.html -filter -diff -merge text
+*.css  -filter -diff -merge text
+*.js   -filter -diff -merge text
+*.ts   -filter -diff -merge text
+*.tsx  -filter -diff -merge text
+*.json -filter -diff -merge text

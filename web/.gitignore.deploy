@@ -1,0 +1,76 @@
+# Python
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+*.log
+
+# Node
+**/node_modules/
+**/dist/
+**/.next/
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# PostgreSQL
+pgdata/
+**/pgdata/
+
+# Nginx
+nginx/logs/
+nginx/ssl/
+
+# Docker
+volumes/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+docker-compose.yml
+.github/workflows/deploy.yml
+.github
