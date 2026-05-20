@@ -29,7 +29,7 @@ from app.schemas.meeting import (
     GuestJoinInfo, GuestRequestBody, InviteLinkResponse, InviteStatusResponse,
     MeetingJoinResponse, RecordingResponse,
 )
-from app.services.video import create_access_token, derive_e2ee_key, ensure_room_exists, start_recording, stop_recording
+from app.services.video import create_access_token, derive_e2ee_key, ensure_room_exists, is_participant_in_room, start_recording, stop_recording
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/meetings", tags=["meetings"])
@@ -182,11 +182,21 @@ async def join_meeting(
 
     # Guests may not enter before the organizer
     if booking.user_id != current_user.id:
-        # Fast path: organizer already called /join (token issued, in-memory pre-auth)
-        organizer_pre_joined = booking.user_id in _join_authorized.get(booking_id, set())
-        if not organizer_pre_joined:
-            # Slow path: check webhook log (may lag 1-5s after organizer connects)
-            organizer_identity = f"user-{booking.user_id}"
+        organizer_identity = f"user-{booking.user_id}"
+        organizer_present = False
+
+        # 1. In-memory pre-auth (organizer called /join this server process)
+        if booking.user_id in _join_authorized.get(booking_id, set()):
+            organizer_present = True
+
+        # 2. LiveKit room — real-time check (survives backend restarts)
+        if not organizer_present and booking.video_room_name:
+            organizer_present = await is_participant_in_room(
+                booking.video_room_name, organizer_identity
+            )
+
+        # 3. Webhook log — may lag 1–5 s after organizer connects
+        if not organizer_present:
             sub = select(MeetingSession.id).where(MeetingSession.booking_id == booking_id)
             org_res = await db.execute(
                 select(MeetingParticipantLog).where(
@@ -195,8 +205,11 @@ async def join_meeting(
                     MeetingParticipantLog.left_at.is_(None),
                 )
             )
-            if not org_res.scalar_one_or_none():
-                raise HTTPException(403, "organizer_not_present")
+            if org_res.scalar_one_or_none():
+                organizer_present = True
+
+        if not organizer_present:
+            raise HTTPException(403, "organizer_not_present")
 
     # Pre-create room if meeting has already started (no-op if room exists)
     if now >= start:

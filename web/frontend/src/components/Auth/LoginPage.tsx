@@ -594,13 +594,6 @@ export default function LoginPage() {
               {/* QR Auth */}
               <QrAuth />
 
-              {/* Dev bypass — shown when VITE_DEV_LOGIN=true */}
-              {(import.meta.env.DEV || import.meta.env.VITE_DEV_LOGIN === "true") && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}
-                  className="mt-5">
-                  <DevLoginButton />
-                </motion.div>
-              )}
             </div>
           </div>
         </motion.div>

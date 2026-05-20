@@ -87,6 +87,25 @@ async def ensure_room_exists(room_name: str) -> None:
         )
 
 
+async def is_participant_in_room(room_name: str, identity: str) -> bool:
+    """Return True if a participant with the given identity is currently in the room."""
+    from livekit.api import LiveKitAPI
+    from livekit.protocol.room import ListParticipantsRequest
+
+    try:
+        async with LiveKitAPI(
+            url=_lk_http_url(),
+            api_key=settings.LIVEKIT_API_KEY,
+            api_secret=settings.LIVEKIT_API_SECRET,
+        ) as lkapi:
+            resp = await lkapi.room.list_participants(
+                ListParticipantsRequest(room=room_name)
+            )
+            return any(p.identity == identity for p in resp.participants)
+    except Exception:
+        return False
+
+
 async def start_recording(room_name: str) -> str:
     """Start composite room recording via livekit-egress (VP9/WebM). Returns egress_id."""
     from livekit.api import LiveKitAPI
