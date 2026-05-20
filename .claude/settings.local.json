@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(ngrok start *)",
-      "Bash(echo \"started PID $!\")"
-    ]
-  }
-}
