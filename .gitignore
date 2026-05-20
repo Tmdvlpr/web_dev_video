@@ -71,16 +71,3 @@ volumes/
 .vscode/
 *.swp
 *.swo
-
-# Claude / AI tooling
-.claude/
-.omc/
-**/.omc/
-**/.claude/
-
-# Dev / planning artifacts
-JITSI_INTEGRATION_PROMPT.md
-VIDEO_INTEGRATION_PROMPT.md
-WEB_API_DOCS.md
-particle-test.html
-image.png
