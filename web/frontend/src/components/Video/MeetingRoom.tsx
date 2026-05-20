@@ -1618,10 +1618,12 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
     queryKey: ["meeting-join", bookingId],
     queryFn: () => meetingsApi.join(bookingId),
     retry: false,
-    staleTime: 0,
+    staleTime: Infinity,          // never refetch — prevents double-connection on re-render
+    refetchOnWindowFocus: false,
   });
 
   const [isMeetingTime, setIsMeetingTime] = useState(false);
+  const intentionalLeave = useRef(false);
 
   const lkRoom = useMemo(() => new Room({
     publishDefaults: {
@@ -1654,6 +1656,11 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
       },
     },
   }), []);
+
+  // Disconnect room on unmount so LiveKit doesn't show ghost participants
+  useEffect(() => {
+    return () => { lkRoom.disconnect().catch(() => {}); };
+  }, [lkRoom]);
 
   const isOrganizerNotPresent =
     !data &&
@@ -1688,6 +1695,12 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
     return <WaitingRoom startTime={data.start_time} onLeave={onLeave} bookingId={bookingId} onJoin={() => setIsMeetingTime(true)} />;
   }
 
+  const handleLeave = useCallback(() => {
+    intentionalLeave.current = true;
+    lkRoom.disconnect().catch(() => {});
+    onLeave();
+  }, [lkRoom, onLeave]);
+
   return (
     <LiveKitRoom
       room={lkRoom}
@@ -1696,12 +1709,15 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
       connect
       video
       audio
-      onDisconnected={onLeave}
+      onDisconnected={() => {
+        // Only leave if user clicked "Покинуть", not on transient reconnects
+        if (intentionalLeave.current) onLeave();
+      }}
     >
       <RoomAudioRenderer />
       <ConferenceUI
         bookingId={bookingId}
-        onLeave={onLeave}
+        onLeave={handleLeave}
         joinData={data}
         isOrganizer={data.is_organizer}
         e2eeKey={data.e2ee_key}
