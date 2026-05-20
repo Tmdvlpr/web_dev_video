@@ -71,8 +71,3 @@ volumes/
 .vscode/
 *.swp
 *.swo
-docker-compose.yml
-.github/workflows/deploy.yml
-.github
-!web/.github
-!web/.github/**
