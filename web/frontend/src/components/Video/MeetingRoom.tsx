@@ -9,7 +9,7 @@ import {
   useTracks,
 } from "@livekit/components-react";
 import type { TrackReferenceOrPlaceholder, TrackReference } from "@livekit/components-react";
-import { Track, Room, VideoPresets } from "livekit-client";
+import { Track, Room, VideoPresets, DisconnectReason } from "livekit-client";
 import type { LocalAudioTrack, LocalVideoTrack, Participant } from "livekit-client";
 import { useQuery } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -1710,9 +1710,13 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
       connect
       video
       audio
-      onDisconnected={() => {
-        // Only leave if user clicked "Покинуть", not on transient reconnects
-        if (intentionalLeave.current) onLeave();
+      onDisconnected={(reason) => {
+        if (intentionalLeave.current) {
+          onLeave();
+        } else if (reason === DisconnectReason.PARTICIPANT_REMOVED) {
+          // Kicked by ghost-cleanup (double-join) — get a fresh token and reconnect
+          refetch();
+        }
       }}
     >
       <RoomAudioRenderer />

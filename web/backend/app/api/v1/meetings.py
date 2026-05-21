@@ -23,7 +23,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.booking import Booking
 from app.models.meeting import MeetingChatFile, MeetingChatMessage, MeetingInvitation, MeetingParticipantLog, MeetingSession
-from app.models.user import User
+from app.models.user import Role, User
 from app.schemas.meeting import (
     AdmitGuestBody, ChatFileResponse, ChatMessageCreate, ChatMessageResponse,
     GuestJoinInfo, GuestRequestBody, InviteLinkResponse, InviteStatusResponse,
@@ -181,7 +181,6 @@ async def join_meeting(
         raise HTTPException(403, "Meeting ended more than 2 hours ago")
 
     # Guests may not enter before the organizer (admins/superadmins bypass this check)
-    from app.models.user import Role
     is_privileged = current_user.role in (Role.admin, Role.superadmin)
     if booking.user_id != current_user.id and not is_privileged:
         organizer_identity = f"user-{booking.user_id}"
@@ -239,7 +238,7 @@ async def join_meeting(
         user_identity=f"user-{current_user.id}",
         start_time=start,
         end_time=end,
-        is_organizer=(booking.user_id == current_user.id),
+        is_organizer=(booking.user_id == current_user.id or is_privileged),
         e2ee_key=derive_e2ee_key(booking.video_room_name),
     )
 
@@ -525,7 +524,8 @@ async def create_invite_link(
 ) -> InviteLinkResponse:
     """Organizer generates a one-use invite link for an external (unregistered) guest."""
     booking = await _get_active_booking(booking_id, db)
-    if booking.user_id != current_user.id:
+    is_privileged = current_user.role in (Role.admin, Role.superadmin)
+    if booking.user_id != current_user.id and not is_privileged:
         raise HTTPException(403, "Only the organizer can create invite links")
     if not booking.video_enabled or not booking.video_room_name:
         raise HTTPException(400, "Video not enabled for this booking")
@@ -644,7 +644,8 @@ async def admit_guest(
 ) -> dict:
     """Organizer approves or rejects a guest admission request."""
     booking = await _get_active_booking(booking_id, db)
-    if booking.user_id != current_user.id:
+    is_privileged = current_user.role in (Role.admin, Role.superadmin)
+    if booking.user_id != current_user.id and not is_privileged:
         raise HTTPException(403, "Only the organizer can admit guests")
     if not booking.video_room_name:
         raise HTTPException(400, "No active video room")
@@ -694,7 +695,8 @@ async def get_pending_admissions(
 ) -> list[dict]:
     """Organizer polls for pending admission requests (fallback when WS broadcast is missed)."""
     booking = await _get_active_booking(booking_id, db)
-    if booking.user_id != current_user.id:
+    is_privileged = current_user.role in (Role.admin, Role.superadmin)
+    if booking.user_id != current_user.id and not is_privileged:
         raise HTTPException(403, "Only organizer can view pending admissions")
     result = await db.execute(
         select(MeetingInvitation).where(

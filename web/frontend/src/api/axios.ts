@@ -21,10 +21,11 @@ apiClient.interceptors.response.use(
   (err) => {
     if (err.response?.status === 401) {
       storage.removeToken();
-      // Don't redirect if already on an auth page to avoid redirect loops
       const path = window.location.pathname;
       const isAuthPage = path.startsWith("/login") || path.startsWith("/register") || path.startsWith("/auth/");
-      if (!isAuthPage) {
+      // Don't navigate away while user is in an active meeting — let the component handle it
+      const isMeetingPage = path.startsWith("/meeting");
+      if (!isAuthPage && !isMeetingPage) {
         window.location.href = "/login";
       }
     }
