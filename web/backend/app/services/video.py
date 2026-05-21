@@ -87,6 +87,24 @@ async def ensure_room_exists(room_name: str) -> None:
         )
 
 
+async def kick_participant(room_name: str, identity: str) -> None:
+    """Remove a participant from the room (no-op if room/participant doesn't exist)."""
+    from livekit.api import LiveKitAPI
+    from livekit.protocol.room import RemoveParticipantRequest
+
+    try:
+        async with LiveKitAPI(
+            url=_lk_http_url(),
+            api_key=settings.LIVEKIT_API_KEY,
+            api_secret=settings.LIVEKIT_API_SECRET,
+        ) as lkapi:
+            await lkapi.room.remove_participant(
+                RemoveParticipantRequest(room=room_name, identity=identity)
+            )
+    except Exception:
+        pass
+
+
 async def is_participant_in_room(room_name: str, identity: str) -> bool:
     """Return True if a participant with the given identity is currently in the room."""
     from livekit.api import LiveKitAPI

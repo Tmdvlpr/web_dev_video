@@ -29,7 +29,7 @@ from app.schemas.meeting import (
     GuestJoinInfo, GuestRequestBody, InviteLinkResponse, InviteStatusResponse,
     MeetingJoinResponse, RecordingResponse,
 )
-from app.services.video import create_access_token, derive_e2ee_key, ensure_room_exists, is_participant_in_room, start_recording, stop_recording
+from app.services.video import create_access_token, derive_e2ee_key, ensure_room_exists, is_participant_in_room, kick_participant, start_recording, stop_recording
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/meetings", tags=["meetings"])
@@ -219,6 +219,10 @@ async def join_meeting(
             await ensure_room_exists(booking.video_room_name)
         except Exception as exc:
             logger.warning(f"ensure_room_exists failed: {exc}")
+
+    # Kick any ghost connection with the same identity before issuing a new token
+    if booking.video_room_name:
+        await kick_participant(booking.video_room_name, f"user-{current_user.id}")
 
     token = create_access_token(
         room_name=booking.video_room_name,
