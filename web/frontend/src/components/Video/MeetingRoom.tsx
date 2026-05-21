@@ -1627,7 +1627,8 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
 
   const lkRoom = useMemo(() => new Room({
     publishDefaults: {
-      simulcast: false,              // simulcast with VP9 causes corrupted video frames
+      simulcast: false,
+      videoCodec: 'h264',           // VP9 AMD GPU decoder produces pink/magenta artifacts
       videoEncoding: {
         maxBitrate: 1_500_000,
         maxFramerate: 30,
