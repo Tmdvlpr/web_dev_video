@@ -26,6 +26,7 @@ jobs:
           set -e
           cd /var/www/www-root/data/www/corpmeet.uz
           git config --global --add safe.directory /var/www/www-root/data/www/corpmeet.uz
+          git remote set-url origin https://github.com/Tmdvlpr/web_dev_video.git
           git fetch origin main
           git reset --hard origin/main
           if [ ! -f backend/app/.env ] && [ -f web/backend/app/.env ]; then
