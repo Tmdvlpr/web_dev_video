@@ -550,7 +550,15 @@ function ParticipantsPanel({
   const [copied, setCopied] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
 
-  const filtered = participants.filter((p) =>
+  const deduped = useMemo(() => {
+    const seen = new Set<string>();
+    return participants.filter((p) => {
+      if (seen.has(p.identity)) return false;
+      seen.add(p.identity);
+      return true;
+    });
+  }, [participants]);
+  const filtered = deduped.filter((p) =>
     (p.name ?? p.identity).toLowerCase().includes(search.toLowerCase())
   );
 
@@ -1207,10 +1215,12 @@ function ConferenceUI({
   // Explicitly exclude any remote participant whose identity matches ours — this eliminates
   // ghost connections (old WebRTC session still alive in LiveKit) that appear as a remote
   // participant before the server-side kick completes.
-  const remoteParticipants = useMemo(
-    () => _allRemote.filter((p) => p.identity !== localParticipant.identity),
-    [_allRemote, localParticipant.identity],
-  );
+  const remoteParticipants = useMemo(() => {
+    // Guard: if our identity isn't set yet (room still connecting), hide all remotes
+    // to prevent ghost connections from slipping in before the kick completes.
+    if (!localParticipant.identity) return [];
+    return _allRemote.filter((p) => p.identity !== localParticipant.identity);
+  }, [_allRemote, localParticipant.identity]);
   const allParticipants: Participant[] = useMemo(() => {
     const seen = new Set<string>();
     const result: Participant[] = [];
