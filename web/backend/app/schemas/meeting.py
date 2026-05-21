@@ -82,7 +82,7 @@ class ChatMessageResponse(BaseModel):
 class RecordingResponse(BaseModel):
     session_id: int
     room_name: str
-    recording_path: str
+    recording_path: str | None = None
     recording_duration_seconds: int | None = None
     started_at: datetime
     ended_at: datetime | None = None

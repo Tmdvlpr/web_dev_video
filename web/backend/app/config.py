@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     VIDEO_ENABLED: bool = True
     VIDEO_MAX_PARTICIPANTS: int = 50
     VIDEO_RECORDING_ENABLED: bool = True
-    CHAT_FILES_PATH: str = "/app/data/recordings/files"
+    CHAT_FILES_PATH: str = "/app/data/chat-files"
     CHAT_FILES_MAX_SIZE: int = 50 * 1024 * 1024  # 50 MB
     RECORDINGS_PATH: str = "/app/data/recordings"
 

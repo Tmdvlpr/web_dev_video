@@ -25,7 +25,7 @@ def derive_e2ee_key(room_name: str) -> str:
     All participants call this with the same room_name and get the same key,
     so no extra key-exchange infrastructure is needed.
     """
-    secret = settings.PASETO_PRIVATE_KEY_PEM[:32].encode("utf-8")
+    secret = hashlib.sha256(settings.PASETO_PRIVATE_KEY_PEM.encode()).digest()
     return _hmac.new(secret, room_name.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
@@ -125,7 +125,7 @@ async def is_participant_in_room(room_name: str, identity: str) -> bool:
 
 
 async def start_recording(room_name: str) -> str:
-    """Start composite room recording via livekit-egress (VP9/WebM). Returns egress_id."""
+    """Start composite room recording via livekit-egress (H264/MP4). Returns egress_id."""
     from livekit.api import LiveKitAPI
     from livekit.protocol.egress import (
         EncodedFileOutput,
@@ -133,25 +133,10 @@ async def start_recording(room_name: str) -> str:
         RoomCompositeEgressRequest,
     )
 
-    # VP9 encoding options — import path varies by livekit-protocol version
-    encoding_options = None
-    try:
-        from livekit.protocol.egress import EncodingOptions
-        from livekit.protocol.models import VideoCodec
-        encoding_options = EncodingOptions(video_codec=VideoCodec.VP9)
-    except (ImportError, AttributeError):
-        pass  # Fall back to default codec if VP9 not available
-
     file_output = EncodedFileOutput(
-        file_type=EncodedFileType.WEBM,
-        filepath=f"/out/{room_name}.webm",
+        file_type=EncodedFileType.MP4,
+        filepath=f"/out/{room_name}.mp4",
     )
-    if encoding_options is not None:
-        file_output = EncodedFileOutput(
-            file_type=EncodedFileType.WEBM,
-            filepath=f"/out/{room_name}.webm",
-            options=encoding_options,
-        )
 
     async with LiveKitAPI(
         url=_lk_http_url(),

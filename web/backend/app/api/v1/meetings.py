@@ -54,7 +54,11 @@ class _ConnectionManager:
         self._rooms.setdefault(booking_id, set()).add(ws)
 
     def disconnect(self, booking_id: int, ws: WebSocket) -> None:
-        self._rooms.get(booking_id, set()).discard(ws)
+        room = self._rooms.get(booking_id)
+        if room is not None:
+            room.discard(ws)
+            if not room:
+                del self._rooms[booking_id]
 
     async def broadcast(self, booking_id: int, data: dict) -> None:
         dead: set[WebSocket] = set()
@@ -627,10 +631,12 @@ async def get_invite_status(
         raise HTTPException(404, "Invalid invite link")
 
     if invite.status == "approved" and invite.livekit_token:
+        booking = await db.get(Booking, invite.booking_id)
         return InviteStatusResponse(
             status="approved",
             livekit_token=invite.livekit_token,
             livekit_url=settings.LIVEKIT_PUBLIC_URL,
+            room_name=booking.video_room_name if booking else None,
         )
     return InviteStatusResponse(status=invite.status)
 

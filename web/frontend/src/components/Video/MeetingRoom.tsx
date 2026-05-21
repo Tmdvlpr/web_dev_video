@@ -5,7 +5,7 @@ import {
   VideoTrack,
   useIsSpeaking,
   useLocalParticipant,
-  useParticipants,
+  useRemoteParticipants,
   useTracks,
 } from "@livekit/components-react";
 import type { TrackReferenceOrPlaceholder, TrackReference } from "@livekit/components-react";
@@ -167,10 +167,7 @@ function useMeetingChat(
         wsRef.current = null;
         if (!mounted) return;
         if (e.code === 4401) {
-          // Stale localStorage token — clear it and retry once via httpOnly cookie
-          console.warn("Chat WS 4401: clearing localStorage token, retrying via cookie…");
-          localStorage.removeItem("access_token");
-          retryTimer = setTimeout(() => connect(), 1000);
+          console.warn("Chat WS 4401: auth failed, not reconnecting");
           return;
         }
         if (e.code === 4403) {
@@ -857,7 +854,7 @@ function FloatingReaction({ emoji, id, onDone }: { emoji: string; id: number; on
 }
 
 // ─── Waiting room ─────────────────────────────────────────────────────────────
-function WaitingRoom({ startTime, onLeave, bookingId, onJoin }: { startTime: string; onLeave: () => void; bookingId: number; onJoin: () => void }) {
+function WaitingRoom({ startTime, onLeave, bookingId, onJoin, localUserId }: { startTime: string; onLeave: () => void; bookingId: number; onJoin: () => void; localUserId: number }) {
   const [remaining, setRemaining] = useState(() => Math.max(0, new Date(startTime).getTime() - Date.now()));
   const [chatOpen, setChatOpen] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1084,7 +1081,7 @@ function WaitingRoom({ startTime, onLeave, bookingId, onJoin }: { startTime: str
           </div>
           <div className="sidebar__body">
             <ChatPanelInner
-              messages={messages} bookingId={bookingId} localUserId={0}
+              messages={messages} bookingId={bookingId} localUserId={localUserId}
               onSend={send} onFile={uploadAndSend} uploading={uploading}
             />
           </div>
@@ -1175,7 +1172,7 @@ function SettingsPanel({ bookingId, noiseOn, blurOn, onNoise, onBlur }: {
             {r.recording_path ? (
               <a
                 href={meetingsApi.downloadRecordingUrl(bookingId, r.session_id)}
-                download={`recording-${r.session_id}.webm`}
+                download={`recording-${r.session_id}.mp4`}
                 style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}
               >
                 ⬇ Скачать запись
@@ -1206,7 +1203,7 @@ function ConferenceUI({
 }) {
   const { localParticipant, isMicrophoneEnabled, isCameraEnabled, isScreenShareEnabled } =
     useLocalParticipant();
-  const remoteParticipants = useParticipants();
+  const remoteParticipants = useRemoteParticipants();
   const allParticipants: Participant[] = [localParticipant, ...remoteParticipants];
 
   // ── Krisp noise cancellation (auto-apply from profile settings) ────────────
@@ -1679,6 +1676,12 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
     return () => clearTimeout(t);
   }, [data]);
 
+  const handleLeave = useCallback(() => {
+    intentionalLeave.current = true;
+    lkRoom.disconnect().catch(() => {});
+    onLeave();
+  }, [lkRoom, onLeave]);
+
   if (isLoading) return <FullscreenSpinner text="Подключение к встрече…" />;
 
   if (isOrganizerNotPresent) {
@@ -1693,14 +1696,9 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
   }
 
   if (!isMeetingTime) {
-    return <WaitingRoom startTime={data.start_time} onLeave={onLeave} bookingId={bookingId} onJoin={() => setIsMeetingTime(true)} />;
+    const localUserId = parseInt(data.user_identity.replace("user-", ""), 10) || 0;
+    return <WaitingRoom startTime={data.start_time} onLeave={onLeave} bookingId={bookingId} onJoin={() => setIsMeetingTime(true)} localUserId={localUserId} />;
   }
-
-  const handleLeave = useCallback(() => {
-    intentionalLeave.current = true;
-    lkRoom.disconnect().catch(() => {});
-    onLeave();
-  }, [lkRoom, onLeave]);
 
   return (
     <LiveKitRoom

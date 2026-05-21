@@ -652,9 +652,13 @@ async def livekit_webhook(
             egress_id: str = egress_info.egress_id
             recording_path: str | None = None
             if egress_info.file_results:
-                recording_path = egress_info.file_results[0].location
-            # duration is in seconds (int64 in proto)
-            duration_sec: int | None = int(egress_info.duration) if egress_info.duration else None
+                raw_path = egress_info.file_results[0].location
+                # Egress container writes to /out/; backend reads from /app/data/recordings/
+                if raw_path and raw_path.startswith("/out/"):
+                    raw_path = raw_path.replace("/out/", "/app/data/recordings/", 1)
+                recording_path = raw_path
+            # duration is in nanoseconds (int64 in proto)
+            duration_sec: int | None = int(egress_info.duration // 1_000_000_000) if egress_info.duration else None
 
             result = await db.execute(
                 select(MeetingSession).where(MeetingSession.egress_id == egress_id)
