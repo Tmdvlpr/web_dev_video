@@ -19,9 +19,12 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.attachment import BookingAttachment
 from app.models.booking import Booking
+from app.models.room import RoomVisibility, WorkspaceRoom
 from app.models.user import Role, User
+from app.models.workspace import WorkspaceMember, WorkspaceMemberStatus
 from pydantic import BaseModel
 from app.schemas.booking import BookingCreate, BookingResponse, BookingUpdate
+from app.schemas.user import UserPublicResponse
 from app.services.video import ensure_room_exists, generate_room_name
 
 logger = logging.getLogger(__name__)
@@ -204,19 +207,53 @@ async def list_active(
     return result.scalars().all()
 
 
+def _redacted_booking(b: Booking) -> BookingResponse:
+    """Return a booking with all sensitive fields stripped (for busy_only visibility)."""
+    return BookingResponse(
+        id=b.id,
+        title="Занято",
+        description=None,
+        start_time=b.start_time,
+        end_time=b.end_time,
+        user_id=0,
+        user=UserPublicResponse(id=0, first_name=None, last_name=None, username=None, role="user"),
+        created_at=b.created_at,
+        guests=[],
+        recurrence="none",
+        recurrence_until=None,
+        recurrence_group_id=None,
+        recurrence_days=[],
+        reminder_minutes=None,
+        workspace_id=None,
+        room_id=b.room_id,
+        video_enabled=False,
+        video_room_name=None,
+    )
+
+
+async def _check_workspace_member(workspace_id: int, user: User, db: AsyncSession) -> None:
+    """Raise 403 if user is not an active member of the workspace (admins bypass)."""
+    if user.role in ADMIN_ROLES:
+        return
+    result = await db.execute(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.user_id == user.id,
+            WorkspaceMember.status == WorkspaceMemberStatus.active,
+        )
+    )
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(403, "Not a member of this workspace")
+
+
 @router.get("/room-status", response_model=list[BookingResponse])
 async def room_status(
     workspace_id: int | None = Query(default=None, description="Filter by accessible rooms in this workspace"),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> list[BookingResponse]:
-    """All bookings (any user) overlapping with [now-1h, now+24h].
-    Used by the room-status badge to indicate Free/Busy/Soon-busy.
-
-    If `workspace_id` is provided, only returns bookings for rooms accessible
-    to that workspace (via WorkspaceRoom)."""
-    from app.models.room import WorkspaceRoom
-
+    """Bookings overlapping [now-1h, now+24h] for room-status badges.
+    Bookings from other workspaces on busy_only rooms are redacted to 'Занято'."""
     now = datetime.now(timezone.utc)
     window_start = now - timedelta(hours=1)
     window_end = now + timedelta(hours=24)
@@ -227,11 +264,18 @@ async def room_status(
         Booking.deleted_at.is_(None),
     ]
 
+    busy_only_room_ids: set[int] = set()
+
     if workspace_id is not None:
-        accessible_res = await db.execute(
-            select(WorkspaceRoom.room_id).where(WorkspaceRoom.workspace_id == workspace_id)
+        await _check_workspace_member(workspace_id, current_user, db)
+
+        ws_rooms_res = await db.execute(
+            select(WorkspaceRoom).where(WorkspaceRoom.workspace_id == workspace_id)
         )
-        accessible_room_ids = [row[0] for row in accessible_res.all()]
+        ws_rooms = ws_rooms_res.scalars().all()
+        accessible_room_ids = [wr.room_id for wr in ws_rooms]
+        busy_only_room_ids = {wr.room_id for wr in ws_rooms if wr.visibility == RoomVisibility.busy_only}
+
         if not accessible_room_ids:
             return []
         conds.append(Booking.room_id.in_(accessible_room_ids))
@@ -242,7 +286,17 @@ async def room_status(
         .where(and_(*conds))
         .order_by(Booking.start_time)
     )
-    return result.scalars().all()
+    bookings = result.scalars().all()
+
+    if not busy_only_room_ids:
+        return bookings  # type: ignore[return-value]
+
+    return [
+        _redacted_booking(b)
+        if (b.room_id in busy_only_room_ids and b.workspace_id != workspace_id)
+        else b
+        for b in bookings
+    ]  # type: ignore[return-value]
 
 
 @router.get("", response_model=list[BookingResponse])
@@ -251,25 +305,44 @@ async def list_bookings(
     date_to: date | None = Query(default=None, alias="date_to", description="End date (YYYY-MM-DD), defaults to date_from"),
     workspace_id: int | None = Query(default=None, description="Filter bookings by workspace"),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> list[BookingResponse]:
     end_date = date_to or date_from
     day_start = datetime.combine(date_from, time.min).replace(tzinfo=timezone.utc)
     day_end = datetime.combine(end_date, time.max).replace(tzinfo=timezone.utc)
-    conds = [
-        Booking.start_time >= day_start,
-        Booking.start_time <= day_end,
-        Booking.deleted_at.is_(None),
-    ]
+
     if workspace_id is not None:
-        conds.append(Booking.workspace_id == workspace_id)
+        await _check_workspace_member(workspace_id, current_user, db)
+        conds = [
+            Booking.start_time >= day_start,
+            Booking.start_time <= day_end,
+            Booking.deleted_at.is_(None),
+            Booking.workspace_id == workspace_id,
+        ]
+    else:
+        # No workspace context — show only the caller's own bookings
+        guest_conds: list = [Booking.user_id == current_user.id]
+        if current_user.username:
+            uname = current_user.username.lower()
+            for val in [uname, f"@{uname}"]:
+                guest_conds.append(cast(Booking.guests, String).like(f'%"{val}"%'))
+        name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip()
+        if name:
+            guest_conds.append(cast(Booking.guests, String).like(f'%"{name}"%'))
+        conds = [
+            Booking.start_time >= day_start,
+            Booking.start_time <= day_end,
+            Booking.deleted_at.is_(None),
+            or_(*guest_conds),
+        ]
+
     result = await db.execute(
         select(Booking)
         .options(selectinload(Booking.user))
         .where(and_(*conds))
         .order_by(Booking.start_time)
     )
-    return result.scalars().all()
+    return result.scalars().all()  # type: ignore[return-value]
 
 
 @router.post("", response_model=list[BookingResponse], status_code=status.HTTP_201_CREATED)
