@@ -1204,7 +1204,20 @@ function ConferenceUI({
   const { localParticipant, isMicrophoneEnabled, isCameraEnabled, isScreenShareEnabled } =
     useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
-  const allParticipants: Participant[] = [localParticipant, ...remoteParticipants];
+  // Deduplicate by identity: during the brief window between kick_participant() and the ghost
+  // actually disconnecting, the ghost can appear as a remote participant with the same identity
+  // as the local participant, producing a duplicate "Вы" entry.
+  const allParticipants: Participant[] = useMemo(() => {
+    const seen = new Set<string>();
+    const result: Participant[] = [];
+    for (const p of [localParticipant as Participant, ...remoteParticipants]) {
+      if (!seen.has(p.identity)) {
+        seen.add(p.identity);
+        result.push(p);
+      }
+    }
+    return result;
+  }, [localParticipant, remoteParticipants]);
 
   // ── Krisp noise cancellation (auto-apply from profile settings) ────────────
   const noiseApplied = useRef(false);
@@ -1712,8 +1725,11 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
         if (intentionalLeave.current) {
           onLeave();
         } else if (reason === DisconnectReason.PARTICIPANT_REMOVED) {
-          // Kicked by ghost-cleanup (double-join) — get a fresh token and reconnect
-          refetch();
+          // The backend kick_participant() targets the ghost (old connection), not us.
+          // Calling refetch() here would re-hit /join → kick_participant() again → another
+          // PARTICIPANT_REMOVED → infinite kick-reconnect loop crashing after ~10s.
+          // Safe fallback: exit cleanly. The user can rejoin manually if needed.
+          onLeave();
         }
       }}
     >
