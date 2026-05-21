@@ -1203,10 +1203,14 @@ function ConferenceUI({
 }) {
   const { localParticipant, isMicrophoneEnabled, isCameraEnabled, isScreenShareEnabled } =
     useLocalParticipant();
-  const remoteParticipants = useRemoteParticipants();
-  // Deduplicate by identity: during the brief window between kick_participant() and the ghost
-  // actually disconnecting, the ghost can appear as a remote participant with the same identity
-  // as the local participant, producing a duplicate "Вы" entry.
+  const _allRemote = useRemoteParticipants();
+  // Explicitly exclude any remote participant whose identity matches ours — this eliminates
+  // ghost connections (old WebRTC session still alive in LiveKit) that appear as a remote
+  // participant before the server-side kick completes.
+  const remoteParticipants = useMemo(
+    () => _allRemote.filter((p) => p.identity !== localParticipant.identity),
+    [_allRemote, localParticipant.identity],
+  );
   const allParticipants: Participant[] = useMemo(() => {
     const seen = new Set<string>();
     const result: Participant[] = [];
@@ -1280,7 +1284,23 @@ function ConferenceUI({
 
   const allTracks = useTracks(TRACK_SOURCES, TRACK_OPTIONS);
 
-  const camTracks = allTracks.filter((t) => t.source === Track.Source.Camera);
+  // Deduplicate camera tracks by identity: prefer local participant's track over any ghost remote
+  // track with the same identity. Without this, duplicate video tiles appear in the grid.
+  const camTracks = useMemo(() => {
+    const localId = localParticipant.identity;
+    const seen = new Set<string>();
+    const result: TrackReferenceOrPlaceholder[] = [];
+    // Local participant first so their track wins over any ghost with the same identity
+    const sorted = [...allTracks].sort((a) => (a.participant.identity === localId ? -1 : 1));
+    for (const t of sorted) {
+      if (t.source !== Track.Source.Camera) continue;
+      if (!seen.has(t.participant.identity)) {
+        seen.add(t.participant.identity);
+        result.push(t);
+      }
+    }
+    return result;
+  }, [allTracks, localParticipant]);
   const screenTrack = allTracks.find((t) => t.source === Track.Source.ScreenShare && t.publication?.isEnabled) ?? null;
 
   const localUserId = parseInt(joinData.user_identity.replace("user-", ""), 10) || 0;
