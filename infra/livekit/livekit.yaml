@@ -16,7 +16,7 @@ webhook:
 room:
   empty_timeout: 300
   max_participants: 50
-  video_codecs: [H264, VP9, AV1]   # H264 first — VP9 AMD GPU decoder produces color artifacts
+  video_codecs: [H264]   # VP9/AV1 disabled — AMD GPU VP9 decoder produces green/magenta artifacts
 
 redis:
   address: redis:6379
