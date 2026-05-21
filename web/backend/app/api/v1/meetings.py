@@ -180,8 +180,10 @@ async def join_meeting(
     if now > end + timedelta(hours=2):
         raise HTTPException(403, "Meeting ended more than 2 hours ago")
 
-    # Guests may not enter before the organizer
-    if booking.user_id != current_user.id:
+    # Guests may not enter before the organizer (admins/superadmins bypass this check)
+    from app.models.user import Role
+    is_privileged = current_user.role in (Role.admin, Role.superadmin)
+    if booking.user_id != current_user.id and not is_privileged:
         organizer_identity = f"user-{booking.user_id}"
         organizer_present = False
 
