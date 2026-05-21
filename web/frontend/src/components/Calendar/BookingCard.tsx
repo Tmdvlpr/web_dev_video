@@ -62,10 +62,11 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
       navigate(`/meeting/${booking.id}`);
     }
   };
+  const isRedacted = booking.user_id === 0;
   const palettes = isDark ? DARK_PALETTES : LIGHT_PALETTES;
   const p = palettes[booking.user_id % palettes.length];
   const isShort    = heightPercent < 6;
-  const canDrag    = !!currentUser && (currentUser.id === booking.user_id || currentUser.role === "admin" || currentUser.role === "superadmin");
+  const canDrag    = !isRedacted && !!currentUser && (currentUser.id === booking.user_id || currentUser.role === "admin" || currentUser.role === "superadmin");
 
   const shadow = isDark
     ? `0 0 0 1px ${p.border}50, 0 4px 20px ${p.accent}30, inset 0 1px 0 rgba(255,255,255,0.07)`
@@ -89,6 +90,50 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
     setIsDragging(false);
     setDrag(null);
   };
+
+  if (isRedacted) {
+    const greyBg = isDark ? "rgba(128,128,128,0.15)" : "rgba(0,0,0,0.05)";
+    const greyBorder = isDark ? "rgba(148,163,184,0.35)" : "rgba(100,116,139,0.3)";
+    const greyText = isDark ? "#94a3b8" : "#64748b";
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 6, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -6, scale: 0.97 }}
+        transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+        style={{
+          position: "absolute",
+          top: `${topPercent}%`,
+          height: `${heightPercent}%`,
+          left: 4, right: 4,
+          background: greyBg,
+          borderTop: `1px solid ${greyBorder}`,
+          borderRight: `1px solid ${greyBorder}`,
+          borderBottom: `1px solid ${greyBorder}`,
+          borderLeft: `3px solid ${greyBorder}`,
+          borderRadius: 10,
+          cursor: "default",
+          overflow: "hidden",
+        }}
+        className={`px-2 ${isShort ? "py-0 flex items-center" : "py-1"}`}
+      >
+        {isShort ? (
+          <p className="text-xs font-bold truncate leading-none w-full" style={{ color: greyText }}>
+            Занято
+          </p>
+        ) : (
+          <div className="h-full flex flex-col gap-0.5">
+            <p className="text-xs font-bold truncate" style={{ color: greyText }}>Занято</p>
+            <p className="text-xs truncate" style={{ color: greyText, opacity: 0.7 }}>
+              {new Date(booking.start_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+              {" – "}
+              {new Date(booking.end_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+            </p>
+          </div>
+        )}
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div

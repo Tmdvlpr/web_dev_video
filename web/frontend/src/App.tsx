@@ -22,8 +22,12 @@ import { AvatarPicker } from "./components/Common/AvatarPicker";
 import OpenInBrowserButton from "./components/MiniApp/OpenInBrowserButton";
 import { useTheme } from "./contexts/ThemeContext";
 import { useLocale } from "./contexts/LocaleContext";
+import { WorkspaceProvider, useWorkspace } from "./contexts/WorkspaceContext";
 import { useAuth } from "./hooks/useAuth";
 import { useTelegram } from "./hooks/useTelegram";
+import { WorkspaceOnboarding } from "./components/Workspace/WorkspaceOnboarding";
+import { WorkspaceSelector } from "./components/Workspace/WorkspaceSelector";
+import { WorkspaceSettingsModal } from "./components/Workspace/WorkspaceSettingsModal";
 import type { Booking } from "./types";
 
 // ── Web notification reminders ──────────────────────────────────────────────
@@ -175,6 +179,7 @@ function Dashboard() {
   const { isDark } = useTheme();
   const { t } = useLocale();
   const { toasts, add: addToast } = useToasts();
+  const { workspaces, isLoading: wsLoading } = useWorkspace();
   const navigate = useNavigate();
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -183,12 +188,14 @@ function Dashboard() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [submissionsOpen, setSubmissionsOpen] = useState(false);
+  const [wsSettingsOpen, setWsSettingsOpen] = useState(false);
   const [slotStart, setSlotStart] = useState<Date | undefined>();
   const [slotEnd, setSlotEnd] = useState<Date | undefined>();
   const [editBooking, setEditBooking] = useState<Booking | null>(null);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const avatarPickerRef = useRef<HTMLDivElement>(null);
+  const needsOnboarding = !wsLoading && workspaces.length === 0;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -253,6 +260,9 @@ function Dashboard() {
             <span style={{ color: isDark ? "#f8fafc" : "#0f172a" }}>Corp</span>
             <span style={{ color: isDark ? "#5ba3df" : "#1565a8" }}>meet</span>
           </span>
+          <div className="ml-3">
+            <WorkspaceSelector onSettingsOpen={() => setWsSettingsOpen(true)} />
+          </div>
         </div>
 
         {/* Right: labeled buttons */}
@@ -446,6 +456,15 @@ function Dashboard() {
         />
       )}
 
+      <WorkspaceSettingsModal
+        open={wsSettingsOpen}
+        onClose={() => setWsSettingsOpen(false)}
+      />
+
+      {needsOnboarding && (
+        <WorkspaceOnboarding onCreated={() => addToast("Пространство готово")} />
+      )}
+
       <Toasts toasts={toasts} />
     </div>
   );
@@ -541,7 +560,9 @@ export default function App() {
           path="/bookings"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <WorkspaceProvider enabled={isAuthenticated}>
+                <Dashboard />
+              </WorkspaceProvider>
             </ProtectedRoute>
           }
         />

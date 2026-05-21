@@ -14,10 +14,10 @@ export const bookingsApi = {
     return res.data;
   },
 
-  getByDate: async (date: string): Promise<Booking[]> => {
-    const res = await apiClient.get<Booking[]>("/api/v1/bookings", {
-      params: { date_from: date, date_to: date },
-    });
+  getByDate: async (date: string, workspaceId?: number): Promise<Booking[]> => {
+    const params: Record<string, string | number> = { date_from: date, date_to: date };
+    if (workspaceId != null) params.workspace_id = workspaceId;
+    const res = await apiClient.get<Booking[]>("/api/v1/bookings", { params });
     return res.data;
   },
 

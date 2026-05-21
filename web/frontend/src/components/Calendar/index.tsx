@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CalendarDragProvider } from "../../contexts/CalendarDragContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
+import { useWorkspace } from "../../contexts/WorkspaceContext";
 import { useBookings, useSlots, useUpdateBooking } from "../../hooks/useBookings";
 import { bookingsApi } from "../../api/bookings";
 import type { Booking, SlotResponse, User } from "../../types";
@@ -24,10 +25,11 @@ interface DayContainerProps {
   onCardClick: (booking: Booking) => void;
   isToday: boolean;
   searchQuery: string;
+  workspaceId?: number;
 }
 
-function DayContainer({ date, dateStr, currentUser, onSlotClick, onCardClick, isToday, searchQuery }: DayContainerProps) {
-  const { data: bookings = [] } = useBookings(dateStr);
+function DayContainer({ date, dateStr, currentUser, onSlotClick, onCardClick, isToday, searchQuery, workspaceId }: DayContainerProps) {
+  const { data: bookings = [] } = useBookings(dateStr, workspaceId);
   const { data: slots = [] } = useSlots(dateStr);
   const { mutate: updateBooking } = useUpdateBooking();
 
@@ -338,6 +340,7 @@ function RoomStatus() {
 
 export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProps) {
   const { t } = useLocale();
+  const { activeWorkspace } = useWorkspace();
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [viewMode, setViewMode] = useState<"week" | "month">("week");
   const [searchQuery, setSearchQuery] = useState("");
@@ -674,7 +677,8 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
               return (
                 <DayContainer key={dateStr} date={date} dateStr={dateStr}
                   currentUser={currentUser} onSlotClick={onSlotClick}
-                  onCardClick={onCardClick} isToday={isToday} searchQuery={searchQuery} />
+                  onCardClick={onCardClick} isToday={isToday} searchQuery={searchQuery}
+                  workspaceId={activeWorkspace?.id} />
               );
             })}
           </div>

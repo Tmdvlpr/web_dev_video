@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { DateTimePicker } from "../Common/DateTimePicker";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
+import { useWorkspace } from "../../contexts/WorkspaceContext";
 
 
 import { useBookings, useCreateBooking, useDeleteBooking, useUpdateBooking } from "../../hooks/useBookings";
@@ -81,6 +82,7 @@ export function BookingModal({
 }: BookingModalProps) {
   const { isDark } = useTheme();
   const { t, locale } = useLocale();
+  const { activeWorkspace, myRooms } = useWorkspace();
   const navigate    = useNavigate();
   const isEdit     = !!editBooking;
   const isReadOnly = isEdit && !canEdit;
@@ -283,6 +285,7 @@ export function BookingModal({
   const [recurUntil,  setRecurUntil]= useState("");
   const [recurDays,   setRecurDays] = useState<number[]>([]);
   const [videoEnabled, setVideoEnabled] = useState(false);
+  const [selectedRoomId, setSelectedRoomId] = useState<number | "">("");
   const [deleteSeries,setDelSeries] = useState(false);
   const [pendingFiles,setPendingFiles] = useState<File[]>([]);
   const [error,       setError]     = useState<string | null>(null);
@@ -331,10 +334,12 @@ export function BookingModal({
       setRecur(editBooking.recurrence ?? "none");
       setRecurUntil(editBooking.recurrence_until ?? "");
       setVideoEnabled(editBooking.video_enabled ?? false);
+      setSelectedRoomId(editBooking.room_id ?? "");
     } else {
       setTitle(""); setDesc(""); setGuests([]);
       setRecur("none"); setRecurUntil(""); setRecurDays([]);
       setVideoEnabled(false);
+      setSelectedRoomId("");
       setStart(toLocal(initialStart ?? now));
       setEnd(toLocal(initialEnd ?? later));
     }
@@ -418,6 +423,8 @@ export function BookingModal({
           recurrence_until: recurrence !== "none" && recurUntil ? recurUntil : undefined,
           recurrence_days: recurrence === "custom" ? recurDays : undefined,
           video_enabled: videoEnabled,
+          workspace_id: activeWorkspace?.id,
+          room_id: selectedRoomId === "" ? undefined : selectedRoomId,
         });
         const count = created.length;
         // Upload pending files to the first created booking
@@ -705,6 +712,40 @@ export function BookingModal({
                       onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(21,101,168,0.12)"; }}
                       onBlur={e => { e.currentTarget.style.borderColor = "var(--input-border)"; e.currentTarget.style.boxShadow = "none"; }} />
                   </div>
+
+                  {/* Room selector */}
+                  {(() => {
+                    const availableRooms = activeWorkspace
+                      ? myRooms.filter(wr => wr.workspace_id === activeWorkspace.id)
+                      : myRooms;
+                    if (availableRooms.length === 0) return null;
+                    return (
+                      <div>
+                        <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--text-sec)" }}>
+                          Переговорная <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(необязательно)</span>
+                        </label>
+                        <select
+                          value={selectedRoomId === "" ? "" : String(selectedRoomId)}
+                          onChange={e => setSelectedRoomId(e.target.value === "" ? "" : Number(e.target.value))}
+                          disabled={isEdit}
+                          className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition-all"
+                          style={{
+                            background: "var(--input-bg)",
+                            border: "1.5px solid var(--input-border)",
+                            color: "var(--text)",
+                            opacity: isEdit ? 0.6 : 1,
+                          }}
+                        >
+                          <option value="">— не выбрана —</option>
+                          {availableRooms.map(wr => (
+                            <option key={wr.room.id} value={wr.room.id}>
+                              {wr.room.name}{wr.role === "shared" ? " (общая)" : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })()}
 
                   {/* Attachments */}
                   <AttachmentsSection

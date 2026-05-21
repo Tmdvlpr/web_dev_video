@@ -4,10 +4,10 @@ import { slotsApi } from "../api/slots";
 import { usersApi } from "../api/users";
 import type { AttachmentMeta, Booking, BookingCreate, BookingUpdate } from "../types";
 
-export function useBookings(date: string | undefined) {
+export function useBookings(date: string | undefined, workspaceId?: number) {
   return useQuery({
-    queryKey: ["bookings", date],
-    queryFn: () => bookingsApi.getByDate(date!),
+    queryKey: ["bookings", date, workspaceId ?? null],
+    queryFn: () => bookingsApi.getByDate(date!, workspaceId),
     enabled: !!date,
     staleTime: 5_000,
     refetchInterval: 5_000,
