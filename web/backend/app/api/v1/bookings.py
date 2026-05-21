@@ -232,9 +232,7 @@ def _redacted_booking(b: Booking) -> BookingResponse:
 
 
 async def _check_workspace_member(workspace_id: int, user: User, db: AsyncSession) -> None:
-    """Raise 403 if user is not an active member of the workspace (admins bypass)."""
-    if user.role in ADMIN_ROLES:
-        return
+    """Raise 403 if user is not an active member of the workspace."""
     result = await db.execute(
         select(WorkspaceMember).where(
             WorkspaceMember.workspace_id == workspace_id,
