@@ -11,55 +11,6 @@ import { useLocale } from "../../contexts/LocaleContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 
-/* ─────────────────────────────────────────────────────
-   DEV BYPASS BUTTON
-───────────────────────────────────────────────────── */
-function DevLoginButton() {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [loading, setLoading] = useState(false);
-  const { isDark } = useTheme();
-
-  const handleClick = async () => {
-    setLoading(true);
-    try {
-      const { access_token } = await authApi.devLogin();
-      // In dev, also store in localStorage as fallback for cross-origin cookie issues
-      storage.setToken(access_token);
-      await queryClient.invalidateQueries({ queryKey: ["me"] });
-      sessionStorage.setItem("__corpmeet_replay_splash", "1"); window.dispatchEvent(new CustomEvent("corpmeet:replay-splash"));
-      navigate("/bookings", { replace: true });
-    } catch {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <button
-      onClick={handleClick}
-      disabled={loading}
-      className="w-full py-2.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-50"
-      style={{
-        border: isDark ? "1.5px dashed rgba(96,165,250,0.3)" : "1.5px dashed rgba(37,99,235,0.3)",
-        color: isDark ? "rgba(96,165,250,0.55)" : "rgba(37,99,235,0.5)",
-        background: isDark ? "rgba(96,165,250,0.05)" : "rgba(37,99,235,0.04)",
-        letterSpacing: "0.04em",
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.background = isDark ? "rgba(96,165,250,0.10)" : "rgba(37,99,235,0.08)";
-        e.currentTarget.style.borderColor = isDark ? "rgba(96,165,250,0.5)" : "rgba(37,99,235,0.5)";
-        e.currentTarget.style.color = isDark ? "rgba(96,165,250,0.88)" : "rgba(37,99,235,0.8)";
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.background = isDark ? "rgba(96,165,250,0.05)" : "rgba(37,99,235,0.04)";
-        e.currentTarget.style.borderColor = isDark ? "rgba(96,165,250,0.3)" : "rgba(37,99,235,0.3)";
-        e.currentTarget.style.color = isDark ? "rgba(96,165,250,0.55)" : "rgba(37,99,235,0.5)";
-      }}
-    >
-      {loading ? "Входим..." : "DEV — войти без Telegram"}
-    </button>
-  );
-}
 
 /* ─────────────────────────────────────────────────────
    QR AUTH — scan to authorize via Telegram bot
