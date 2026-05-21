@@ -121,6 +121,8 @@ services:
       - LIVEKIT_KEYS=${LIVEKIT_API_KEY}:${LIVEKIT_API_SECRET}
     networks:
       - corpmeet
+    depends_on:
+      - redis
     logging:
       driver: "json-file"
       options:
@@ -131,6 +133,18 @@ services:
         limits:
           cpus: "4"
           memory: 4G
+
+  redis:
+    image: redis:7-alpine
+    container_name: corpmeet-redis
+    restart: unless-stopped
+    networks:
+      - corpmeet
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
 
   livekit-egress:
     image: livekit/egress:latest
@@ -147,6 +161,7 @@ services:
       - corpmeet
     depends_on:
       - livekit
+      - redis
     cap_add:
       - SYS_ADMIN
     logging:
