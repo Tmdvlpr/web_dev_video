@@ -311,14 +311,37 @@ async def list_bookings(
     day_start = datetime.combine(date_from, time.min).replace(tzinfo=timezone.utc)
     day_end = datetime.combine(end_date, time.max).replace(tzinfo=timezone.utc)
 
+    busy_only_room_ids: set[int] = set()
+
     if workspace_id is not None:
         await _check_workspace_member(workspace_id, current_user, db)
-        conds = [
-            Booking.start_time >= day_start,
-            Booking.start_time <= day_end,
-            Booking.deleted_at.is_(None),
-            Booking.workspace_id == workspace_id,
-        ]
+
+        # Load all rooms accessible to this workspace
+        ws_rooms_res = await db.execute(
+            select(WorkspaceRoom).where(WorkspaceRoom.workspace_id == workspace_id)
+        )
+        ws_rooms = ws_rooms_res.scalars().all()
+        accessible_room_ids = [wr.room_id for wr in ws_rooms]
+        busy_only_room_ids = {wr.room_id for wr in ws_rooms if wr.visibility == RoomVisibility.busy_only}
+
+        if accessible_room_ids:
+            # All bookings for accessible rooms + own workspace bookings without a room
+            conds = [
+                Booking.start_time >= day_start,
+                Booking.start_time <= day_end,
+                Booking.deleted_at.is_(None),
+                or_(
+                    Booking.room_id.in_(accessible_room_ids),
+                    Booking.workspace_id == workspace_id,
+                ),
+            ]
+        else:
+            conds = [
+                Booking.start_time >= day_start,
+                Booking.start_time <= day_end,
+                Booking.deleted_at.is_(None),
+                Booking.workspace_id == workspace_id,
+            ]
     else:
         # No workspace context — show only the caller's own bookings
         guest_conds: list = [Booking.user_id == current_user.id]
@@ -342,7 +365,17 @@ async def list_bookings(
         .where(and_(*conds))
         .order_by(Booking.start_time)
     )
-    return result.scalars().all()  # type: ignore[return-value]
+    bookings = result.scalars().all()
+
+    if not busy_only_room_ids:
+        return bookings  # type: ignore[return-value]
+
+    return [
+        _redacted_booking(b)
+        if (b.room_id in busy_only_room_ids and b.workspace_id != workspace_id)
+        else b
+        for b in bookings
+    ]  # type: ignore[return-value]
 
 
 @router.post("", response_model=list[BookingResponse], status_code=status.HTTP_201_CREATED)
