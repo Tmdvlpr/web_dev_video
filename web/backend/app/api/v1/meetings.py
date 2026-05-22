@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import mimetypes
@@ -29,7 +30,7 @@ from app.schemas.meeting import (
     GuestJoinInfo, GuestRequestBody, InviteLinkResponse, InviteStatusResponse,
     MeetingJoinResponse, RecordingResponse,
 )
-from app.services.video import create_access_token, derive_e2ee_key, ensure_room_exists, is_participant_in_room, start_recording, stop_recording
+from app.services.video import create_access_token, derive_e2ee_key, ensure_room_exists, is_participant_in_room, kick_participant, start_recording, stop_recording
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/meetings", tags=["meetings"])
@@ -222,6 +223,12 @@ async def join_meeting(
             await ensure_room_exists(booking.video_room_name)
         except Exception as exc:
             logger.warning(f"ensure_room_exists failed: {exc}")
+
+    # Kick ghost left by a hard-refresh: LiveKit holds departed WS for ~15 s.
+    current_identity = f"user-{current_user.id}"
+    if await is_participant_in_room(booking.video_room_name, current_identity):
+        await kick_participant(booking.video_room_name, current_identity)
+        await asyncio.sleep(0.5)
 
     token = create_access_token(
         room_name=booking.video_room_name,
