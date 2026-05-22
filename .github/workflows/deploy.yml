@@ -23,15 +23,14 @@ jobs:
         script_stop: true
         script: |
           set -e
-          cd /var/www/www-root/data/www/dev.corpmeet.uz
-          git config --global --add safe.directory /var/www/www-root/data/www/dev.corpmeet.uz
+          cd /var/www/www-root/data/www/corpmeet.uz
+          git config --global --add safe.directory /var/www/www-root/data/www/corpmeet.uz
           git fetch origin main
           git reset --hard origin/main
           if [ ! -f backend/app/.env ] && [ -f web/backend/app/.env ]; then
             mkdir -p backend/app
             cp web/backend/app/.env backend/app/.env
           fi
-          docker compose down --remove-orphans 2>/dev/null || true
           docker compose build
           docker compose up -d --remove-orphans
           sleep 5
