@@ -26,7 +26,6 @@ jobs:
           set -e
           cd /var/www/www-root/data/www/corpmeet.uz
           git config --global --add safe.directory /var/www/www-root/data/www/corpmeet.uz
-          git remote set-url origin https://github.com/Tmdvlpr/web_dev_video.git
           git fetch origin main
           git reset --hard origin/main
           if [ ! -f backend/app/.env ] && [ -f web/backend/app/.env ]; then
@@ -36,5 +35,5 @@ jobs:
           docker compose build --no-cache frontend
           docker compose build backend
           docker compose up -d --remove-orphans
-          sleep 10
+          sleep 5
           docker compose ps
