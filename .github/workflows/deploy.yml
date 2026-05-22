@@ -35,6 +35,6 @@ jobs:
           docker rm -f corpmeet-db corpmeet-backend corpmeet-frontend corpmeet-livekit corpmeet-redis corpmeet-livekit-egress 2>/dev/null || true
           docker network prune -f 2>/dev/null || true
           docker compose build
-          docker compose up -d --remove-orphans
+          docker compose up -d --remove-orphans || (echo "=== BACKEND LOGS ===" && docker logs corpmeet-backend 2>&1 | tail -50 && exit 1)
           sleep 5
           docker compose ps
