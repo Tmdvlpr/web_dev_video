@@ -66,6 +66,7 @@ export function useCreateBooking() {
         room_id: payload.room_id ?? null,
         video_enabled: payload.video_enabled ?? false,
         video_room_name: null,
+        booking_type: payload.booking_type ?? "physical",
       };
       queryClient.setQueryData<Booking[]>(["bookings", dateStr], (old = []) => [...old, optimistic]);
       return { previous, dateStr };
