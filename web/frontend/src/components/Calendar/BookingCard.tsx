@@ -46,10 +46,13 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
   const [isDragging, setIsDragging] = useState(false);
 
   const isInMeetingWindow = (() => {
-    const now = Date.now();
-    const start = new Date(booking.start_time).getTime();
-    const end = new Date(booking.end_time).getTime();
-    return now >= start - 10 * 60_000 && now <= end + 2 * 3_600_000;
+    const now = new Date();
+    const start = new Date(booking.start_time);
+    const end = new Date(booking.end_time);
+    // Allow joining from start of the booking's day through 2h after meeting ends
+    const startOfDay = new Date(start);
+    startOfDay.setHours(0, 0, 0, 0);
+    return now >= startOfDay && now.getTime() <= end.getTime() + 2 * 3_600_000;
   })();
 
   const handleJoinVideo = (e: React.MouseEvent) => {

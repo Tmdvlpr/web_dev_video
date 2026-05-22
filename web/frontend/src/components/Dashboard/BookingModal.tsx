@@ -86,8 +86,16 @@ export function BookingModal({
   const navigate    = useNavigate();
   const isEdit     = !!editBooking;
   const isReadOnly = isEdit && !canEdit;
-  const now   = new Date();
-  const later = new Date(now.getTime() + 3_600_000);
+  const now = new Date();
+  // Default start: now + 5min, rounded up to next 30-min boundary
+  const defaultStart = (() => {
+    const t = new Date(now.getTime() + 5 * 60_000);
+    const minutes = t.getMinutes();
+    const roundedMinutes = Math.ceil(minutes / 30) * 30;
+    t.setMinutes(roundedMinutes, 0, 0);
+    return t;
+  })();
+  const later = new Date(defaultStart.getTime() + 3_600_000);
 
 
   const handleJoinVideo = () => {
@@ -340,7 +348,7 @@ export function BookingModal({
       setRecur("none"); setRecurUntil(""); setRecurDays([]);
       setVideoEnabled(false);
       setSelectedRoomId("");
-      setStart(toLocal(initialStart ?? now));
+      setStart(toLocal(initialStart ?? defaultStart));
       setEnd(toLocal(initialEnd ?? later));
     }
     setFormReady(true);

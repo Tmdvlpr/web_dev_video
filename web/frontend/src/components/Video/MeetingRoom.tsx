@@ -1211,9 +1211,12 @@ function ConferenceUI({
   const remoteParticipants = useMemo(() => {
     // Guard: if our identity isn't set yet (room still connecting), hide all remotes
     // to prevent ghost connections from slipping in before the kick completes.
-    if (!localParticipant.identity) return [];
-    return _allRemote.filter((p) => p.identity !== localParticipant.identity);
-  }, [_allRemote, localParticipant.identity]);
+    // Use joinData.user_identity as fallback so the filter works even before
+    // localParticipant.identity is populated.
+    const localId = localParticipant.identity || joinData.user_identity;
+    if (!localId) return [];
+    return _allRemote.filter((p) => p.identity !== localId);
+  }, [_allRemote, localParticipant.identity, joinData.user_identity]);
   const allParticipants: Participant[] = useMemo(() => {
     const seen = new Set<string>();
     const result: Participant[] = [];
@@ -1385,10 +1388,12 @@ function ConferenceUI({
     setFloatReactions((prev) => [...prev, { id: Date.now(), emoji }]);
   };
 
+  const [recordingError, setRecordingError] = useState<string | null>(null);
   const recordingPending = useRef(false);
   const handleRecord = async () => {
     if (recordingPending.current) return;
     recordingPending.current = true;
+    setRecordingError(null);
     try {
       if (isRecording) {
         await meetingsApi.stopRecording(bookingId);
@@ -1398,6 +1403,10 @@ function ConferenceUI({
         setIsRecording(true);
       }
     } catch (err) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      const msg = detail ?? (isRecording ? "Не удалось остановить запись" : "Не удалось начать запись");
+      setRecordingError(msg);
+      setTimeout(() => setRecordingError(null), 4000);
       console.warn("Recording toggle failed:", err);
     } finally {
       recordingPending.current = false;
@@ -1497,6 +1506,18 @@ function ConferenceUI({
         ))}
       </div>
 
+      {/* Recording error toast */}
+      {recordingError && (
+        <div style={{
+          position: "fixed", top: 60, left: "50%", transform: "translateX(-50%)",
+          background: "rgba(239,68,68,0.9)", color: "#fff", padding: "10px 20px",
+          borderRadius: 10, fontSize: 13, fontWeight: 600, zIndex: 10001,
+          boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+        }}>
+          ⚠️ {recordingError}
+        </div>
+      )}
+
       {/* Modals */}
       {modal === "info" && (
         <MeetingInfoModal
@@ -1590,16 +1611,24 @@ function FullscreenSpinner({ text }: { text: string }) {
   );
 }
 
-function FullscreenError({ message, onClose }: { message: string; onClose: () => void }) {
+function FullscreenError({ message, onClose, onRetry }: { message: string; onClose: () => void; onRetry?: () => void }) {
   return (
     <div className="conf-root fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-4"
       style={{ background: "var(--bg)", color: "var(--red)" }}>
       <p className="text-base font-semibold">Не удалось подключиться</p>
       <p className="text-sm" style={{ color: "var(--tx2)" }}>{message}</p>
-      <button onClick={onClose} className="mt-2 px-5 py-2 rounded-xl text-sm font-semibold"
-        style={{ background: "var(--elev)", color: "var(--tx)" }}>
-        Назад
-      </button>
+      <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+        {onRetry && (
+          <button onClick={onRetry} className="px-5 py-2 rounded-xl text-sm font-semibold"
+            style={{ background: "linear-gradient(135deg,#1565a8,#3b82f6)", color: "#fff", border: "none", cursor: "pointer" }}>
+            Переподключиться
+          </button>
+        )}
+        <button onClick={onClose} className="px-5 py-2 rounded-xl text-sm font-semibold"
+          style={{ background: "var(--elev)", color: "var(--tx)" }}>
+          Назад
+        </button>
+      </div>
     </div>
   );
 }
@@ -1666,6 +1695,8 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
   });
 
   const [isMeetingTime, setIsMeetingTime] = useState(false);
+  const [lkDisconnected, setLkDisconnected] = useState(false);
+  const intentionalLeaveRef = useRef(false);
   const lkRoom = useMemo(() => new Room({
     publishDefaults: {
       simulcast: false,
@@ -1721,9 +1752,10 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
   }, [data]);
 
   const handleLeave = useCallback(() => {
+    intentionalLeaveRef.current = true;
     lkRoom.disconnect().catch(() => {});
     onLeave();
-  }, [lkRoom, onLeave]);
+  }, [lkRoom, onLeave, intentionalLeaveRef]);
 
   if (isLoading) return <FullscreenSpinner text="Подключение к встрече…" />;
 
@@ -1743,6 +1775,16 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
     return <WaitingRoom startTime={data.start_time} onLeave={onLeave} bookingId={bookingId} onJoin={() => setIsMeetingTime(true)} localUserId={localUserId} />;
   }
 
+  if (lkDisconnected) {
+    return (
+      <FullscreenError
+        message="Соединение с конференцией прервано."
+        onClose={onLeave}
+        onRetry={() => { setLkDisconnected(false); intentionalLeaveRef.current = false; refetch(); }}
+      />
+    );
+  }
+
   return (
     <LiveKitRoom
       room={lkRoom}
@@ -1751,7 +1793,7 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
       connect
       video
       audio
-      onDisconnected={() => { onLeave(); }}
+      onDisconnected={() => { if (!intentionalLeaveRef.current) setLkDisconnected(true); }}
     >
       <RoomAudioRenderer />
       <ConferenceUI
