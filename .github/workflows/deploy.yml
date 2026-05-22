@@ -36,6 +36,7 @@ jobs:
           rm -rf ${PGDATA_PATH:-./pgdata}
           docker network prune -f 2>/dev/null || true
           docker compose build
-          docker compose up -d --remove-orphans || (echo "=== BACKEND LOGS ===" && docker logs corpmeet-backend 2>&1 | tail -50 && exit 1)
+          echo "=== COMPOSE DATABASE_URL ===" && docker compose config 2>&1 | grep -A1 DATABASE_URL || true
+          docker compose up -d --remove-orphans || (echo "=== BACKEND LOGS (head) ===" && docker logs corpmeet-backend 2>&1 | head -30 && echo "=== BACKEND LOGS (tail) ===" && docker logs corpmeet-backend 2>&1 | tail -30 && echo "=== CONTAINER ENV ===" && docker inspect corpmeet-backend --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | grep DATABASE_URL || true && exit 1)
           sleep 5
           docker compose ps
