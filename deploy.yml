@@ -32,7 +32,6 @@ jobs:
             cp web/backend/app/.env backend/app/.env
           fi
           docker compose build
-          docker ps -q --filter name=corpmeet | xargs -r docker rm -f
           docker compose up -d --remove-orphans
           sleep 5
           docker compose ps
