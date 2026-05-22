@@ -33,6 +33,7 @@ jobs:
           fi
           docker compose down --remove-orphans 2>/dev/null || true
           docker rm -f corpmeet-db corpmeet-backend corpmeet-frontend corpmeet-livekit corpmeet-redis corpmeet-livekit-egress 2>/dev/null || true
+          rm -rf ${PGDATA_PATH:-./pgdata}
           docker network prune -f 2>/dev/null || true
           docker compose build
           docker compose up -d --remove-orphans || (echo "=== BACKEND LOGS ===" && docker logs corpmeet-backend 2>&1 | tail -50 && exit 1)
