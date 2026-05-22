@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import mimetypes
@@ -223,9 +224,13 @@ async def join_meeting(
         except Exception as exc:
             logger.warning(f"ensure_room_exists failed: {exc}")
 
-    # Kick any ghost connection with the same identity before issuing a new token
+    # Kick any ghost connection with the same identity before issuing a new token.
+    # Wait up to 1.5s for LiveKit to propagate the kick — otherwise the new client
+    # connects while the ghost is still in the room and sees a duplicate "Вы".
     if booking.video_room_name:
-        await kick_participant(booking.video_room_name, f"user-{current_user.id}")
+        if await is_participant_in_room(booking.video_room_name, f"user-{current_user.id}"):
+            await kick_participant(booking.video_room_name, f"user-{current_user.id}")
+            await asyncio.sleep(1.5)
 
     token = create_access_token(
         room_name=booking.video_room_name,
