@@ -7,6 +7,7 @@ import { useLocale } from "../../contexts/LocaleContext";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
 import { useBookings, useSlots, useUpdateBooking } from "../../hooks/useBookings";
 import { bookingsApi } from "../../api/bookings";
+import { roomsApi } from "../../api/rooms";
 import type { Booking, SlotResponse, User } from "../../types";
 import { DayColumn } from "./DayColumn";
 import { InteractiveStripe } from "../Common/InteractiveStripe";
@@ -26,9 +27,10 @@ interface DayContainerProps {
   isToday: boolean;
   searchQuery: string;
   workspaceId?: number;
+  roomId?: number | null;
 }
 
-function DayContainer({ date, dateStr, currentUser, onSlotClick, onCardClick, isToday, searchQuery, workspaceId }: DayContainerProps) {
+function DayContainer({ date, dateStr, currentUser, onSlotClick, onCardClick, isToday, searchQuery, workspaceId, roomId }: DayContainerProps) {
   const { data: bookings = [] } = useBookings(dateStr, workspaceId);
   const { data: slots = [] } = useSlots(dateStr);
   const { mutate: updateBooking } = useUpdateBooking();
@@ -39,13 +41,14 @@ function DayContainer({ date, dateStr, currentUser, onSlotClick, onCardClick, is
     updateBooking({ id: booking.id, payload: { start_time: newStart.toISOString(), end_time: newEnd.toISOString() } });
   };
 
+  const byRoom = roomId ? (bookings as Booking[]).filter((b) => b.room_id === roomId) : bookings as Booking[];
   const filtered = searchQuery
-    ? (bookings as Booking[]).filter((b) =>
+    ? byRoom.filter((b) =>
         b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         b.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         b.user.display_name.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : bookings as Booking[];
+    : byRoom;
   return (
     <DayColumn date={date} bookings={filtered} freeSlots={slots as SlotResponse[]} currentUser={currentUser}
       onSlotClick={onSlotClick} onCardClick={onCardClick} onBookingDrop={handleBookingDrop} isToday={isToday} />
@@ -282,15 +285,184 @@ function MonthView({ anchorDate, today, onNavigate, onCardClick, searchQuery, on
   );
 }
 
+/* ── Workspace picker ── */
+function WorkspacePicker({ onRoomReset }: { onRoomReset: () => void }) {
+  const { workspaces, activeWorkspace, setActiveWorkspaceId } = useWorkspace();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  if (workspaces.length === 0) return null;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+        style={{ background: open ? "var(--elevated)" : "transparent", color: open ? "var(--text)" : "var(--text-muted)", border: `1px solid ${open ? "var(--border)" : "transparent"}` }}
+        onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; e.currentTarget.style.color = "var(--text)"; }}
+        onMouseLeave={e => { if (!open) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; } }}
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        <span style={{ maxWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{activeWorkspace?.name ?? "Пространство"}</span>
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 rounded-xl shadow-xl py-1" style={{ minWidth: 160, background: "var(--card)", border: "1px solid var(--border)" }}>
+          {workspaces.map(ws => (
+            <button key={ws.id} onClick={() => { setActiveWorkspaceId(ws.id); onRoomReset(); setOpen(false); }}
+              className="w-full text-left px-3 py-1.5 text-xs font-medium transition-all"
+              style={{ background: ws.id === activeWorkspace?.id ? "var(--primary-light)" : "transparent", color: ws.id === activeWorkspace?.id ? "var(--primary)" : "var(--text)" }}>
+              {ws.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Room picker ── */
+function RoomPicker({ activeRoomId, onRoomChange }: { activeRoomId: number | null; onRoomChange: (id: number | null) => void }) {
+  const { myRooms, activeWorkspace, refetchRooms } = useWorkspace();
+  const [open, setOpen] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+  const [joinErr, setJoinErr] = useState<string | null>(null);
+  const [joinInfo, setJoinInfo] = useState<string | null>(null);
+  const [joinBusy, setJoinBusy] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const rooms = myRooms.filter(r => r.workspace_id === activeWorkspace?.id);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const handleJoin = async () => {
+    if (!activeWorkspace || !joinCode.trim()) return;
+    setJoinErr(null); setJoinInfo(null); setJoinBusy(true);
+    try {
+      const result = await roomsApi.join(joinCode.trim(), activeWorkspace.id);
+      if (result.status === 201) {
+        refetchRooms();
+        setJoinCode(""); setJoining(false);
+      } else if (result.status === 202) {
+        setJoinCode("");
+        setJoinInfo("⏳ Заявка отправлена. Ждём подтверждения от владельца комнаты.");
+      }
+    } catch (e: unknown) {
+      const status = (e as { response?: { status?: number; data?: { detail?: string } } })?.response?.status;
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      if (status === 403) {
+        setJoinErr("❌ Подключение по коду отключено для этой комнаты.");
+      } else {
+        setJoinErr(msg ?? "Комната не найдена");
+      }
+    } finally { setJoinBusy(false); }
+  };
+
+  const activeRoom = rooms.find(r => r.room.id === activeRoomId);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+        style={{
+          background: activeRoomId ? "var(--primary-light)" : (open ? "var(--elevated)" : "transparent"),
+          color: activeRoomId ? "var(--primary)" : (open ? "var(--text)" : "var(--text-muted)"),
+          border: `1px solid ${activeRoomId ? "var(--primary-border)" : (open ? "var(--border)" : "transparent")}`,
+        }}
+        onMouseEnter={e => { if (!activeRoomId) { e.currentTarget.style.background = "var(--elevated)"; e.currentTarget.style.color = "var(--text)"; } }}
+        onMouseLeave={e => { if (!activeRoomId && !open) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; } }}
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>
+        </svg>
+        <span style={{ maxWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{activeRoom?.room.name ?? (rooms.length > 0 ? "Все комнаты" : "Комнаты")}</span>
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 rounded-xl shadow-xl" style={{ minWidth: 180, background: "var(--card)", border: "1px solid var(--border)" }}>
+          <div className="py-1">
+            {rooms.length > 0 && (
+              <button onClick={() => { onRoomChange(null); setOpen(false); }}
+                className="w-full text-left px-3 py-1.5 text-xs font-medium transition-all"
+                style={{ background: !activeRoomId ? "var(--primary-light)" : "transparent", color: !activeRoomId ? "var(--primary)" : "var(--text-muted)" }}>
+                Все комнаты
+              </button>
+            )}
+            {rooms.map(wr => (
+              <button key={wr.room.id} onClick={() => { onRoomChange(wr.room.id); setOpen(false); }}
+                className="w-full text-left px-3 py-1.5 text-xs font-medium transition-all flex items-center gap-1.5"
+                style={{ background: wr.room.id === activeRoomId ? "var(--primary-light)" : "transparent", color: wr.room.id === activeRoomId ? "var(--primary)" : "var(--text)" }}>
+                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{wr.room.name}</span>
+                {wr.role === "shared" && <span style={{ fontSize: 10, opacity: 0.5 }}>↗</span>}
+              </button>
+            ))}
+          </div>
+          <div style={{ borderTop: "1px solid var(--border)" }} className="px-2 py-2">
+            {!joining ? (
+              <button onClick={() => setJoining(true)}
+                className="w-full py-1.5 rounded-lg text-xs font-semibold transition-all"
+                style={{ background: "var(--elevated)", color: "var(--text-muted)", border: "1px dashed var(--border)" }}>
+                + по коду комнаты
+              </button>
+            ) : (
+              <div className="space-y-1.5">
+                <input
+                  autoFocus value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())}
+                  placeholder="Код комнаты"
+                  className="w-full rounded-lg px-2 py-1 text-xs outline-none font-mono"
+                  style={{ background: "var(--input-bg)", border: "1px solid var(--primary)", color: "var(--text)", letterSpacing: "0.08em" }}
+                  onKeyDown={e => { if (e.key === "Enter") handleJoin(); if (e.key === "Escape") { setJoining(false); setJoinCode(""); setJoinErr(null); setJoinInfo(null); } }}
+                />
+                {joinErr && <p className="text-xs px-1" style={{ color: "#dc2626" }}>{joinErr}</p>}
+                {joinInfo && <p className="text-xs px-1" style={{ color: "var(--text-muted)" }}>{joinInfo}</p>}
+                <div className="flex gap-1.5">
+                  <button onClick={() => { setJoining(false); setJoinCode(""); setJoinErr(null); setJoinInfo(null); }}
+                    className="flex-1 py-1 rounded-lg text-xs font-medium"
+                    style={{ background: "var(--elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+                    Отмена
+                  </button>
+                  <button onClick={handleJoin} disabled={joinBusy}
+                    className="flex-1 py-1 rounded-lg text-xs font-bold text-white disabled:opacity-50"
+                    style={{ background: "var(--primary)" }}>
+                    {joinBusy ? "…" : "Добавить"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Room status widget ── */
-function RoomStatus() {
+function RoomStatus({ roomId }: { roomId?: number | null }) {
   const { isDark } = useTheme();
   const { t } = useLocale();
-  const { data: rooms = [] } = useQuery({
+  const { data: allBookings = [] } = useQuery({
     queryKey: ["bookings", "room-status"],
     queryFn: bookingsApi.getRoomStatus,
     refetchInterval: 60_000,
   });
+
+  const rooms = roomId ? allBookings.filter((b) => b.room_id === roomId) : allBookings;
 
   const now = Date.now();
   const current = rooms.find(
@@ -345,6 +517,7 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
   const [viewMode, setViewMode] = useState<"week" | "month">("week");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen]   = useState(false);
+  const [activeRoomId, setActiveRoomId] = useState<number | null>(null);
   const BUFFER     = 14; // extra columns pre-rendered on each side (= 2× viewport width)
 // Extended dates: BUFFER columns before + 7 visible + BUFFER columns after
   const extDates   = Array.from({ length: 7 + BUFFER * 2 }, (_, i) => {
@@ -576,8 +749,11 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
           <span className="text-sm font-bold capitalize" style={{ color: "var(--text)", letterSpacing: "-0.01em" }}>{monthLabel}</span>
         )}
 
-        <div className="ml-auto flex items-center gap-3">
-          <RoomStatus />
+        <div className="ml-auto flex items-center gap-2">
+          <WorkspacePicker onRoomReset={() => setActiveRoomId(null)} />
+          <RoomPicker activeRoomId={activeRoomId} onRoomChange={setActiveRoomId} />
+          <div className="w-px h-4 mx-0.5" style={{ background: "var(--border)" }} />
+          <RoomStatus roomId={activeRoomId} />
 
           <button
             onClick={() => { setSearchOpen((v) => !v); if (searchOpen) setSearchQuery(""); }}
@@ -678,7 +854,7 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
                 <DayContainer key={dateStr} date={date} dateStr={dateStr}
                   currentUser={currentUser} onSlotClick={onSlotClick}
                   onCardClick={onCardClick} isToday={isToday} searchQuery={searchQuery}
-                  workspaceId={activeWorkspace?.id} />
+                  workspaceId={activeWorkspace?.id} roomId={activeRoomId} />
               );
             })}
           </div>

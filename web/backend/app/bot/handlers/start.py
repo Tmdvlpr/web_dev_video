@@ -111,3 +111,67 @@ async def cmd_chatid(message: Message) -> None:
         f"💬 <b>Chat ID:</b> <code>{message.chat.id}</code>\n"
         f"👤 <b>User ID:</b> <code>{message.from_user.id}</code>"
     )
+
+
+@router.message(Command("bind"))
+async def cmd_bind(message: Message, command: CommandObject) -> None:
+    """/bind <invite_code> — привязать эту TG-группу к пространству CorpMeet."""
+    if message.chat.type not in ("group", "supergroup"):
+        await message.answer("❌ Команда /bind работает только в групповых чатах.")
+        return
+
+    invite_code = (command.args or "").strip()
+    if not invite_code:
+        await message.answer("❌ Укажите invite-код пространства: /bind &lt;код&gt;")
+        return
+
+    async with _client() as client:
+        resp = await client.post(
+            "/api/v1/internal/workspaces/bind-telegram",
+            json={
+                "invite_code": invite_code,
+                "chat_id": message.chat.id,
+                "telegram_user_id": message.from_user.id,
+            },
+        )
+
+    if resp.status_code == 200:
+        name = resp.json().get("workspace_name", "")
+        await message.answer(f"✅ Пространство <b>{name}</b> привязано к этой группе.\nТеперь сюда будут приходить уведомления о бронированиях.")
+    elif resp.status_code == 404:
+        await message.answer("❌ Пространство с таким кодом не найдено.")
+    elif resp.status_code == 403:
+        detail = resp.json().get("detail", "")
+        if "not registered" in detail:
+            await message.answer("❌ Ваш аккаунт не найден в CorpMeet. Сначала зарегистрируйтесь через /start.")
+        else:
+            await message.answer("❌ Только owner или admin пространства могут привязать группу.")
+    else:
+        await message.answer("❌ Ошибка при привязке. Попробуйте позже.")
+
+
+@router.message(Command("unbind"))
+async def cmd_unbind(message: Message) -> None:
+    """/unbind — отвязать эту TG-группу от пространства CorpMeet."""
+    if message.chat.type not in ("group", "supergroup"):
+        await message.answer("❌ Команда /unbind работает только в групповых чатах.")
+        return
+
+    async with _client() as client:
+        resp = await client.post(
+            "/api/v1/internal/workspaces/unbind-telegram",
+            json={
+                "chat_id": message.chat.id,
+                "telegram_user_id": message.from_user.id,
+            },
+        )
+
+    if resp.status_code == 200:
+        name = resp.json().get("workspace_name", "")
+        await message.answer(f"✅ Пространство <b>{name}</b> отвязано от этой группы.")
+    elif resp.status_code == 404:
+        await message.answer("❌ Эта группа не привязана ни к одному пространству.")
+    elif resp.status_code == 403:
+        await message.answer("❌ Только owner или admin пространства могут отвязать группу.")
+    else:
+        await message.answer("❌ Ошибка при отвязке. Попробуйте позже.")

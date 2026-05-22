@@ -287,6 +287,26 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 )""",
             "CREATE INDEX IF NOT EXISTS ix_mi_booking ON video.meeting_invitations(booking_id)",
             "CREATE INDEX IF NOT EXISTS ix_mi_token ON video.meeting_invitations(token)",
+            # room invite codes
+            "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS invite_code VARCHAR(20) UNIQUE",
+            "CREATE INDEX IF NOT EXISTS ix_rooms_invite_code ON rooms(invite_code) WHERE invite_code IS NOT NULL",
+            "UPDATE rooms SET invite_code = upper(substring(md5(random()::text || id::text) from 1 for 8)) WHERE invite_code IS NULL",
+            # booking types
+            "DO $$ BEGIN CREATE TYPE bookingtype AS ENUM ('physical','virtual','hybrid'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_type VARCHAR(10) NOT NULL DEFAULT 'physical'",
+            # room join modes
+            "DO $$ BEGIN CREATE TYPE roomjoinmode AS ENUM ('open','approval','closed'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS join_mode VARCHAR(10) NOT NULL DEFAULT 'approval'",
+            # room join requests
+            """CREATE TABLE IF NOT EXISTS room_join_requests (
+                id SERIAL PRIMARY KEY,
+                room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+                workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+                requested_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT uq_rjr_room_ws UNIQUE (room_id, workspace_id)
+            )""",
         ]
         for sql in migrations:
             try:

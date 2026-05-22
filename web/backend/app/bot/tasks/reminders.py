@@ -82,8 +82,9 @@ async def run_reminder_task(bot: Bot) -> None:
                     reminder_text += f"\n🎥 <a href=\"{settings.FRONTEND_URL}/meeting/{b['id']}\">Видеоконференция</a>"
 
                 # 2. Уведомляем группу
-                if settings.TG_GROUP_CHAT_ID:
-                    await _send(bot, settings.TG_GROUP_CHAT_ID, reminder_text)
+                tg_chat_id = b.get("workspace_telegram_chat_id") or settings.TG_GROUP_CHAT_ID
+                if tg_chat_id:
+                    await _send(bot, tg_chat_id, reminder_text)
 
                 # 3. Организатор лично
                 if organizer.get("telegram_id"):

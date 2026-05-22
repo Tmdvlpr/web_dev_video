@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.models.booking import BookingType
 from app.schemas.user import UserPublicResponse
 
 
@@ -19,6 +20,7 @@ class BookingCreate(BaseModel):
     workspace_id: int | None = None
     room_id: int | None = None
     video_enabled: bool = False
+    booking_type: BookingType = BookingType.physical
 
     @field_validator("guests")
     @classmethod
@@ -49,6 +51,7 @@ class BookingUpdate(BaseModel):
     guests: list[str] | None = None
     reminder_minutes: int | None = Field(None, ge=1, le=1440)
     video_enabled: bool | None = None
+    booking_type: BookingType | None = None
 
     @field_validator("guests")
     @classmethod
@@ -82,6 +85,7 @@ class BookingResponse(BaseModel):
     room_id: int | None = None
     video_enabled: bool = False
     video_room_name: str | None = None
+    booking_type: BookingType = BookingType.physical
 
     @field_validator("guests", mode="before")
     @classmethod

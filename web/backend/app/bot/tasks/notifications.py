@@ -75,11 +75,17 @@ async def run_notification_task(bot: Bot) -> None:
                 start_str = _fmt(b["start_time"])
                 end_str   = _fmt(b["end_time"])
                 is_new = b["created_at"] >= last_check.isoformat()
+                booking_type = b.get("booking_type", "physical")
+
+                _type_header = {
+                    "virtual": "🌐 <b>Онлайн-встреча</b>",
+                    "hybrid":  "🏢🎥 <b>Гибридная встреча</b>",
+                }.get(booking_type, "📅 <b>Новое бронирование</b>")
 
                 # ── Текст для группы ──────────────────────────────────────
                 if is_new:
                     group_text = (
-                        f"📅 <b>Новое бронирование</b>\n"
+                        f"{_type_header}\n"
                         f"👤 {organizer['display_name']}\n"
                         f"📌 {b['title']}\n"
                         f"🕐 {start_str} – {end_str}"
@@ -98,8 +104,9 @@ async def run_notification_task(bot: Bot) -> None:
                     video_line = f"\n🎥 <a href=\"{settings.FRONTEND_URL}/meeting/{b['id']}\">Видеоконференция</a>"
                     group_text += video_line
 
-                if settings.TG_GROUP_CHAT_ID:
-                    await _send(bot, settings.TG_GROUP_CHAT_ID, group_text)
+                tg_chat_id = b.get("workspace_telegram_chat_id") or settings.TG_GROUP_CHAT_ID
+                if tg_chat_id:
+                    await _send(bot, tg_chat_id, group_text)
 
                 # ── Личные сообщения гостям (только при создании) ─────────
                 if is_new and b.get("guests"):

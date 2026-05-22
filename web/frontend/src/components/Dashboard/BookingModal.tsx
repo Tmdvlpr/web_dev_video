@@ -293,6 +293,7 @@ export function BookingModal({
   const [recurUntil,  setRecurUntil]= useState("");
   const [recurDays,   setRecurDays] = useState<number[]>([]);
   const [videoEnabled, setVideoEnabled] = useState(false);
+  const [bookingType, setBookingType] = useState<"physical" | "virtual" | "hybrid">("physical");
   const [selectedRoomId, setSelectedRoomId] = useState<number | "">("");
   const [deleteSeries,setDelSeries] = useState(false);
   const [pendingFiles,setPendingFiles] = useState<File[]>([]);
@@ -343,6 +344,7 @@ export function BookingModal({
       setRecurUntil(editBooking.recurrence_until ?? "");
       setVideoEnabled(editBooking.video_enabled ?? false);
       setSelectedRoomId(editBooking.room_id ?? "");
+      setBookingType(editBooking.booking_type ?? "physical");
     } else {
       setTitle(""); setDesc(""); setGuests([]);
       setRecur("none"); setRecurUntil(""); setRecurDays([]);
@@ -350,6 +352,11 @@ export function BookingModal({
       setSelectedRoomId("");
       setStart(toLocal(initialStart ?? defaultStart));
       setEnd(toLocal(initialEnd ?? later));
+      // Default type: physical if rooms available, virtual otherwise
+      const available = activeWorkspace
+        ? myRooms.filter(wr => wr.workspace_id === activeWorkspace.id)
+        : myRooms;
+      setBookingType(available.length > 0 ? "physical" : "virtual");
     }
     setFormReady(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -430,9 +437,10 @@ export function BookingModal({
           recurrence,
           recurrence_until: recurrence !== "none" && recurUntil ? recurUntil : undefined,
           recurrence_days: recurrence === "custom" ? recurDays : undefined,
-          video_enabled: videoEnabled,
+          video_enabled: bookingType === "virtual" || bookingType === "hybrid" ? true : videoEnabled,
           workspace_id: activeWorkspace?.id,
-          room_id: selectedRoomId === "" ? undefined : selectedRoomId,
+          room_id: bookingType === "virtual" ? undefined : (selectedRoomId === "" ? undefined : selectedRoomId),
+          booking_type: bookingType,
         });
         const count = created.length;
         // Upload pending files to the first created booking
@@ -686,6 +694,31 @@ export function BookingModal({
                     )}
                   </AnimatePresence>
 
+                  {/* Booking type tabs */}
+                  {!isEdit && (
+                    <div className="flex gap-1.5 mb-1">
+                      {([
+                        { value: "physical", label: "🏢 В офисе" },
+                        { value: "virtual",  label: "🌐 Онлайн"  },
+                        { value: "hybrid",   label: "🏢🎥 Гибрид" },
+                      ] as const).map(opt => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setBookingType(opt.value)}
+                          className="flex-1 py-1.5 rounded-xl text-xs font-semibold transition-all"
+                          style={{
+                            background: bookingType === opt.value ? "var(--primary)" : "var(--elevated)",
+                            border: bookingType === opt.value ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
+                            color: bookingType === opt.value ? "#fff" : "var(--text-sec)",
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Title */}
                   <div>
                     <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--text-sec)" }}>
@@ -721,8 +754,8 @@ export function BookingModal({
                       onBlur={e => { e.currentTarget.style.borderColor = "var(--input-border)"; e.currentTarget.style.boxShadow = "none"; }} />
                   </div>
 
-                  {/* Room selector */}
-                  {(() => {
+                  {/* Room selector — hidden for virtual bookings */}
+                  {bookingType !== "virtual" && (() => {
                     const availableRooms = activeWorkspace
                       ? myRooms.filter(wr => wr.workspace_id === activeWorkspace.id)
                       : myRooms;
@@ -880,24 +913,34 @@ export function BookingModal({
                     </div>
                   )}
 
-                  {/* Video conference toggle */}
-                  <label className="flex items-center gap-2.5 cursor-pointer select-none py-1">
-                    <input
-                      type="checkbox"
-                      checked={videoEnabled}
-                      onChange={e => setVideoEnabled(e.target.checked)}
-                      className="w-4 h-4 rounded"
-                      style={{ accentColor: "var(--primary)" }}
-                    />
-                    <span className="text-sm font-medium" style={{ color: "var(--text-sec)" }}>
-                      Нужна видеоконференция
-                    </span>
-                    {videoEnabled && editBooking?.video_room_name && (
-                      <span className="text-xs font-semibold" style={{ color: isDark ? "#4ade80" : "#16a34a" }}>
-                        ✓ Готова
+                  {/* Video conference — forced on for virtual/hybrid, optional for physical */}
+                  {bookingType === "physical" ? (
+                    <label className="flex items-center gap-2.5 cursor-pointer select-none py-1">
+                      <input
+                        type="checkbox"
+                        checked={videoEnabled}
+                        onChange={e => setVideoEnabled(e.target.checked)}
+                        className="w-4 h-4 rounded"
+                        style={{ accentColor: "var(--primary)" }}
+                      />
+                      <span className="text-sm font-medium" style={{ color: "var(--text-sec)" }}>
+                        Нужна видеоконференция
                       </span>
-                    )}
-                  </label>
+                      {videoEnabled && editBooking?.video_room_name && (
+                        <span className="text-xs font-semibold" style={{ color: isDark ? "#4ade80" : "#16a34a" }}>
+                          ✓ Готова
+                        </span>
+                      )}
+                    </label>
+                  ) : (
+                    <div className="flex items-center gap-2 py-1 px-3 rounded-xl text-sm"
+                      style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
+                      <span>{bookingType === "virtual" ? "🌐" : "🎥"}</span>
+                      <span className="font-medium">
+                        {bookingType === "virtual" ? "Онлайн-встреча — видеоконференция включена" : "Гибридная встреча — видеоконференция включена"}
+                      </span>
+                    </div>
+                  )}
 
                   {error && (
                     <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}

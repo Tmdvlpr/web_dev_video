@@ -29,6 +29,7 @@ export interface Booking {
   room_id: number | null;
   video_enabled: boolean;
   video_room_name?: string | null;
+  booking_type: "physical" | "virtual" | "hybrid";
 }
 
 export interface BookingCreate {
@@ -43,6 +44,7 @@ export interface BookingCreate {
   workspace_id?: number;
   room_id?: number;
   video_enabled?: boolean;
+  booking_type?: "physical" | "virtual" | "hybrid";
 }
 
 export interface BookingUpdate {
@@ -157,7 +159,19 @@ export interface Room {
   id: number;
   name: string;
   description: string | null;
+  invite_code: string | null;
+  join_mode: "open" | "approval" | "closed";
   archived_at: string | null;
+  created_at: string;
+}
+
+export interface RoomJoinRequest {
+  id: number;
+  room_id: number;
+  workspace_id: number;
+  workspace_name: string;
+  requested_by: string | null;
+  status: "pending" | "approved" | "rejected";
   created_at: string;
 }
 

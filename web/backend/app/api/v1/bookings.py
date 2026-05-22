@@ -18,7 +18,7 @@ from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.attachment import BookingAttachment
-from app.models.booking import Booking
+from app.models.booking import Booking, BookingType
 from app.models.room import RoomVisibility, WorkspaceRoom
 from app.models.user import Role, User
 from app.models.workspace import WorkspaceMember, WorkspaceMemberStatus
@@ -228,6 +228,7 @@ def _redacted_booking(b: Booking) -> BookingResponse:
         room_id=b.room_id,
         video_enabled=False,
         video_room_name=None,
+        booking_type="physical",
     )
 
 
@@ -397,6 +398,15 @@ async def create_booking(
     if start_aware < now_utc:
         raise HTTPException(400, "Нельзя бронировать время в прошлом")
 
+    # Enforce type-specific overrides
+    effective_room_id = payload.room_id
+    effective_video = payload.video_enabled
+    if payload.booking_type == BookingType.virtual:
+        effective_room_id = None
+        effective_video = True
+    elif payload.booking_type == BookingType.hybrid:
+        effective_video = True
+
     duration = payload.end_time - payload.start_time
     slots: list[tuple[datetime, datetime]] = [(payload.start_time, payload.end_time)]
 
@@ -421,10 +431,10 @@ async def create_booking(
                 slots.append((cur, cur + duration))
                 cur += delta
 
-    if payload.room_id is not None and payload.recurrence == "none":
+    if effective_room_id is not None and payload.recurrence == "none":
         ov = await db.execute(
             select(Booking).where(and_(
-                Booking.room_id == payload.room_id,
+                Booking.room_id == effective_room_id,
                 Booking.start_time < payload.end_time,
                 Booking.end_time > payload.start_time,
                 Booking.deleted_at.is_(None),
@@ -437,10 +447,10 @@ async def create_booking(
     created: list[Booking] = []
 
     for s, e in slots:
-        if payload.recurrence != "none" and payload.room_id is not None:
+        if payload.recurrence != "none" and effective_room_id is not None:
             ov = await db.execute(
                 select(Booking).where(and_(
-                    Booking.room_id == payload.room_id,
+                    Booking.room_id == effective_room_id,
                     Booking.start_time < e,
                     Booking.end_time > s,
                     Booking.deleted_at.is_(None),
@@ -456,8 +466,9 @@ async def create_booking(
             recurrence_days=payload.recurrence_days,
             reminder_minutes=payload.reminder_minutes,
             workspace_id=payload.workspace_id,
-            room_id=payload.room_id,
-            video_enabled=payload.video_enabled,
+            room_id=effective_room_id,
+            video_enabled=effective_video,
+            booking_type=payload.booking_type,
         )
         db.add(b)
         created.append(b)
@@ -470,7 +481,7 @@ async def create_booking(
     for b in created:
         await db.refresh(b)
 
-    if payload.video_enabled:
+    if effective_video:
         for b in created:
             b.video_room_name = generate_room_name(b.id)
         await db.commit()

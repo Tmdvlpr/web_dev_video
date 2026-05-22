@@ -138,6 +138,17 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
     );
   }
 
+  const bookingType = booking.booking_type ?? "physical";
+  const isVirtual = bookingType === "virtual";
+  const isHybrid  = bookingType === "hybrid";
+
+  // Virtual bookings get a teal/blue left accent stripe
+  const leftBorderColor = isVirtual
+    ? (isDark ? "#38bdf8" : "#0ea5e9")
+    : isHybrid
+    ? (isDark ? "#818cf8" : "#6366f1")
+    : p.border;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6, scale: 0.97 }}
@@ -158,7 +169,7 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
         borderTop: `1px solid ${p.border}28`,
         borderRight: `1px solid ${p.border}28`,
         borderBottom: `1px solid ${p.border}28`,
-        borderLeft: `3px solid ${p.border}`,
+        borderLeft: `3px solid ${leftBorderColor}`,
         borderRadius: 10,
         cursor: canDrag ? "grab" : "pointer",
         overflow: "hidden",
@@ -172,7 +183,7 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
 
       {isShort ? (
         <p className="text-xs font-bold truncate leading-none relative z-10 w-full" style={{ color: p.text }}>
-          {booking.title}
+          {isVirtual && "🌐 "}{isHybrid && "🏢🎥 "}{booking.title}
         </p>
       ) : (
         <div className="h-full flex flex-col gap-0.5 relative z-10">
@@ -187,7 +198,29 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
                   👥{booking.guests.length}
                 </span>
               ) : null}
-              {booking.video_enabled && (
+              {isVirtual && (
+                <button
+                  onClick={handleJoinVideo}
+                  disabled={!isInMeetingWindow}
+                  title={isInMeetingWindow ? "Подключиться к онлайн-встрече" : "Доступно за 10 мин до начала"}
+                  className="text-xs px-1 rounded transition-opacity disabled:opacity-30"
+                  style={{ background: `${leftBorderColor}25`, color: leftBorderColor }}
+                >
+                  🌐
+                </button>
+              )}
+              {isHybrid && (
+                <button
+                  onClick={handleJoinVideo}
+                  disabled={!isInMeetingWindow}
+                  title={isInMeetingWindow ? "Подключиться к встрече" : "Доступно за 10 мин до начала"}
+                  className="text-xs px-1 rounded transition-opacity disabled:opacity-30"
+                  style={{ background: `${leftBorderColor}25`, color: leftBorderColor }}
+                >
+                  🏢🎥
+                </button>
+              )}
+              {!isVirtual && !isHybrid && booking.video_enabled && (
                 <button
                   onClick={handleJoinVideo}
                   disabled={!isInMeetingWindow}

@@ -1,6 +1,8 @@
+import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -8,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.booking import Booking
-from app.models.room import Room, RoomVisibility, WorkspaceRoom, WorkspaceRoomRole
+from app.models.room import Room, RoomJoinMode, RoomJoinRequest, RoomVisibility, WorkspaceRoom, WorkspaceRoomRole
 from app.models.user import User
 from app.models.workspace import (
     Workspace,
@@ -17,7 +19,9 @@ from app.models.workspace import (
     WorkspaceMemberStatus,
 )
 from app.schemas.room import (
+    JoinRoomRequest,
     RoomCreate,
+    RoomJoinRequestResponse,
     RoomUpdate,
     RoomVisibilityUpdate,
     ShareRoomRequest,
@@ -175,6 +179,7 @@ async def create_room(
         name=payload.name,
         description=payload.description,
         created_by_user_id=current_user.id,
+        invite_code=uuid.uuid4().hex[:8].upper(),
     )
     db.add(room)
     await db.flush()
@@ -230,6 +235,8 @@ async def update_room(
         room.name = payload.name
     if payload.description is not None:
         room.description = payload.description
+    if payload.join_mode is not None:
+        room.join_mode = payload.join_mode
 
     await db.commit()
 
@@ -346,6 +353,125 @@ async def revoke_share(
     await db.commit()
 
 
+@router.get("/{room_id}/join-requests", response_model=list[RoomJoinRequestResponse])
+async def list_join_requests(
+    room_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[RoomJoinRequestResponse]:
+    """List pending join requests for a room. Owner workspace admin/owner only."""
+    await _get_owner_workspace_room(room_id, current_user, db)
+
+    res = await db.execute(
+        select(RoomJoinRequest)
+        .options(
+            selectinload(RoomJoinRequest.workspace),
+            selectinload(RoomJoinRequest.requested_by),
+        )
+        .where(
+            RoomJoinRequest.room_id == room_id,
+            RoomJoinRequest.status == "pending",
+        )
+        .order_by(RoomJoinRequest.created_at)
+    )
+    requests = res.scalars().all()
+    return [
+        RoomJoinRequestResponse(
+            id=r.id,
+            room_id=r.room_id,
+            workspace_id=r.workspace_id,
+            workspace_name=r.workspace.name if r.workspace else str(r.workspace_id),
+            requested_by=r.requested_by.display_name if r.requested_by else None,
+            status=r.status,
+            created_at=r.created_at,
+        )
+        for r in requests
+    ]
+
+
+@router.post("/{room_id}/join-requests/{request_id}/approve", status_code=status.HTTP_204_NO_CONTENT)
+async def approve_join_request(
+    room_id: int,
+    request_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Approve a room join request. Creates WorkspaceRoom for the requesting workspace."""
+    await _get_owner_workspace_room(room_id, current_user, db)
+
+    res = await db.execute(
+        select(RoomJoinRequest).where(
+            RoomJoinRequest.id == request_id,
+            RoomJoinRequest.room_id == room_id,
+        )
+    )
+    req = res.scalar_one_or_none()
+    if not req:
+        raise HTTPException(404, "Join request not found")
+
+    existing = await db.execute(
+        select(WorkspaceRoom).where(
+            WorkspaceRoom.room_id == room_id,
+            WorkspaceRoom.workspace_id == req.workspace_id,
+        )
+    )
+    if not existing.scalar_one_or_none():
+        wr = WorkspaceRoom(
+            workspace_id=req.workspace_id,
+            room_id=room_id,
+            role=WorkspaceRoomRole.shared,
+            visibility=RoomVisibility.full,
+        )
+        db.add(wr)
+
+    req.status = "approved"
+    await db.commit()
+
+
+@router.post("/{room_id}/join-requests/{request_id}/reject", status_code=status.HTTP_204_NO_CONTENT)
+async def reject_join_request(
+    room_id: int,
+    request_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Reject a room join request."""
+    await _get_owner_workspace_room(room_id, current_user, db)
+
+    res = await db.execute(
+        select(RoomJoinRequest).where(
+            RoomJoinRequest.id == request_id,
+            RoomJoinRequest.room_id == room_id,
+        )
+    )
+    req = res.scalar_one_or_none()
+    if not req:
+        raise HTTPException(404, "Join request not found")
+
+    req.status = "rejected"
+    await db.commit()
+
+
+@router.post("/{room_id}/regenerate-code", response_model=WorkspaceRoomResponse)
+async def regenerate_room_code(
+    room_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> WorkspaceRoomResponse:
+    """Generate a new invite code for a room. Owner workspace admin/owner only."""
+    wr = await _get_owner_workspace_room(room_id, current_user, db)
+    room = await _get_room_or_404(room_id, db)
+    room.invite_code = uuid.uuid4().hex[:8].upper()
+    await db.commit()
+
+    res = await db.execute(
+        select(WorkspaceRoom)
+        .options(selectinload(WorkspaceRoom.room))
+        .where(WorkspaceRoom.id == wr.id)
+    )
+    return res.scalar_one()
+
+
 @router.patch("/{room_id}/workspaces/{workspace_id}/visibility", response_model=WorkspaceRoomResponse)
 async def update_visibility(
     room_id: int,
@@ -378,3 +504,83 @@ async def update_visibility(
         .where(WorkspaceRoom.id == wr.id)
     )
     return res2.scalar_one()
+
+
+@router.post("/join")
+async def join_room_by_code(
+    payload: JoinRoomRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> JSONResponse:
+    """Add a room to a workspace using the room's invite code. User must be admin/owner of the workspace.
+    Returns 201 for instant join (open mode), 202 for approval-pending, 403 for closed mode."""
+    member = await _get_membership(payload.workspace_id, current_user, db)
+    _require_admin_or_owner(member)
+
+    room_res = await db.execute(
+        select(Room).where(Room.invite_code == payload.room_invite_code.upper().strip())
+    )
+    room = room_res.scalar_one_or_none()
+    if not room:
+        raise HTTPException(404, "Room with this code not found")
+    if room.archived_at is not None:
+        raise HTTPException(410, "Room is archived")
+
+    existing = await db.execute(
+        select(WorkspaceRoom).where(
+            WorkspaceRoom.workspace_id == payload.workspace_id,
+            WorkspaceRoom.room_id == room.id,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(409, "Room already added to this workspace")
+
+    join_mode = room.join_mode if room.join_mode else RoomJoinMode.approval
+
+    if join_mode == RoomJoinMode.closed:
+        raise HTTPException(403, "Подключение по коду отключено для этой комнаты")
+
+    if join_mode == RoomJoinMode.open:
+        wr = WorkspaceRoom(
+            workspace_id=payload.workspace_id,
+            room_id=room.id,
+            role=WorkspaceRoomRole.shared,
+            visibility=RoomVisibility.full,
+        )
+        db.add(wr)
+        await db.commit()
+        res = await db.execute(
+            select(WorkspaceRoom)
+            .options(selectinload(WorkspaceRoom.room))
+            .where(WorkspaceRoom.id == wr.id)
+        )
+        wr_loaded = res.scalar_one()
+        from app.schemas.room import WorkspaceRoomResponse
+        return JSONResponse(
+            status_code=201,
+            content=WorkspaceRoomResponse.model_validate(wr_loaded).model_dump(mode="json"),
+        )
+
+    # approval mode — create or reuse pending request
+    existing_req = await db.execute(
+        select(RoomJoinRequest).where(
+            RoomJoinRequest.room_id == room.id,
+            RoomJoinRequest.workspace_id == payload.workspace_id,
+        )
+    )
+    req = existing_req.scalar_one_or_none()
+    if req and req.status == "pending":
+        return JSONResponse(status_code=202, content={"status": "pending", "request_id": req.id})
+    if req:
+        req.status = "pending"
+    else:
+        req = RoomJoinRequest(
+            room_id=room.id,
+            workspace_id=payload.workspace_id,
+            requested_by_user_id=current_user.id,
+            status="pending",
+        )
+        db.add(req)
+    await db.commit()
+    await db.refresh(req)
+    return JSONResponse(status_code=202, content={"status": "pending", "request_id": req.id})

@@ -22,6 +22,7 @@ from app.models.booking import Booking
 from app.models.browser_session import BrowserSession
 from app.models.meeting import MeetingParticipantLog, MeetingSession
 from app.models.user import User
+from app.models.workspace import Workspace, WorkspaceMember, WorkspaceMemberRole, WorkspaceMemberStatus
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,8 @@ class BookingBotInfo(BaseModel):
     recurrence_days: list[int] | None = None
     has_attachments: bool = False
     video_enabled: bool = False
+    booking_type: str = "physical"
+    workspace_telegram_chat_id: int | None = None
 
     class Config:
         from_attributes = True
@@ -168,6 +171,17 @@ async def _bookings_with_attachments(db: AsyncSession, booking_ids: list[int]) -
     return set(result.scalars().all())
 
 
+async def _workspace_tg_chat_ids(db: AsyncSession, workspace_ids: list[int]) -> dict[int, int | None]:
+    """Batch fetch telegram_chat_id for each workspace_id."""
+    if not workspace_ids:
+        return {}
+    result = await db.execute(
+        select(Workspace.id, Workspace.telegram_chat_id)
+        .where(Workspace.id.in_(workspace_ids))
+    )
+    return {row[0]: row[1] for row in result.all()}
+
+
 # ── Эндпоинты: встречи ────────────────────────────────────────────────────────
 
 @router.get(
@@ -205,6 +219,8 @@ async def bookings_since(
     all_names = list({n for b in bookings for n in b.guests})
     lookup = await _resolve_guests(db, all_names)
     with_atts = await _bookings_with_attachments(db, [b.id for b in bookings])
+    ws_ids = list({b.workspace_id for b in bookings if b.workspace_id})
+    ws_tg_map = await _workspace_tg_chat_ids(db, ws_ids)
 
     infos = [
         BookingBotInfo(
@@ -229,6 +245,8 @@ async def bookings_since(
             recurrence_days=b.recurrence_days or None,
             has_attachments=b.id in with_atts,
             video_enabled=b.video_enabled,
+            booking_type=b.booking_type if b.booking_type else "physical",
+            workspace_telegram_chat_id=ws_tg_map.get(b.workspace_id) if b.workspace_id else None,
         )
         for b in bookings
     ]
@@ -282,6 +300,8 @@ async def bookings_for_reminder(
     all_names = list({n for b in due for n in b.guests})
     lookup = await _resolve_guests(db, all_names)
     with_atts = await _bookings_with_attachments(db, [b.id for b in due])
+    ws_ids = list({b.workspace_id for b in due if b.workspace_id})
+    ws_tg_map = await _workspace_tg_chat_ids(db, ws_ids)
 
     return [
         BookingBotInfo(
@@ -306,6 +326,8 @@ async def bookings_for_reminder(
             recurrence_days=b.recurrence_days or None,
             has_attachments=b.id in with_atts,
             video_enabled=b.video_enabled,
+            booking_type=b.booking_type if b.booking_type else "physical",
+            workspace_telegram_chat_id=ws_tg_map.get(b.workspace_id) if b.workspace_id else None,
         )
         for b in due
     ]
@@ -356,6 +378,8 @@ async def bookings_deleted_since(
     all_names = list({n for b in bookings for n in b.guests})
     lookup = await _resolve_guests(db, all_names)
     with_atts = await _bookings_with_attachments(db, [b.id for b in bookings])
+    ws_ids = list({b.workspace_id for b in bookings if b.workspace_id})
+    ws_tg_map = await _workspace_tg_chat_ids(db, ws_ids)
 
     infos = [
         BookingBotInfo(
@@ -374,6 +398,8 @@ async def bookings_deleted_since(
             recurrence_days=b.recurrence_days or None,
             has_attachments=b.id in with_atts,
             video_enabled=b.video_enabled,
+            booking_type=b.booking_type if b.booking_type else "physical",
+            workspace_telegram_chat_id=ws_tg_map.get(b.workspace_id) if b.workspace_id else None,
         )
         for b in bookings
     ]
@@ -537,6 +563,85 @@ async def consume_session_bot(
     await db.commit()
 
     return {"ok": True}
+
+
+# ── Эндпоинты: пространства ──────────────────────────────────────────────────
+
+class BindTelegramRequest(BaseModel):
+    invite_code: str
+    chat_id: int
+    telegram_user_id: int
+
+
+class BindTelegramResponse(BaseModel):
+    workspace_name: str
+
+
+class UnbindTelegramRequest(BaseModel):
+    chat_id: int
+    telegram_user_id: int
+
+
+@router.post("/workspaces/bind-telegram", response_model=BindTelegramResponse)
+async def bind_workspace_telegram(
+    payload: BindTelegramRequest,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_bot_secret),
+) -> BindTelegramResponse:
+    """Привязать TG-группу к пространству по invite_code. Вызывается ботом через /bind."""
+    ws = await db.scalar(select(Workspace).where(Workspace.invite_code == payload.invite_code))
+    if not ws:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Workspace not found")
+
+    user = await db.scalar(select(User).where(User.telegram_id == payload.telegram_user_id))
+    if not user:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "User not registered in CorpMeet")
+
+    member = await db.scalar(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == ws.id,
+            WorkspaceMember.user_id == user.id,
+            WorkspaceMember.status == WorkspaceMemberStatus.active,
+            WorkspaceMember.role.in_([WorkspaceMemberRole.owner, WorkspaceMemberRole.admin]),
+        )
+    )
+    if not member:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Must be owner or admin to bind")
+
+    ws.telegram_chat_id = payload.chat_id
+    await db.commit()
+    return BindTelegramResponse(workspace_name=ws.name)
+
+
+@router.post("/workspaces/unbind-telegram")
+async def unbind_workspace_telegram(
+    payload: UnbindTelegramRequest,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_bot_secret),
+) -> dict:
+    """Отвязать TG-группу от пространства. Вызывается ботом через /unbind."""
+    ws = await db.scalar(select(Workspace).where(Workspace.telegram_chat_id == payload.chat_id))
+    if not ws:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No workspace bound to this chat")
+
+    user = await db.scalar(select(User).where(User.telegram_id == payload.telegram_user_id))
+    if not user:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "User not registered in CorpMeet")
+
+    member = await db.scalar(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == ws.id,
+            WorkspaceMember.user_id == user.id,
+            WorkspaceMember.status == WorkspaceMemberStatus.active,
+            WorkspaceMember.role.in_([WorkspaceMemberRole.owner, WorkspaceMemberRole.admin]),
+        )
+    )
+    if not member:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Must be owner or admin to unbind")
+
+    ws.telegram_chat_id = None
+    await db.commit()
+    return {"ok": True, "workspace_name": ws.name}
 
 
 # ── LiveKit webhook (подпись проверяется самим LiveKit JWT, не X-Bot-Secret) ──

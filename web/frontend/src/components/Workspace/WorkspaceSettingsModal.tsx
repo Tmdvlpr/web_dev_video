@@ -5,7 +5,7 @@ import { workspacesApi } from "../../api/workspaces";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
-import type { WorkspaceMember, WorkspaceRoom } from "../../types";
+import type { RoomJoinRequest, WorkspaceMember, WorkspaceRoom } from "../../types";
 
 interface WorkspaceSettingsModalProps {
   open: boolean;
@@ -517,6 +517,9 @@ function RoomsTab({ workspaceId, rooms, isAdmin, onRefetch }:
   const [newDesc, setNewDesc] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [joining, setJoining] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+  const [joinInfo, setJoinInfo] = useState<string | null>(null);
 
   const handleCreate = async () => {
     setErr(null);
@@ -532,6 +535,30 @@ function RoomsTab({ workspaceId, rooms, isAdmin, onRefetch }:
     } finally { setBusy(false); }
   };
 
+  const handleJoin = async () => {
+    setErr(null); setJoinInfo(null);
+    if (!joinCode.trim()) { setErr("Введите код комнаты"); return; }
+    setBusy(true);
+    try {
+      const result = await roomsApi.join(joinCode.trim(), workspaceId);
+      if (result.status === 201) {
+        setJoinCode(""); setJoining(false);
+        onRefetch();
+      } else if (result.status === 202) {
+        setJoinCode("");
+        setJoinInfo("⏳ Заявка отправлена. Ждём подтверждения от владельца комнаты.");
+      }
+    } catch (e: unknown) {
+      const status = (e as { response?: { status?: number; data?: { detail?: string } } })?.response?.status;
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      if (status === 403) {
+        setErr("❌ Подключение по коду отключено для этой комнаты.");
+      } else {
+        setErr(msg ?? "Не удалось добавить комнату");
+      }
+    } finally { setBusy(false); }
+  };
+
   return (
     <div className="space-y-3">
       {rooms.length === 0 && (
@@ -542,14 +569,22 @@ function RoomsTab({ workspaceId, rooms, isAdmin, onRefetch }:
       ))}
 
       {isAdmin && (
-        <div className="pt-3" style={{ borderTop: "1px dashed var(--border)" }}>
-          {!creating ? (
-            <button onClick={() => setCreating(true)}
-              className="w-full py-2 rounded-xl text-xs font-bold"
-              style={{ background: "var(--primary-light)", border: "1.5px solid var(--primary-border)", color: "var(--primary)" }}>
-              + Создать комнату
-            </button>
-          ) : (
+        <div className="pt-3 space-y-2" style={{ borderTop: "1px dashed var(--border)" }}>
+          {!creating && !joining && (
+            <div className="flex gap-2">
+              <button onClick={() => setCreating(true)}
+                className="flex-1 py-2 rounded-xl text-xs font-bold"
+                style={{ background: "var(--primary-light)", border: "1.5px solid var(--primary-border)", color: "var(--primary)" }}>
+                + Создать комнату
+              </button>
+              <button onClick={() => setJoining(true)}
+                className="flex-1 py-2 rounded-xl text-xs font-bold"
+                style={{ background: "var(--elevated)", border: "1.5px solid var(--border)", color: "var(--text-sec)" }}>
+                Добавить по коду
+              </button>
+            </div>
+          )}
+          {creating && (
             <div className="space-y-2 rounded-xl p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
               <input
                 autoFocus value={newName} onChange={e => setNewName(e.target.value)}
@@ -578,6 +613,34 @@ function RoomsTab({ workspaceId, rooms, isAdmin, onRefetch }:
               </div>
             </div>
           )}
+          {joining && (
+            <div className="space-y-2 rounded-xl p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+              <p className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
+                Введите код комнаты из другого пространства
+              </p>
+              <input
+                autoFocus value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())}
+                placeholder="Например: A1B2C3D4"
+                className="w-full rounded-lg px-2.5 py-1.5 text-sm outline-none font-mono"
+                style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)", letterSpacing: "0.1em" }}
+                onKeyDown={e => { if (e.key === "Enter") handleJoin(); }}
+              />
+              {err && <p className="text-xs" style={{ color: "#dc2626" }}>{err}</p>}
+              {joinInfo && <p className="text-xs" style={{ color: "#0891b2" }}>{joinInfo}</p>}
+              <div className="flex gap-2">
+                <button onClick={() => { setJoining(false); setJoinCode(""); setErr(null); setJoinInfo(null); }}
+                  className="flex-1 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
+                  Отмена
+                </button>
+                <button onClick={handleJoin} disabled={busy}
+                  className="flex-1 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50"
+                  style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
+                  {busy ? "…" : "Добавить"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -591,13 +654,33 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [confirmArch, setConfirmArch] = useState(false);
+  const [confirmRegen, setConfirmRegen] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [joinRequests, setJoinRequests] = useState<RoomJoinRequest[]>([]);
 
   const isOwnerRoom = wr.role === "owner";
+
+  useEffect(() => {
+    if (!isOwnerRoom || !isAdmin) return;
+    roomsApi.listJoinRequests(wr.room.id).then(setJoinRequests).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wr.room.id]);
 
   const handleVis = async (v: "full" | "busy_only") => {
     setErr(null);
     try {
       await roomsApi.updateVisibility(wr.room.id, workspaceId, v);
+      onRefetch();
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setErr(msg ?? "Не удалось обновить");
+    }
+  };
+
+  const handleJoinMode = async (mode: "open" | "approval" | "closed") => {
+    setErr(null);
+    try {
+      await roomsApi.update(wr.room.id, { join_mode: mode });
       onRefetch();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -631,6 +714,48 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
     }
   };
 
+  const handleRegen = async () => {
+    setErr(null); setBusy(true);
+    try {
+      await roomsApi.regenerateCode(wr.room.id);
+      setConfirmRegen(false);
+      onRefetch();
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setErr(msg ?? "Не удалось сменить код");
+      setBusy(false);
+    }
+  };
+
+  const handleApproveRequest = async (reqId: number) => {
+    try {
+      await roomsApi.approveJoinRequest(wr.room.id, reqId);
+      setJoinRequests(r => r.filter(x => x.id !== reqId));
+      onRefetch();
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setErr(msg ?? "Не удалось принять");
+    }
+  };
+
+  const handleRejectRequest = async (reqId: number) => {
+    try {
+      await roomsApi.rejectJoinRequest(wr.room.id, reqId);
+      setJoinRequests(r => r.filter(x => x.id !== reqId));
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setErr(msg ?? "Не удалось отклонить");
+    }
+  };
+
+  const handleCopyCode = () => {
+    if (!wr.room.invite_code) return;
+    navigator.clipboard.writeText(wr.room.invite_code).then(() => {
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 1500);
+    });
+  };
+
   return (
     <div className="rounded-xl p-3"
       style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
@@ -651,6 +776,66 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
         </div>
       </div>
 
+      {isOwnerRoom && wr.room.invite_code && (
+        <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+          <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Код:</span>
+          <code className="text-xs font-mono px-2 py-0.5 rounded" style={{ background: "var(--bg)", color: "var(--primary)", border: "1px solid var(--primary-border)", letterSpacing: "0.1em" }}>
+            {wr.room.invite_code}
+          </code>
+          <button onClick={handleCopyCode}
+            className="px-2 py-0.5 rounded text-xs font-semibold transition-all"
+            style={{ background: copiedCode ? "rgba(34,197,94,0.12)" : "var(--bg)", color: copiedCode ? "#16a34a" : "var(--text-muted)", border: `1px solid ${copiedCode ? "rgba(34,197,94,0.4)" : "var(--border)"}` }}>
+            {copiedCode ? "✓" : "Копировать"}
+          </button>
+          {!confirmRegen ? (
+            <button onClick={() => setConfirmRegen(true)}
+              className="px-2 py-0.5 rounded text-xs font-semibold"
+              style={{ background: "var(--bg)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+              Сменить код
+            </button>
+          ) : (
+            <div className="flex items-center gap-1">
+              <span className="text-xs" style={{ color: "#d97706" }}>Сменить?</span>
+              <button onClick={handleRegen} disabled={busy}
+                className="px-2 py-0.5 rounded text-xs font-bold text-white disabled:opacity-50"
+                style={{ background: "linear-gradient(135deg,#d97706,#b45309)" }}>
+                {busy ? "…" : "Да"}
+              </button>
+              <button onClick={() => setConfirmRegen(false)}
+                className="px-2 py-0.5 rounded text-xs font-semibold"
+                style={{ background: "var(--elevated)", color: "var(--text-sec)", border: "1px solid var(--border)" }}>
+                Нет
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {isOwnerRoom && isAdmin && (
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs font-semibold shrink-0" style={{ color: "var(--text-muted)" }}>Подключение:</span>
+          <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+            {([
+              { v: "open",     label: "Открытое" },
+              { v: "approval", label: "С подтверждением" },
+              { v: "closed",   label: "Закрытое" },
+            ] as const).map(({ v, label }) => {
+              const active = (wr.room.join_mode ?? "approval") === v;
+              return (
+                <button key={v} onClick={() => handleJoinMode(v)} disabled={active}
+                  className="px-2 py-1 text-xs font-semibold transition-all"
+                  style={{
+                    background: active ? "var(--primary)" : "transparent",
+                    color: active ? "#fff" : "var(--text-sec)",
+                  }}>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {(isOwnerRoom || isAdmin) && (
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Видимость:</span>
@@ -669,6 +854,33 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
               );
             })}
           </div>
+        </div>
+      )}
+
+      {joinRequests.length > 0 && (
+        <div className="mb-2 space-y-1">
+          <p className="text-xs font-semibold" style={{ color: "var(--text-sec)" }}>Заявки на подключение:</p>
+          {joinRequests.map(req => (
+            <div key={req.id} className="flex items-center gap-2 px-2 py-1 rounded-lg"
+              style={{ background: "var(--bg)", border: "1px solid var(--border)" }}>
+              <div className="flex-1 min-w-0">
+                <span className="text-xs font-semibold truncate" style={{ color: "var(--text)" }}>{req.workspace_name}</span>
+                {req.requested_by && (
+                  <span className="text-xs ml-1" style={{ color: "var(--text-muted)" }}>· {req.requested_by}</span>
+                )}
+              </div>
+              <button onClick={() => handleApproveRequest(req.id)}
+                className="px-2 py-0.5 rounded text-xs font-bold text-white shrink-0"
+                style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
+                Принять
+              </button>
+              <button onClick={() => handleRejectRequest(req.id)}
+                className="px-2 py-0.5 rounded text-xs font-bold shrink-0"
+                style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#dc2626" }}>
+                Отклонить
+              </button>
+            </div>
+          ))}
         </div>
       )}
 

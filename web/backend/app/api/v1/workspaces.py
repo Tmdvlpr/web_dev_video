@@ -295,6 +295,8 @@ async def update_workspace(
         workspace.name = payload.name
     if payload.timezone is not None:
         workspace.timezone = payload.timezone
+    if payload.telegram_chat_id is not None:
+        workspace.telegram_chat_id = payload.telegram_chat_id
 
     await db.commit()
     await db.refresh(workspace)

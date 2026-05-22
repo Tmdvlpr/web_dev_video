@@ -12,6 +12,7 @@ class WorkspaceCreate(BaseModel):
 class WorkspaceUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=100)
     timezone: str | None = Field(None, max_length=50)
+    telegram_chat_id: int | None = None
 
 
 class WorkspaceMemberResponse(BaseModel):
