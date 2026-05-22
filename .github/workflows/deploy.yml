@@ -32,6 +32,7 @@ jobs:
             cp web/backend/app/.env backend/app/.env
           fi
           docker compose down --remove-orphans 2>/dev/null || true
+          docker rm -f corpmeet-db corpmeet-backend corpmeet-frontend corpmeet-livekit corpmeet-redis corpmeet-livekit-egress 2>/dev/null || true
           docker network prune -f 2>/dev/null || true
           docker compose build
           docker compose up -d --remove-orphans
