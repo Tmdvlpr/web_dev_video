@@ -568,17 +568,17 @@ async def livekit_webhook(
 
     # ── room_started: создать сессию и запустить запись ──────────────────────
     if event_type == "room_started":
-        session = MeetingSession(booking_id=0, room_name=room_name)
         # Resolve booking_id from room_name (format: corpmeet-{id}-{random})
+        booking_id_parsed: int | None = None
         parts = room_name.split("-")
         if len(parts) >= 2:
             try:
-                booking_id = int(parts[1])
-                session.booking_id = booking_id
+                booking_id_parsed = int(parts[1])
             except ValueError:
-                pass
+                logger.warning(f"Cannot parse booking_id from room_name: {room_name}")
 
-        if session.booking_id:
+        if booking_id_parsed is not None:
+            session = MeetingSession(booking_id=booking_id_parsed, room_name=room_name)
             db.add(session)
             await db.commit()
 
