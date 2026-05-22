@@ -39,6 +39,8 @@ ENV PATH=/opt/venv/bin:$PATH \
 RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app
 
+# Bust cache when code changes (pass --build-arg CACHEBUST=$(git rev-parse HEAD))
+ARG CACHEBUST=1
 # Copy application code
 COPY --chown=appuser:appuser . .
 

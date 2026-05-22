@@ -21,6 +21,7 @@ jobs:
         host: ${{ secrets.SSH_HOST }}
         username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_KEY }}
+        command_timeout: 30m
         script_stop: true
         script: |
           set -e
@@ -34,8 +35,9 @@ jobs:
             mkdir -p backend/app
             cp web/backend/app/.env backend/app/.env
           fi
-          docker compose build --no-cache frontend
-          docker compose build --no-cache backend
+          BUST=$(git rev-parse HEAD)
+          docker compose build --build-arg CACHEBUST=$BUST frontend
+          docker compose build --build-arg CACHEBUST=$BUST backend
           docker compose up -d --remove-orphans --force-recreate
           sleep 5
           echo "=== Container status ==="

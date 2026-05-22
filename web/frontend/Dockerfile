@@ -9,6 +9,8 @@ COPY package.json package-lock.json ./
 # Install dependencies
 RUN npm ci --prefer-offline --no-audit && npm cache clean --force
 
+# Bust cache when code changes (pass --build-arg CACHEBUST=$(git rev-parse HEAD))
+ARG CACHEBUST=1
 # Copy source code
 COPY . .
 
