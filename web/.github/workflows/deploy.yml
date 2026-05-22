@@ -35,6 +35,8 @@ jobs:
             mkdir -p backend/app
             cp web/backend/app/.env backend/app/.env
           fi
+          # Remove any lingering containers with old hardcoded names that block project-scoped startup
+          docker rm -f corpmeet-db corpmeet-backend corpmeet-frontend 2>/dev/null || true
           BUST=$(git rev-parse HEAD)
           docker compose build --build-arg CACHEBUST=$BUST frontend
           docker compose build --build-arg CACHEBUST=$BUST backend

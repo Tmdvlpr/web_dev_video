@@ -1,7 +1,6 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: corpmeet-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?required}
@@ -9,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
     ports:
-      - "5433:5432"
+      - "127.0.0.1:${DB_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
@@ -37,11 +36,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: corpmeet-backend:latest
-    container_name: corpmeet-backend
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8050:8001"
+      - "127.0.0.1:${BACKEND_PORT:-8050}:8001"
     env_file:
       - backend/app/.env
     environment:
@@ -76,11 +73,9 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:?required}
-    image: corpmeet-frontend:latest
-    container_name: corpmeet-frontend
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3050:80"
+      - "127.0.0.1:${FRONTEND_PORT:-3050}:80"
     depends_on:
       backend:
         condition: service_healthy
