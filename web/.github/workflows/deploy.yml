@@ -28,18 +28,15 @@ jobs:
           git config --global --add safe.directory /var/www/www-root/data/www/corpmeet.uz
           git fetch origin main
           git reset --hard origin/main
-          echo "=== Git HEAD after reset ==="
+          echo "=== Deployed commit ==="
           git log --oneline -1
           if [ ! -f backend/app/.env ] && [ -f web/backend/app/.env ]; then
             mkdir -p backend/app
             cp web/backend/app/.env backend/app/.env
           fi
           docker compose build --no-cache frontend
-          docker compose build backend
-          docker compose up -d --remove-orphans --force-recreate frontend
-          docker compose up -d --remove-orphans
+          docker compose build --no-cache backend
+          docker compose up -d --remove-orphans --force-recreate
           sleep 5
           echo "=== Container status ==="
           docker compose ps
-          echo "=== Frontend image ==="
-          docker images corpmeet-frontend
