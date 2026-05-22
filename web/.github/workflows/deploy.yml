@@ -33,7 +33,8 @@ jobs:
             mkdir -p backend/app
             cp web/backend/app/.env backend/app/.env
           fi
-          docker compose build
+          docker compose build --no-cache frontend
+          docker compose build backend
           docker compose up -d --remove-orphans
           sleep 10
           docker compose ps
