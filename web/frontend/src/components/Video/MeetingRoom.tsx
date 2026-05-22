@@ -9,7 +9,7 @@ import {
   useTracks,
 } from "@livekit/components-react";
 import type { TrackReferenceOrPlaceholder, TrackReference } from "@livekit/components-react";
-import { Track, Room, VideoPresets, DisconnectReason } from "livekit-client";
+import { Track, Room, VideoPresets } from "livekit-client";
 import type { LocalAudioTrack, LocalVideoTrack, Participant } from "livekit-client";
 import { useQuery } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -197,11 +197,15 @@ function useMeetingChat(
   }, [chatVisible]);
 
   const send = useCallback((body: string, fileId?: number) => {
-    wsRef.current?.send(JSON.stringify({ body, file_id: fileId ?? null }));
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ body, file_id: fileId ?? null }));
+    }
   }, []);
 
   const sendReaction = useCallback((emoji: string) => {
-    wsRef.current?.send(JSON.stringify({ type: "reaction", emoji }));
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "reaction", emoji }));
+    }
   }, []);
 
   const uploadAndSend = useCallback(async (file: File) => {
@@ -232,7 +236,7 @@ const LiveVideoTile = React.memo(function LiveVideoTile({
   size?: "sm" | "md" | "lg" | "cinema" | "csm";
   onClick?: () => void;
 }) {
-  const participant = trackRef.participant as Participant;
+  const participant = trackRef.participant as Participant | undefined;
   const isSpeaking = useIsSpeaking(participant);
   if (!participant) return null;
   const hasVideo = !!(trackRef.publication?.isEnabled && trackRef.publication?.track);
@@ -741,11 +745,11 @@ function Sidebar({
 
 // ─── Header ───────────────────────────────────────────────────────────────────
 function MeetingHeader({
-  title, elapsed, isRecording, isSharingScreen, layoutMode, participantCount, e2eeKey,
+  title, elapsed, isRecording, isSharingScreen, layoutMode, participantCount,
   onLayoutChange, onInfoClick,
 }: {
   title: string; elapsed: number; isRecording: boolean; isSharingScreen: boolean;
-  layoutMode: string; participantCount: number; e2eeKey?: string;
+  layoutMode: string; participantCount: number;
   onLayoutChange: (m: string) => void; onInfoClick: () => void;
 }) {
   return (
@@ -763,19 +767,6 @@ function MeetingHeader({
           {isSharingScreen && (
             <span className="mhdr__badge mhdr__badge--share">
               <Ic.Monitor sz={11} />Демонстрация
-            </span>
-          )}
-          {e2eeKey && (
-            <span
-              className="mhdr__badge"
-              style={{ color: "#4ade80", gap: 4, cursor: "default" }}
-            >
-              <Ic.Shield sz={11} />
-              Встреча защищена шифрованием
-              <span
-                title={`E2EE (End-to-End Encryption) — медиапотоки шифруются на вашем устройстве и расшифровываются только у участников встречи. Алгоритм: HMAC-SHA256 + AES-GCM (WebCrypto).`}
-                style={{ cursor: "help", opacity: 0.6, fontSize: 11 }}
-              >ℹ</span>
             </span>
           )}
         </div>
@@ -856,7 +847,10 @@ function LeaveModal({ onClose, onLeave }: { onClose: () => void; onLeave: () => 
 
 // ─── Floating reaction ────────────────────────────────────────────────────────
 function FloatingReaction({ emoji, id, onDone }: { emoji: string; id: number; onDone: () => void }) {
-  useEffect(() => { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); }, [onDone]);
+  const onDoneRef = useRef(onDone);
+  useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
+  // Empty deps: timer starts once on mount, calls latest onDone via ref to avoid resets
+  useEffect(() => { const t = setTimeout(() => onDoneRef.current(), 3200); return () => clearTimeout(t); }, []);
   const rx = `${((id % 7) - 3) * 18}px`;
   return <div className="floatreact" style={{ ["--rx" as string]: rx }}>{emoji}</div>;
 }
@@ -1114,7 +1108,7 @@ function SettingsPanel({ bookingId, noiseOn, blurOn, onNoise, onBlur }: {
   });
 
   function fmtDur(sec: number | null) {
-    if (!sec) return "—";
+    if (sec == null) return "—";
     const m = Math.floor(sec / 60), s = sec % 60;
     return `${m}:${String(s).padStart(2, "0")}`;
   }
@@ -1177,7 +1171,7 @@ function SettingsPanel({ bookingId, noiseOn, blurOn, onNoise, onBlur }: {
             <p style={{ fontSize: 11, color: "var(--tx3)", marginBottom: 4 }}>
               {new Date(r.started_at).toLocaleString("ru-RU")} · {fmtDur(r.recording_duration_seconds)}
             </p>
-            {r.recording_path ? (
+            {r.has_recording ? (
               <a
                 href={meetingsApi.downloadRecordingUrl(bookingId, r.session_id)}
                 download={`recording-${r.session_id}.mp4`}
@@ -1201,13 +1195,12 @@ function SettingsPanel({ bookingId, noiseOn, blurOn, onNoise, onBlur }: {
 
 // ─── Conference UI (inner, uses LiveKit hooks) ────────────────────────────────
 function ConferenceUI({
-  bookingId, onLeave, joinData, isOrganizer, e2eeKey,
+  bookingId, onLeave, joinData, isOrganizer,
 }: {
   bookingId: number;
   onLeave: () => void;
   joinData: { start_time: string; end_time: string; room_name: string; user_identity: string };
   isOrganizer: boolean;
-  e2eeKey: string;
 }) {
   const { localParticipant, isMicrophoneEnabled, isCameraEnabled, isScreenShareEnabled } =
     useLocalParticipant();
@@ -1301,7 +1294,11 @@ function ConferenceUI({
     const seen = new Set<string>();
     const result: TrackReferenceOrPlaceholder[] = [];
     // Local participant first so their track wins over any ghost with the same identity
-    const sorted = [...allTracks].sort((a) => (a.participant.identity === localId ? -1 : 1));
+    const sorted = [...allTracks].sort((a, b) => {
+      if (a.participant.identity === localId) return -1;
+      if (b.participant.identity === localId) return 1;
+      return 0;
+    });
     for (const t of sorted) {
       if (t.source !== Track.Source.Camera) continue;
       if (!seen.has(t.participant.identity)) {
@@ -1388,7 +1385,10 @@ function ConferenceUI({
     setFloatReactions((prev) => [...prev, { id: Date.now(), emoji }]);
   };
 
+  const recordingPending = useRef(false);
   const handleRecord = async () => {
+    if (recordingPending.current) return;
+    recordingPending.current = true;
     try {
       if (isRecording) {
         await meetingsApi.stopRecording(bookingId);
@@ -1399,6 +1399,8 @@ function ConferenceUI({
       }
     } catch (err) {
       console.warn("Recording toggle failed:", err);
+    } finally {
+      recordingPending.current = false;
     }
   };
 
@@ -1415,7 +1417,6 @@ function ConferenceUI({
         isSharingScreen={!!screenTrack}
         layoutMode={layoutMode}
         participantCount={allParticipants.length}
-        e2eeKey={e2eeKey || undefined}
         onLayoutChange={(m) => setLayoutMode(m as "focus" | "gallery" | "cinema")}
         onInfoClick={() => setModal("info")}
       />
@@ -1606,14 +1607,16 @@ function FullscreenError({ message, onClose }: { message: string; onClose: () =>
 // ─── Waiting for organizer screen ────────────────────────────────────────────
 function WaitingForOrganizer({ onLeave, onRetry }: { onLeave: () => void; onRetry: () => void }) {
   const [seconds, setSeconds] = useState(10);
+  const onRetryRef = useRef(onRetry);
+  useEffect(() => { onRetryRef.current = onRetry; }, [onRetry]);
 
   useEffect(() => {
     const t = setInterval(() => setSeconds((s) => {
-      if (s <= 1) { onRetry(); return 10; }
+      if (s <= 1) { onRetryRef.current(); return 10; }
       return s - 1;
     }), 1000);
     return () => clearInterval(t);
-  }, [onRetry]);
+  }, []);
 
   return (
     <div className="conf-root fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-5"
@@ -1663,8 +1666,6 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
   });
 
   const [isMeetingTime, setIsMeetingTime] = useState(false);
-  const intentionalLeave = useRef(false);
-
   const lkRoom = useMemo(() => new Room({
     publishDefaults: {
       simulcast: false,
@@ -1720,7 +1721,6 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
   }, [data]);
 
   const handleLeave = useCallback(() => {
-    intentionalLeave.current = true;
     lkRoom.disconnect().catch(() => {});
     onLeave();
   }, [lkRoom, onLeave]);
@@ -1751,17 +1751,7 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
       connect
       video
       audio
-      onDisconnected={(reason) => {
-        if (intentionalLeave.current) {
-          onLeave();
-        } else if (reason === DisconnectReason.PARTICIPANT_REMOVED) {
-          // The backend kick_participant() targets the ghost (old connection), not us.
-          // Calling refetch() here would re-hit /join → kick_participant() again → another
-          // PARTICIPANT_REMOVED → infinite kick-reconnect loop crashing after ~10s.
-          // Safe fallback: exit cleanly. The user can rejoin manually if needed.
-          onLeave();
-        }
-      }}
+      onDisconnected={() => { onLeave(); }}
     >
       <RoomAudioRenderer />
       <ConferenceUI
@@ -1769,7 +1759,6 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
         onLeave={handleLeave}
         joinData={data}
         isOrganizer={data.is_organizer}
-        e2eeKey={data.e2ee_key}
       />
     </LiveKitRoom>
   );

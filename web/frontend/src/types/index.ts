@@ -85,7 +85,7 @@ export interface ChatMessage {
 export interface Recording {
   session_id: number;
   room_name: string;
-  recording_path: string | null;
+  has_recording: boolean;
   recording_duration_seconds: number | null;
   started_at: string;
   ended_at: string | null;

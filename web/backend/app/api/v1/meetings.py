@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 import mimetypes
@@ -20,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.database import get_db
+from app.database import AsyncSessionLocal, get_db
 from app.dependencies import get_current_user
 from app.models.booking import Booking
 from app.models.meeting import MeetingChatFile, MeetingChatMessage, MeetingInvitation, MeetingParticipantLog, MeetingSession
@@ -30,7 +29,7 @@ from app.schemas.meeting import (
     GuestJoinInfo, GuestRequestBody, InviteLinkResponse, InviteStatusResponse,
     MeetingJoinResponse, RecordingResponse,
 )
-from app.services.video import create_access_token, derive_e2ee_key, ensure_room_exists, is_participant_in_room, kick_participant, start_recording, stop_recording
+from app.services.video import create_access_token, derive_e2ee_key, ensure_room_exists, is_participant_in_room, start_recording, stop_recording
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/meetings", tags=["meetings"])
@@ -224,14 +223,6 @@ async def join_meeting(
         except Exception as exc:
             logger.warning(f"ensure_room_exists failed: {exc}")
 
-    # Kick any ghost connection with the same identity before issuing a new token.
-    # Wait up to 1.5s for LiveKit to propagate the kick — otherwise the new client
-    # connects while the ghost is still in the room and sees a duplicate "Вы".
-    if booking.video_room_name:
-        if await is_participant_in_room(booking.video_room_name, f"user-{current_user.id}"):
-            await kick_participant(booking.video_room_name, f"user-{current_user.id}")
-            await asyncio.sleep(1.5)
-
     token = create_access_token(
         room_name=booking.video_room_name,
         user_id=current_user.id,
@@ -239,6 +230,9 @@ async def join_meeting(
     )
     # Pre-authorize user for chat access (before LiveKit webhook fires)
     _join_authorized.setdefault(booking_id, set()).add(current_user.id)
+    # Evict oldest entry to prevent unbounded growth (one entry per meeting, cap at 500)
+    if len(_join_authorized) > 500:
+        _join_authorized.pop(next(iter(_join_authorized)))
 
     return MeetingJoinResponse(
         room_name=booking.video_room_name,
@@ -399,7 +393,8 @@ async def download_chat_file(
     return FileResponse(
         chat_file.storage_path,
         filename=chat_file.filename,
-        media_type=chat_file.mime_type,
+        media_type="application/octet-stream",
+        content_disposition_type="attachment",
     )
 
 
@@ -423,7 +418,7 @@ async def get_recordings(
         RecordingResponse(
             session_id=s.id,
             room_name=s.room_name,
-            recording_path=s.recording_path,
+            has_recording=bool(s.recording_path),
             recording_duration_seconds=s.recording_duration_seconds,
             started_at=s.started_at,
             ended_at=s.ended_at,
@@ -460,6 +455,7 @@ async def download_recording(
         str(rec_path),
         filename=rec_path.name,
         media_type="video/mp4",
+        content_disposition_type="attachment",
     )
 
 
@@ -471,6 +467,8 @@ async def start_meeting_recording(
 ) -> dict:
     booking = await _get_active_booking(booking_id, db)
     await _check_meeting_access(booking, current_user, db)
+    if booking.user_id != current_user.id and current_user.role not in ("admin", "superadmin"):
+        raise HTTPException(403, "Only the organizer can control recording")
 
     result = await db.execute(
         select(MeetingSession)
@@ -479,7 +477,13 @@ async def start_meeting_recording(
     )
     session = result.scalar_one_or_none()
     if not session:
-        raise HTTPException(404, "No active meeting session — room may not have started yet")
+        # Webhook may not have fired yet — create session on demand
+        if not booking.video_room_name:
+            raise HTTPException(400, "No video room configured for this booking")
+        session = MeetingSession(booking_id=booking_id, room_name=booking.video_room_name)
+        db.add(session)
+        await db.commit()
+        await db.refresh(session)
     if session.egress_id:
         raise HTTPException(409, "Recording already in progress")
 
@@ -501,6 +505,8 @@ async def stop_meeting_recording(
 ) -> dict:
     booking = await _get_active_booking(booking_id, db)
     await _check_meeting_access(booking, current_user, db)
+    if booking.user_id != current_user.id and current_user.role not in ("admin", "superadmin"):
+        raise HTTPException(403, "Only the organizer can control recording")
 
     result = await db.execute(
         select(MeetingSession)
@@ -512,14 +518,14 @@ async def stop_meeting_recording(
         raise HTTPException(404, "No active recording")
 
     egress_id = session.egress_id
-    session.egress_id = None
-    await db.commit()
-
     try:
         await stop_recording(egress_id)
     except Exception as exc:
         logger.warning(f"stop_recording failed for egress {egress_id}: {exc}")
+        raise HTTPException(502, "Failed to stop recording")
 
+    session.egress_id = None
+    await db.commit()
     return {"ok": True}
 
 
@@ -727,37 +733,42 @@ async def chat_websocket(
     websocket: WebSocket,
     booking_id: int,
     token: str = Query(default=""),
-    db: AsyncSession = Depends(get_db),
 ) -> None:
     # Accept FIRST so browser sees WS as OPEN; then auth
     await websocket.accept()
 
     effective_token = token or websocket.cookies.get("access_token", "")
-    try:
-        user = await _ws_auth(effective_token, db)
-    except HTTPException:
-        await websocket.send_json({"error": "unauthorized"})
-        await websocket.close(code=4401)
-        return
+    # Short-lived session for auth + access check only — released before entering the loop
+    async with AsyncSessionLocal() as init_db:
+        try:
+            user = await _ws_auth(effective_token, init_db)
+        except HTTPException:
+            await websocket.send_json({"error": "unauthorized"})
+            await websocket.close(code=4401)
+            return
 
-    booking = await db.execute(
-        select(Booking).where(Booking.id == booking_id, Booking.deleted_at.is_(None))
-    )
-    booking_obj = booking.scalar_one_or_none()
-    if not booking_obj:
-        await websocket.send_json({"error": "not_found"})
-        await websocket.close(code=4404)
-        return
+        booking_res = await init_db.execute(
+            select(Booking).where(Booking.id == booking_id, Booking.deleted_at.is_(None))
+        )
+        booking_obj = booking_res.scalar_one_or_none()
+        if not booking_obj:
+            await websocket.send_json({"error": "not_found"})
+            await websocket.close(code=4404)
+            return
 
-    try:
-        await _check_meeting_access(booking_obj, user, db)
-    except HTTPException:
-        await websocket.send_json({"error": "forbidden"})
-        await websocket.close(code=4403)
-        return
+        try:
+            await _check_meeting_access(booking_obj, user, init_db)
+        except HTTPException:
+            await websocket.send_json({"error": "forbidden"})
+            await websocket.close(code=4403)
+            return
+
+    # Capture scalars before session closes
+    user_id = user.id
+    user_display = user.display_name or f"user-{user.id}"
 
     manager._rooms.setdefault(booking_id, set()).add(websocket)
-    logger.info(f"[chat_ws] user={user.id} joined booking={booking_id}, total_ws={len(manager._rooms.get(booking_id, set()))}")
+    logger.info(f"[chat_ws] user={user_id} joined booking={booking_id}, total_ws={len(manager._rooms.get(booking_id, set()))}")
     try:
         while True:
             data = await websocket.receive_json()
@@ -765,10 +776,9 @@ async def chat_websocket(
             # Reaction — broadcast only, no DB
             if isinstance(data, dict) and data.get("type") == "reaction":
                 emoji = str(data.get("emoji", ""))[:10]
-                display = user.display_name or f"user-{user.id}"
                 await manager.broadcast(booking_id, {
                     "type": "reaction", "emoji": emoji,
-                    "user_id": user.id, "user_name": display,
+                    "user_id": user_id, "user_name": user_display,
                 })
                 continue
 
@@ -778,30 +788,31 @@ async def chat_websocket(
                 await websocket.send_json({"error": "Invalid message"})
                 continue
 
-            file: Optional[MeetingChatFile] = None
-            if payload.file_id:
-                file_res = await db.execute(
-                    select(MeetingChatFile).where(
-                        MeetingChatFile.id == payload.file_id,
-                        MeetingChatFile.booking_id == booking_id,
+            # Fresh session per message — prevents stale connection after long idle
+            async with AsyncSessionLocal() as db:
+                file: Optional[MeetingChatFile] = None
+                if payload.file_id:
+                    file_res = await db.execute(
+                        select(MeetingChatFile).where(
+                            MeetingChatFile.id == payload.file_id,
+                            MeetingChatFile.booking_id == booking_id,
+                        )
                     )
+                    file = file_res.scalar_one_or_none()
+
+                msg = MeetingChatMessage(
+                    booking_id=booking_id,
+                    user_id=user_id,
+                    body=payload.body,
+                    file_id=payload.file_id,
                 )
-                file = file_res.scalar_one_or_none()
+                db.add(msg)
+                await db.commit()
+                await db.refresh(msg)
 
-            msg = MeetingChatMessage(
-                booking_id=booking_id,
-                user_id=user.id,
-                body=payload.body,
-                file_id=payload.file_id,
-            )
-            db.add(msg)
-            await db.commit()
-            await db.refresh(msg)
-
-            display = user.display_name or f"user-{user.id}"
-            await manager.broadcast(booking_id, _message_to_dict(msg, display, file))
+            await manager.broadcast(booking_id, _message_to_dict(msg, user_display, file))
     except WebSocketDisconnect:
         pass
     finally:
         manager.disconnect(booking_id, websocket)
-        logger.info(f"[chat_ws] user={user.id} left booking={booking_id}, remaining_ws={len(manager._rooms.get(booking_id, set()))}")
+        logger.info(f"[chat_ws] user={user_id} left booking={booking_id}, remaining_ws={len(manager._rooms.get(booking_id, set()))}")
