@@ -27,24 +27,27 @@ jobs:
           git config --global --add safe.directory /var/www/www-root/data/www/dev.corpmeet.uz
           git fetch origin main
           git reset --hard origin/main
-          if [ ! -f backend/app/.env ] && [ -f web/backend/app/.env ]; then
-            mkdir -p backend/app
-            cp web/backend/app/.env backend/app/.env
-          fi
-          # Remove DATABASE_URL from env_file so docker-compose environment: block takes effect
+          # Strip Windows CRLF from root .env to avoid \r in passwords
+          sed -i 's/\r//' .env
+          # Extract clean pg credentials
+          _PG_USER=$(sed -n 's/^POSTGRES_USER=//p' .env)
+          _PG_PASS=$(sed -n 's/^POSTGRES_PASSWORD=//p' .env)
+          _PG_DB=$(sed -n 's/^POSTGRES_DB=//p' .env)
+          PGDATA_PATH=$(sed -n 's/^PGDATA_PATH=//p' .env)
+          # Remove DATABASE_URL from env_file so shell env takes full control
           if [ -f web/backend/app/.env ]; then
+            sed -i 's/\r//' web/backend/app/.env
             sed -i '/^DATABASE_URL=/d' web/backend/app/.env
-            echo "=== Removed DATABASE_URL from env_file — docker-compose environment: will provide db:5432 ==="
           fi
-          # Also load PGDATA_PATH for use below
-          if [ -f .env ]; then PGDATA_PATH=$(sed -n 's/^PGDATA_PATH=//p' .env | tr -d '\r'); fi
           docker compose down --remove-orphans 2>/dev/null || true
           docker rm -f corpmeet-db corpmeet-backend corpmeet-frontend corpmeet-livekit corpmeet-redis corpmeet-livekit-egress 2>/dev/null || true
+          # Reset pgdata so postgres re-initializes with clean password
+          rm -rf ${PGDATA_PATH:-./pgdata}
           mkdir -p ${PGDATA_PATH:-./pgdata}
-          unset DATABASE_URL
           docker network prune -f 2>/dev/null || true
+          # Force DATABASE_URL via shell env — highest Docker Compose priority
+          export DATABASE_URL="postgresql+asyncpg://${_PG_USER}:${_PG_PASS}@db:5432/${_PG_DB}"
           docker compose build
-          echo "=== COMPOSE DATABASE_URL ===" && docker compose config 2>&1 | grep -A1 DATABASE_URL || true
-          docker compose up -d --remove-orphans || (echo "=== BACKEND LOGS (head) ===" && docker logs corpmeet-backend 2>&1 | head -30 && echo "=== BACKEND LOGS (tail) ===" && docker logs corpmeet-backend 2>&1 | tail -30 && echo "=== CONTAINER ENV ===" && docker inspect corpmeet-backend --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | grep DATABASE_URL || true && exit 1)
+          docker compose up -d --remove-orphans || (echo "=== BACKEND LOGS ===" && docker logs corpmeet-backend 2>&1 | tail -50 && exit 1)
           sleep 5
           docker compose ps
