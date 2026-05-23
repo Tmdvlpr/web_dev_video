@@ -27,27 +27,27 @@ jobs:
           git config --global --add safe.directory /var/www/www-root/data/www/dev.corpmeet.uz
           git fetch origin main
           git reset --hard origin/main
-          # Strip Windows CRLF from root .env to avoid \r in passwords
-          sed -i 's/\r//' .env
+          # Strip CRLF from root .env (tr is more portable than sed \r)
+          tr -d '\r' < .env > .env.tmp && mv .env.tmp .env
           # Extract clean pg credentials
-          _PG_USER=$(sed -n 's/^POSTGRES_USER=//p' .env)
-          _PG_PASS=$(sed -n 's/^POSTGRES_PASSWORD=//p' .env)
-          _PG_DB=$(sed -n 's/^POSTGRES_DB=//p' .env)
-          PGDATA_PATH=$(sed -n 's/^PGDATA_PATH=//p' .env)
-          # Remove DATABASE_URL from env_file so shell env takes full control
-          if [ -f web/backend/app/.env ]; then
-            sed -i 's/\r//' web/backend/app/.env
-            sed -i '/^DATABASE_URL=/d' web/backend/app/.env
-          fi
+          _PG_USER=$(grep '^POSTGRES_USER=' .env | cut -d= -f2-)
+          _PG_PASS=$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2-)
+          _PG_DB=$(grep '^POSTGRES_DB=' .env | cut -d= -f2-)
+          PGDATA_PATH=$(grep '^PGDATA_PATH=' .env | cut -d= -f2-)
+          echo "=== PG: user=$_PG_USER db=$_PG_DB pgdata=${PGDATA_PATH:-./pgdata} ==="
+          # Write correct DATABASE_URL directly into backend env_file
+          touch web/backend/app/.env
+          tr -d '\r' < web/backend/app/.env > web/backend/app/.env.tmp && mv web/backend/app/.env.tmp web/backend/app/.env
+          sed -i '/^DATABASE_URL=/d' web/backend/app/.env
+          echo "DATABASE_URL=postgresql+asyncpg://${_PG_USER}:${_PG_PASS}@db:5432/${_PG_DB}" >> web/backend/app/.env
+          echo "=== Written DATABASE_URL → db:5432 ==="
           docker compose down --remove-orphans 2>/dev/null || true
           docker rm -f corpmeet-db corpmeet-backend corpmeet-frontend corpmeet-livekit corpmeet-redis corpmeet-livekit-egress 2>/dev/null || true
           # Reset pgdata so postgres re-initializes with clean password
           rm -rf ${PGDATA_PATH:-./pgdata}
           mkdir -p ${PGDATA_PATH:-./pgdata}
           docker network prune -f 2>/dev/null || true
-          # Force DATABASE_URL via shell env — highest Docker Compose priority
-          export DATABASE_URL="postgresql+asyncpg://${_PG_USER}:${_PG_PASS}@db:5432/${_PG_DB}"
           docker compose build
-          docker compose up -d --remove-orphans || (echo "=== BACKEND LOGS ===" && docker logs corpmeet-backend 2>&1 | tail -50 && exit 1)
+          docker compose up -d --remove-orphans || (echo "=== BACKEND LOGS ===" && docker logs corpmeet-backend 2>&1 | tail -50 && echo "=== CONTAINER ENV ===" && docker inspect corpmeet-backend --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | grep -i database || true && exit 1)
           sleep 5
           docker compose ps
