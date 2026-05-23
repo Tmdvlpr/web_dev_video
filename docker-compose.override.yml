@@ -1,19 +1,15 @@
 services:
   backend:
-    # Use external DB — skip local db service dependency
     depends_on: {}
     environment:
-      DATABASE_URL: "postgresql+asyncpg://corpmeet:uzinfocom_corpmeet123@194.87.138.47:5433/corpmeet"
       DB_SCHEMA: "video"
-      LIVEKIT_PUBLIC_URL: "wss://float-deftly-payer.ngrok-free.dev/lk"
-      FRONTEND_URL: "https://float-deftly-payer.ngrok-free.dev"
+      LIVEKIT_PUBLIC_URL: "wss://dev.corpmeet.uz/lk"
+      FRONTEND_URL: "https://dev.corpmeet.uz"
 
   livekit:
-    # Dev config: node_ip=127.0.0.1 so ICE candidates are reachable via Docker Desktop localhost
     volumes:
       - ./infra/livekit/livekit-dev.yaml:/etc/livekit.yaml:ro
     environment:
-      # LiveKit requires "key: secret" format (space after colon)
       LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
 
   frontend:
@@ -24,7 +20,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: corpmeet-redis
+    container_name: corpmeet-redis-dev
     restart: unless-stopped
     networks:
-      - corpmeet
+      - corpmeet-dev
