@@ -41,6 +41,7 @@ jobs:
           docker compose down --remove-orphans 2>/dev/null || true
           docker rm -f corpmeet-db corpmeet-backend corpmeet-frontend corpmeet-livekit corpmeet-redis corpmeet-livekit-egress 2>/dev/null || true
           mkdir -p ${PGDATA_PATH:-./pgdata}
+          unset DATABASE_URL
           docker network prune -f 2>/dev/null || true
           docker compose build
           echo "=== COMPOSE DATABASE_URL ===" && docker compose config 2>&1 | grep -A1 DATABASE_URL || true
