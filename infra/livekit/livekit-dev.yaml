@@ -1,8 +1,8 @@
 port: 7880
 rtc:
   tcp_port: 7881
-  port_range_start: 50000
-  port_range_end: 50500
+  port_range_start: 50501
+  port_range_end: 50999
   use_external_ip: false
   node_ip: 172.16.12.93    # Windows Wi-Fi LAN IP — reachable from all devices on same network
 
