@@ -31,11 +31,10 @@ jobs:
             mkdir -p backend/app
             cp web/backend/app/.env backend/app/.env
           fi
-          # Patch password in DATABASE_URL (keep host/port from original, only update password)
-          if [ -f .env ] && [ -f web/backend/app/.env ]; then
-            _PG_PASS=$(sed -n 's/^POSTGRES_PASSWORD=//p' .env | tr -d '\r')
-            sed -i "s|postgresql+asyncpg://\([^:]*\):[^@]*@|postgresql+asyncpg://\1:${_PG_PASS}@|" web/backend/app/.env
-            echo "=== PATCHED .env DATABASE_URL ===" && grep "^DATABASE_URL=" web/backend/app/.env | sed 's/:.*@/:***@/' || true
+          # Remove DATABASE_URL from env_file so docker-compose environment: block takes effect
+          if [ -f web/backend/app/.env ]; then
+            sed -i '/^DATABASE_URL=/d' web/backend/app/.env
+            echo "=== Removed DATABASE_URL from env_file — docker-compose environment: will provide db:5432 ==="
           fi
           # Also load PGDATA_PATH for use below
           if [ -f .env ]; then PGDATA_PATH=$(sed -n 's/^PGDATA_PATH=//p' .env | tr -d '\r'); fi
