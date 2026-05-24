@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "../Common/ConfirmDialog";
 import { MeetingListSkeleton } from "../Common/Skeleton";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -458,14 +458,14 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                       ))}
                     </div>
                     {(analyticsData?.workspaces?.length ?? 0) > 0 && (
-                      <select value={analyticsWorkspaceId ?? ""} onChange={e => setAnalyticsWorkspaceId(e.target.value ? Number(e.target.value) : undefined)}
-                        className="w-full rounded-lg px-2.5 py-1.5 text-xs outline-none"
-                        style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)", appearance: "none", WebkitAppearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center", paddingRight: "24px" }}>
-                        <option value="">Все пространства</option>
-                        {analyticsData!.workspaces.map(ws => (
-                          <option key={ws.id} value={ws.id}>{ws.name}</option>
-                        ))}
-                      </select>
+                      <CustomSelect
+                        value={analyticsWorkspaceId !== undefined ? String(analyticsWorkspaceId) : ""}
+                        onChange={v => setAnalyticsWorkspaceId(v ? Number(v) : undefined)}
+                        options={[
+                          { value: "", label: "Все пространства" },
+                          ...(analyticsData?.workspaces ?? []).map(ws => ({ value: String(ws.id), label: ws.name })),
+                        ]}
+                      />
                     )}
                   </div>
 
@@ -602,6 +602,83 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
         onCancel={() => setDeleteBookingTarget(null)}
       />
     </AnimatePresence>
+  );
+}
+
+function CustomSelect({
+  value, onChange, options, disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: Array<{ value: string; label: string }>;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [dropRect, setDropRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const selected = options.find(o => o.value === value)?.label ?? value;
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (btnRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const toggle = () => {
+    if (disabled) return;
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setDropRect({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
+    setOpen(v => !v);
+  };
+
+  return (
+    <div>
+      <button ref={btnRef} type="button" disabled={disabled} onClick={toggle}
+        className="w-full rounded-lg px-2.5 py-1.5 text-xs text-left flex items-center justify-between gap-2 outline-none"
+        style={{
+          background: "var(--input-bg)", color: "var(--text)",
+          border: `1.5px solid ${open ? "var(--primary)" : "var(--input-border)"}`,
+          cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.6 : 1,
+          transition: "border-color 0.15s",
+        }}>
+        <span className="truncate min-w-0">{selected}</span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className="shrink-0"
+          style={{ transform: open ? "rotate(180deg)" : undefined, transition: "transform 0.15s" }}>
+          <path d="M1 1l4 4 4-4" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {open && dropRect && (
+        <div onMouseDown={e => e.stopPropagation()}
+          style={{
+            position: "fixed", top: dropRect.top, left: dropRect.left, width: dropRect.width,
+            zIndex: 9999, background: "var(--panel)", border: "1.5px solid var(--border)",
+            borderRadius: 10, overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+          }}>
+          {options.map(o => (
+            <button key={o.value} type="button"
+              onMouseDown={() => { onChange(o.value); setOpen(false); }}
+              className="w-full px-2.5 py-1.5 text-xs text-left"
+              style={{
+                background: o.value === value ? "var(--primary-light)" : "transparent",
+                color: o.value === value ? "var(--primary)" : "var(--text)",
+                fontWeight: o.value === value ? "600" : "400",
+                transition: "background 0.1s",
+              }}
+              onMouseEnter={e => { if (o.value !== value) e.currentTarget.style.background = "var(--elevated)"; }}
+              onMouseLeave={e => { if (o.value !== value) e.currentTarget.style.background = "transparent"; }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

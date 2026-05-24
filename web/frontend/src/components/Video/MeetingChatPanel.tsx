@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { apiClient } from "../../api/axios";
 import { meetingsApi } from "../../api/meetings";
 import type { ChatFile, ChatMessage } from "../../types";
 
@@ -60,8 +61,8 @@ export function MeetingChatPanel({ bookingId }: Props) {
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 50 * 1024 * 1024) {
-      alert("Файл слишком большой (максимум 50 МБ)");
+    if (file.size > 20 * 1024 * 1024) {
+      alert("Файл слишком большой (максимум 20 МБ)");
       return;
     }
     setUploading(true);
@@ -71,13 +72,38 @@ export function MeetingChatPanel({ bookingId }: Props) {
       );
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ body: "", file_id: chatFile.id }));
+      } else {
+        // WS не открыт — сохраняем через REST и показываем локально
+        const msg = await meetingsApi.sendChatMessage(bookingId, "", chatFile.id);
+        setMessages(prev => [...prev, msg as unknown as ChatMessage]);
       }
-    } catch {
-      alert("Ошибка загрузки файла");
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } }; message?: string })
+        ?.response?.data?.detail ?? (err as { message?: string })?.message ?? "Неизвестная ошибка";
+      alert(`Ошибка загрузки файла: ${detail}`);
     } finally {
       setUploading(false);
       setUploadProgress(0);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDownload = async (fileId: number, filename: string) => {
+    try {
+      const res = await apiClient.get(
+        `/api/v1/meetings/${bookingId}/chat/files/${fileId}`,
+        { responseType: "blob" },
+      );
+      const url = URL.createObjectURL(res.data as Blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Не удалось скачать файл");
     }
   };
 
@@ -118,18 +144,17 @@ export function MeetingChatPanel({ bookingId }: Props) {
               </p>
             )}
             {m.file && (
-              <a
-                href={meetingsApi.downloadFileUrl(bookingId, m.file.id)}
-                className="flex items-center gap-1.5 mt-0.5 text-xs rounded-lg px-2 py-1.5"
-                style={{ background: "#1f2937", color: "#93c5fd" }}
-                download={m.file.filename}
+              <button
+                onClick={() => handleDownload(m.file!.id, m.file!.filename)}
+                className="flex items-center gap-1.5 mt-0.5 text-xs rounded-lg px-2 py-1.5 w-full text-left"
+                style={{ background: "#1f2937", color: "#93c5fd", cursor: "pointer" }}
               >
                 <span>📎</span>
                 <span className="truncate max-w-[160px]">{m.file.filename}</span>
                 <span style={{ color: "#6b7280" }}>
                   ({(m.file.size / 1024).toFixed(0)} КБ)
                 </span>
-              </a>
+              </button>
             )}
           </div>
         ))}

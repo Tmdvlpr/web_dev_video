@@ -395,7 +395,7 @@ async def create_booking(
 
     now_utc = datetime.now(timezone.utc)
     start_aware = payload.start_time if payload.start_time.tzinfo else payload.start_time.replace(tzinfo=timezone.utc)
-    if start_aware < now_utc:
+    if start_aware < now_utc - timedelta(minutes=2):
         raise HTTPException(400, "Нельзя бронировать время в прошлом")
 
     # Enforce type-specific overrides

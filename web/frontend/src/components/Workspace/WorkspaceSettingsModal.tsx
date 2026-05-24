@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { roomsApi } from "../../api/rooms";
 import { workspacesApi } from "../../api/workspaces";
@@ -77,7 +77,7 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
         ))}
       </div>
 
-      <div className="overflow-y-auto px-6 py-5" style={{ maxHeight: "calc(80vh - 130px)", minHeight: "380px" }}>
+      <div className="flex-1 overflow-y-auto px-6 py-5">
         {tab === "general" && (
           <GeneralTab
             workspaceId={activeWorkspace.id}
@@ -135,7 +135,7 @@ function Overlay({ isDark, onClose, children }: { isDark: boolean; onClose: () =
             border: "1px solid var(--border)",
             boxShadow: isDark ? "0 32px 80px rgba(0,0,0,0.7)" : "0 24px 64px rgba(15,23,42,0.18)",
             maxWidth: 640,
-            maxHeight: "80vh",
+            height: "min(640px, 80vh)",
           }}
         >
           {children}
@@ -256,15 +256,15 @@ function GeneralTab({
 
       <div>
         <Label>Часовой пояс</Label>
-        <select
+        <CustomSelect
           disabled={!isAdmin || savingTz}
-          value={tz} onChange={e => saveTz(e.target.value)}
-          className="w-full rounded-xl px-3 py-2 text-sm outline-none"
-          style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)", appearance: "none", WebkitAppearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center", paddingRight: "32px" }}
-        >
-          {TIMEZONES.includes(tz) ? null : <option value={tz}>{tz}</option>}
-          {TIMEZONES.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
+          value={tz}
+          onChange={saveTz}
+          options={[
+            ...(TIMEZONES.includes(tz) ? [] : [{ value: tz, label: tz }]),
+            ...TIMEZONES.map(t => ({ value: t, label: t })),
+          ]}
+        />
       </div>
 
       <div>
@@ -521,12 +521,14 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner }: { workspaceId: 
                           className="w-full rounded-lg px-2.5 py-1.5 text-xs outline-none"
                           style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
                         {isOwner && m.role !== "owner" && (
-                          <select value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}
-                            className="w-full rounded-lg px-2.5 py-1.5 text-xs outline-none"
-                            style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)", appearance: "none", WebkitAppearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center", paddingRight: "24px" }}>
-                            <option value="member">Участник</option>
-                            <option value="admin">Администратор</option>
-                          </select>
+                          <CustomSelect size="xs"
+                            value={editForm.role}
+                            onChange={v => setEditForm(f => ({ ...f, role: v }))}
+                            options={[
+                              { value: "member", label: "Участник" },
+                              { value: "admin", label: "Администратор" },
+                            ]}
+                          />
                         )}
                         <div className="flex gap-2 justify-end">
                           <button onClick={() => setEditMemberId(null)}
@@ -1022,6 +1024,86 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
       )}
 
       {err && <p className="text-xs mt-2" style={{ color: "#dc2626" }}>{err}</p>}
+    </div>
+  );
+}
+
+function CustomSelect({
+  value, onChange, options, disabled, size = "sm",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: Array<{ value: string; label: string }>;
+  disabled?: boolean;
+  size?: "xs" | "sm";
+}) {
+  const [open, setOpen] = useState(false);
+  const [dropRect, setDropRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const selected = options.find(o => o.value === value)?.label ?? value;
+  const pad = size === "xs" ? "px-2.5 py-1.5" : "px-3 py-2";
+  const fz = size === "xs" ? "text-xs" : "text-sm";
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (btnRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const toggle = () => {
+    if (disabled) return;
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setDropRect({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
+    setOpen(v => !v);
+  };
+
+  return (
+    <div>
+      <button ref={btnRef} type="button" disabled={disabled} onClick={toggle}
+        className={`w-full rounded-xl ${pad} ${fz} text-left flex items-center justify-between gap-2 outline-none`}
+        style={{
+          background: "var(--input-bg)", color: "var(--text)",
+          border: `1.5px solid ${open ? "var(--primary)" : "var(--input-border)"}`,
+          cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.6 : 1,
+          transition: "border-color 0.15s",
+        }}>
+        <span className="truncate min-w-0">{selected}</span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className="shrink-0"
+          style={{ transform: open ? "rotate(180deg)" : undefined, transition: "transform 0.15s" }}>
+          <path d="M1 1l4 4 4-4" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {open && dropRect && (
+        <div onMouseDown={e => e.stopPropagation()}
+          style={{
+            position: "fixed", top: dropRect.top, left: dropRect.left, width: dropRect.width,
+            zIndex: 9999, background: "var(--modal)", border: "1.5px solid var(--border)",
+            borderRadius: 12, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.18)",
+          }}>
+          {options.map(o => (
+            <button key={o.value} type="button"
+              onMouseDown={() => { onChange(o.value); setOpen(false); }}
+              className={`w-full ${pad} ${fz} text-left`}
+              style={{
+                background: o.value === value ? "var(--primary-light)" : "transparent",
+                color: o.value === value ? "var(--primary)" : "var(--text)",
+                fontWeight: o.value === value ? "600" : "400",
+                transition: "background 0.1s",
+              }}
+              onMouseEnter={e => { if (o.value !== value) e.currentTarget.style.background = "var(--elevated)"; }}
+              onMouseLeave={e => { if (o.value !== value) e.currentTarget.style.background = "transparent"; }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

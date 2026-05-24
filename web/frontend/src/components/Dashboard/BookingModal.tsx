@@ -431,7 +431,8 @@ export function BookingModal({
     const sMs = new Date(startTime).getTime();
     const eMs = new Date(endTime).getTime();
     const durMin = (eMs - sMs) / 60_000;
-    if (sMs >= eMs) errs.time = t("booking.endError");
+    if (!isEdit && sMs < Date.now() - 120_000) errs.time = "Нельзя бронировать время в прошлом";
+    else if (sMs >= eMs) errs.time = t("booking.endError");
     else if (durMin < 15) errs.time = t("booking.minDur");
     else if (durMin > 480) errs.time = t("booking.maxDur");
     if (recurrence === "custom" && recurDays.length === 0) errs.days = t("booking.pickDays");
