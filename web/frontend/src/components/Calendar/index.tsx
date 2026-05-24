@@ -10,7 +10,6 @@ import { bookingsApi } from "../../api/bookings";
 import { roomsApi } from "../../api/rooms";
 import type { Booking, SlotResponse, User } from "../../types";
 import { DayColumn } from "./DayColumn";
-import { InteractiveStripe } from "../Common/InteractiveStripe";
 
 interface CalendarProps {
   currentUser: User | null;
@@ -224,8 +223,16 @@ function MonthView({ anchorDate, today, onNavigate, onCardClick, searchQuery, on
 
   const handleWheel = (e: React.WheelEvent) => {
     if (wheelLock.current) return;
+    const absX = Math.abs(e.deltaX);
+    const absY = Math.abs(e.deltaY);
+    if (absX < 8 && absY < 8) return;
     wheelLock.current = true;
-    if (e.deltaY > 0) onNext(); else onPrev();
+    // Horizontal trackpad swipe takes priority
+    if (absX > absY) {
+      if (e.deltaX > 0) onNext(); else onPrev();
+    } else {
+      if (e.deltaY > 0) onNext(); else onPrev();
+    }
     if (wheelTimeoutRef.current) clearTimeout(wheelTimeoutRef.current);
     wheelTimeoutRef.current = setTimeout(() => { wheelLock.current = false; }, 600);
   };
@@ -285,56 +292,10 @@ function MonthView({ anchorDate, today, onNavigate, onCardClick, searchQuery, on
   );
 }
 
-/* ── Workspace picker ── */
-function WorkspacePicker({ onRoomReset }: { onRoomReset: () => void }) {
-  const { workspaces, activeWorkspace, setActiveWorkspaceId } = useWorkspace();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  if (workspaces.length === 0) return null;
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
-        style={{ background: open ? "var(--elevated)" : "transparent", color: open ? "var(--text)" : "var(--text-muted)", border: `1px solid ${open ? "var(--border)" : "transparent"}` }}
-        onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; e.currentTarget.style.color = "var(--text)"; }}
-        onMouseLeave={e => { if (!open) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; } }}
-      >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-        </svg>
-        <span style={{ maxWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{activeWorkspace?.name ?? "Пространство"}</span>
-        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 rounded-xl shadow-xl py-1" style={{ minWidth: 160, background: "var(--card)", border: "1px solid var(--border)" }}>
-          {workspaces.map(ws => (
-            <button key={ws.id} onClick={() => { setActiveWorkspaceId(ws.id); onRoomReset(); setOpen(false); }}
-              className="w-full text-left px-3 py-1.5 text-xs font-medium transition-all"
-              style={{ background: ws.id === activeWorkspace?.id ? "var(--primary-light)" : "transparent", color: ws.id === activeWorkspace?.id ? "var(--primary)" : "var(--text)" }}>
-              {ws.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ── Room picker ── */
 function RoomPicker({ activeRoomId, onRoomChange }: { activeRoomId: number | null; onRoomChange: (id: number | null) => void }) {
   const { myRooms, activeWorkspace, refetchRooms } = useWorkspace();
-  const [open, setOpen] = useState(false);
-  const [joining, setJoining] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joinErr, setJoinErr] = useState<string | null>(null);
   const [joinInfo, setJoinInfo] = useState<string | null>(null);
@@ -344,11 +305,11 @@ function RoomPicker({ activeRoomId, onRoomChange }: { activeRoomId: number | nul
   const rooms = myRooms.filter(r => r.workspace_id === activeWorkspace?.id);
 
   useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    if (!joinOpen) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setJoinOpen(false); };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+  }, [joinOpen]);
 
   const handleJoin = async () => {
     if (!activeWorkspace || !joinCode.trim()) return;
@@ -357,7 +318,7 @@ function RoomPicker({ activeRoomId, onRoomChange }: { activeRoomId: number | nul
       const result = await roomsApi.join(joinCode.trim(), activeWorkspace.id);
       if (result.status === 201) {
         refetchRooms();
-        setJoinCode(""); setJoining(false);
+        setJoinCode(""); setJoinOpen(false);
       } else if (result.status === 202) {
         setJoinCode("");
         setJoinInfo("⏳ Заявка отправлена. Ждём подтверждения от владельца комнаты.");
@@ -373,81 +334,79 @@ function RoomPicker({ activeRoomId, onRoomChange }: { activeRoomId: number | nul
     } finally { setJoinBusy(false); }
   };
 
-  const activeRoom = rooms.find(r => r.room.id === activeRoomId);
+  if (rooms.length === 0) return null;
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative flex items-center gap-0.5" ref={ref}>
+      {/* All rooms tab */}
       <button
-        onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+        onClick={() => onRoomChange(null)}
+        className="px-2.5 h-6 text-xs font-medium rounded-md transition-all"
         style={{
-          background: activeRoomId ? "var(--primary-light)" : (open ? "var(--elevated)" : "transparent"),
-          color: activeRoomId ? "var(--primary)" : (open ? "var(--text)" : "var(--text-muted)"),
-          border: `1px solid ${activeRoomId ? "var(--primary-border)" : (open ? "var(--border)" : "transparent")}`,
+          background: !activeRoomId ? "var(--primary)" : "transparent",
+          color: !activeRoomId ? "#fff" : "var(--text-muted)",
         }}
-        onMouseEnter={e => { if (!activeRoomId) { e.currentTarget.style.background = "var(--elevated)"; e.currentTarget.style.color = "var(--text)"; } }}
-        onMouseLeave={e => { if (!activeRoomId && !open) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; } }}
       >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>
-        </svg>
-        <span style={{ maxWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{activeRoom?.room.name ?? (rooms.length > 0 ? "Все комнаты" : "Комнаты")}</span>
-        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        Все
       </button>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 rounded-xl shadow-xl" style={{ minWidth: 180, background: "var(--card)", border: "1px solid var(--border)" }}>
-          <div className="py-1">
-            {rooms.length > 0 && (
-              <button onClick={() => { onRoomChange(null); setOpen(false); }}
-                className="w-full text-left px-3 py-1.5 text-xs font-medium transition-all"
-                style={{ background: !activeRoomId ? "var(--primary-light)" : "transparent", color: !activeRoomId ? "var(--primary)" : "var(--text-muted)" }}>
-                Все комнаты
+
+      {/* Individual room tabs */}
+      {rooms.map(wr => (
+        <button
+          key={wr.room.id}
+          onClick={() => onRoomChange(wr.room.id)}
+          className="px-2.5 h-6 text-xs font-medium rounded-md transition-all flex items-center gap-1"
+          style={{
+            background: wr.room.id === activeRoomId ? "var(--primary)" : "transparent",
+            color: wr.room.id === activeRoomId ? "#fff" : "var(--text-muted)",
+            maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}
+        >
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{wr.room.name}</span>
+          {wr.role === "shared" && <span style={{ fontSize: 9, opacity: 0.5, flexShrink: 0 }}>↗</span>}
+        </button>
+      ))}
+
+      {/* Join by code */}
+      <div className="relative ml-0.5">
+        <button
+          onClick={() => setJoinOpen(v => !v)}
+          className="w-6 h-6 flex items-center justify-center rounded-md transition-all text-sm font-bold leading-none"
+          style={{
+            color: joinOpen ? "var(--primary)" : "var(--text-muted)",
+            border: `1px dashed ${joinOpen ? "var(--primary)" : "var(--border)"}`,
+          }}
+          title="Добавить комнату по коду"
+        >
+          +
+        </button>
+        {joinOpen && (
+          <div className="absolute left-0 top-full mt-1 z-50 rounded-xl shadow-xl p-2 space-y-1.5"
+            style={{ minWidth: 200, background: "var(--card)", border: "1px solid var(--border)" }}>
+            <input
+              autoFocus value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())}
+              placeholder="Код комнаты"
+              className="w-full rounded-lg px-2 py-1 text-xs outline-none font-mono"
+              style={{ background: "var(--input-bg)", border: "1px solid var(--primary)", color: "var(--text)", letterSpacing: "0.08em" }}
+              onKeyDown={e => { if (e.key === "Enter") handleJoin(); if (e.key === "Escape") { setJoinOpen(false); setJoinCode(""); setJoinErr(null); setJoinInfo(null); } }}
+            />
+            {joinErr && <p className="text-xs px-1" style={{ color: "#dc2626" }}>{joinErr}</p>}
+            {joinInfo && <p className="text-xs px-1" style={{ color: "var(--text-muted)" }}>{joinInfo}</p>}
+            <div className="flex gap-1.5">
+              <button onClick={() => { setJoinOpen(false); setJoinCode(""); setJoinErr(null); setJoinInfo(null); }}
+                className="flex-1 py-1 rounded-lg text-xs font-medium"
+                style={{ background: "var(--elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+                Отмена
               </button>
-            )}
-            {rooms.map(wr => (
-              <button key={wr.room.id} onClick={() => { onRoomChange(wr.room.id); setOpen(false); }}
-                className="w-full text-left px-3 py-1.5 text-xs font-medium transition-all flex items-center gap-1.5"
-                style={{ background: wr.room.id === activeRoomId ? "var(--primary-light)" : "transparent", color: wr.room.id === activeRoomId ? "var(--primary)" : "var(--text)" }}>
-                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{wr.room.name}</span>
-                {wr.role === "shared" && <span style={{ fontSize: 10, opacity: 0.5 }}>↗</span>}
+              <button onClick={handleJoin} disabled={joinBusy}
+                className="flex-1 py-1 rounded-lg text-xs font-bold text-white disabled:opacity-50"
+                style={{ background: "var(--primary)" }}>
+                {joinBusy ? "…" : "Добавить"}
               </button>
-            ))}
+            </div>
           </div>
-          <div style={{ borderTop: "1px solid var(--border)" }} className="px-2 py-2">
-            {!joining ? (
-              <button onClick={() => setJoining(true)}
-                className="w-full py-1.5 rounded-lg text-xs font-semibold transition-all"
-                style={{ background: "var(--elevated)", color: "var(--text-muted)", border: "1px dashed var(--border)" }}>
-                + по коду комнаты
-              </button>
-            ) : (
-              <div className="space-y-1.5">
-                <input
-                  autoFocus value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())}
-                  placeholder="Код комнаты"
-                  className="w-full rounded-lg px-2 py-1 text-xs outline-none font-mono"
-                  style={{ background: "var(--input-bg)", border: "1px solid var(--primary)", color: "var(--text)", letterSpacing: "0.08em" }}
-                  onKeyDown={e => { if (e.key === "Enter") handleJoin(); if (e.key === "Escape") { setJoining(false); setJoinCode(""); setJoinErr(null); setJoinInfo(null); } }}
-                />
-                {joinErr && <p className="text-xs px-1" style={{ color: "#dc2626" }}>{joinErr}</p>}
-                {joinInfo && <p className="text-xs px-1" style={{ color: "var(--text-muted)" }}>{joinInfo}</p>}
-                <div className="flex gap-1.5">
-                  <button onClick={() => { setJoining(false); setJoinCode(""); setJoinErr(null); setJoinInfo(null); }}
-                    className="flex-1 py-1 rounded-lg text-xs font-medium"
-                    style={{ background: "var(--elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-                    Отмена
-                  </button>
-                  <button onClick={handleJoin} disabled={joinBusy}
-                    className="flex-1 py-1 rounded-lg text-xs font-bold text-white disabled:opacity-50"
-                    style={{ background: "var(--primary)" }}>
-                    {joinBusy ? "…" : "Добавить"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -518,7 +477,11 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen]   = useState(false);
   const [activeRoomId, setActiveRoomId] = useState<number | null>(null);
-  const BUFFER     = 14; // extra columns pre-rendered on each side (= 2× viewport width)
+
+  // Reset room filter when workspace changes
+  useEffect(() => { setActiveRoomId(null); }, [activeWorkspace?.id]);
+
+  const BUFFER     = 5; // extra columns pre-rendered on each side for swipe buffer
 // Extended dates: BUFFER columns before + 7 visible + BUFFER columns after
   const extDates   = Array.from({ length: 7 + BUFFER * 2 }, (_, i) => {
     const d = new Date(anchorDate);
@@ -553,6 +516,27 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
   const handlePrev = viewMode === "month" ? prevMonth : prevWeek;
   const handleNext = viewMode === "month" ? nextMonth : nextWeek;
 
+  // Trackpad / horizontal mouse-wheel → week navigation
+  const _wheelNavRef = useRef({ prev: handlePrev, next: handleNext });
+  _wheelNavRef.current.prev = handlePrev;
+  _wheelNavRef.current.next = handleNext;
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    let lastNavMs = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY) || Math.abs(e.deltaX) < 8) return;
+      e.preventDefault();
+      const now = Date.now();
+      if (now - lastNavMs < 500) return;
+      lastNavMs = now;
+      if (e.deltaX > 0) _wheelNavRef.current.next();
+      else _wheelNavRef.current.prev();
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const monthLabel = `${t(`cal.mo.${anchorDate.getMonth() + 1}` as "cal.mo.1")} ${anchorDate.getFullYear()}`;
 
   // ── Drag-to-navigate shared logic ──────────────────────────────────────────
@@ -579,11 +563,6 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
 
   // Reset to neutral offset whenever anchor changes — useLayoutEffect runs before paint, preventing flash
   useLayoutEffect(() => { applyTranslate(0); }, [anchorDate]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const navDragStart = () => {
-    dragBaseAnchor.current = anchorDate;
-    cachedColW.current = getDayWidth(); // read layout once at start, not on every move
-  };
 
   const navDragUpdate = (deltaX: number) => {
     const el = gridInnerRef.current;
@@ -750,7 +729,6 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
         )}
 
         <div className="ml-auto flex items-center gap-2">
-          <WorkspacePicker onRoomReset={() => setActiveRoomId(null)} />
           <RoomPicker activeRoomId={activeRoomId} onRoomChange={setActiveRoomId} />
           <div className="w-px h-4 mx-0.5" style={{ background: "var(--border)" }} />
           <RoomStatus roomId={activeRoomId} />
@@ -768,11 +746,6 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
             </svg>
           </button>
 
-          <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
-            <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 2, repeat: Infinity }}
-              className="w-2 h-2 rounded-full" style={{ background: "#ef4444" }} />
-            <span>{t("status.now")}</span>
-          </div>
         </div>
       </div>
 
@@ -788,17 +761,6 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
           direction={monthDir}
         />
       ) : (<>
-
-      {/* Drag-to-navigate stripe */}
-      <div className="relative shrink-0" style={{ height: 4 }}>
-        <InteractiveStripe
-          edge="top"
-          onDragStart={navDragStart}
-          onDragUpdate={navDragUpdate}
-          onDragEnd={(finalDx, vel) => navDragEnd(finalDx, vel)}
-          dayWidth={getDayWidth()}
-        />
-      </div>
 
       {/* Grid */}
       <div className="flex flex-1 overflow-hidden">
@@ -828,15 +790,6 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
             onPointerUp={handleHeaderPointerUp}
             onPointerCancel={handleHeaderPointerUp}
           >
-            {/* Gradient strip along header bottom */}
-            <div style={{
-              position: "absolute", bottom: 0, left: 0, right: 0, height: 3,
-              background: "linear-gradient(90deg, #c4b5fd, #f9a8d4, #fdba74, #fde68a, #86efac, #67e8f9, #93c5fd, #d8b4fe, #fca5a5, #c4b5fd)",
-              backgroundSize: "400% 100%",
-              opacity: headerDragging ? 1 : 0.35,
-              transition: "opacity 0.2s ease",
-              pointerEvents: "none",
-            }} />
           </div>
           {/* Inner grid — wider than viewport to hold buffer columns */}
           <div ref={gridInnerRef} className="grid min-h-full"

@@ -31,9 +31,9 @@ function nowPercent(): number {
 }
 
 // Sun-indexed (getDay() returns 0=Sun)
-const DOW_KEYS = [
-  "cal.dow.sun", "cal.dow.mon", "cal.dow.tue", "cal.dow.wed",
-  "cal.dow.thu", "cal.dow.fri", "cal.dow.sat",
+const DOW_LONG_KEYS = [
+  "cal.dow.sun.long", "cal.dow.mon.long", "cal.dow.tue.long", "cal.dow.wed.long",
+  "cal.dow.thu.long", "cal.dow.fri.long", "cal.dow.sat.long",
 ] as const;
 
 export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotClick, onCardClick, onBookingDrop, isToday }: DayColumnProps) {
@@ -44,7 +44,7 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
   const ghostRef = useRef<HTMLDivElement>(null);
   const ghostTitleRef = useRef<HTMLSpanElement>(null);
   const ghostLabelRef = useRef<HTMLSpanElement>(null);
-  const dayName = t(DOW_KEYS[date.getDay()]);
+  const dayName = t(DOW_LONG_KEYS[date.getDay()]);
   const dayNum  = date.getDate();
   const isPast  = date < new Date(new Date().setHours(0, 0, 0, 0));
   const [nowPct, setNowPct] = useState(() => nowPercent());
@@ -166,20 +166,20 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
         borderLeft: isToday ? "2px solid var(--primary)" : undefined,
       }}>
       {/* Header */}
-      <div className="flex flex-col items-center justify-center sticky top-0 z-10 select-none"
+      <div className="flex items-center justify-center gap-1.5 px-1 sticky top-0 z-10 select-none overflow-hidden"
         style={{
           height: 56,
           background: isToday ? todayHeaderBg : headerBg,
           borderBottom: `1px solid ${isToday ? "var(--primary-border)" : "var(--border)"}`,
           backdropFilter: "blur(8px)",
         }}>
-        <div className="text-xs font-semibold uppercase tracking-widest"
-          style={{ color: isToday ? todayNameColor : normalNameColor, letterSpacing: "0.1em" }}>
-          {dayName}
-        </div>
-        <div className="flex items-center justify-center w-8 h-8 rounded-xl mt-0.5 text-sm font-bold"
+        <div className="flex items-center justify-center shrink-0 w-7 h-7 rounded-lg text-sm font-bold"
           style={isToday ? todayNumStyle : { color: isPast ? pastNumColor : normalNumColor }}>
           {dayNum}
+        </div>
+        <div className="text-[11px] font-semibold truncate"
+          style={{ color: isToday ? todayNameColor : normalNameColor }}>
+          {dayName}
         </div>
       </div>
 

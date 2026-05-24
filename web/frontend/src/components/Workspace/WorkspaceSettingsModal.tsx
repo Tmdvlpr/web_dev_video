@@ -287,7 +287,7 @@ function GeneralTab({
 
       {isOwner && (
         <div className="pt-4 mt-2" style={{ borderTop: "1px dashed var(--border)" }}>
-          <Label>Опасная зона</Label>
+          <Label>Удалить пространство</Label>
           {!confirmArchive ? (
             <button onClick={() => setConfirmArch(true)}
               className="px-4 py-2 rounded-xl text-xs font-bold"
@@ -452,7 +452,13 @@ function MembersTab({ workspaceId, myUserId, isAdmin }: { workspaceId: number; m
                       <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
                         {memberName(m)}
                       </p>
-                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>{roleLabel(m.role)}</p>
+                      <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
+                        {[
+                          m.user?.position,
+                          m.user?.role && m.user.role !== "user" ? (m.user.role === "superadmin" ? "Суперадмин" : "Администратор") : null,
+                          roleLabel(m.role),
+                        ].filter(Boolean).join(" · ")}
+                      </p>
                     </div>
                     <RoleBadge role={m.role} />
                     {canRemove && (
@@ -657,8 +663,15 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [joinRequests, setJoinRequests] = useState<RoomJoinRequest[]>([]);
+  const [localJoinMode, setLocalJoinMode] = useState<"open" | "approval" | "closed">(wr.room.join_mode ?? "approval");
+  const [localVis, setLocalVis] = useState<"full" | "busy_only">(wr.visibility ?? "full");
 
   const isOwnerRoom = wr.role === "owner";
+
+  useEffect(() => {
+    setLocalJoinMode(wr.room.join_mode ?? "approval");
+    setLocalVis(wr.visibility ?? "full");
+  }, [wr.room.join_mode, wr.visibility]);
 
   useEffect(() => {
     if (!isOwnerRoom || !isAdmin) return;
@@ -666,26 +679,18 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wr.room.id]);
 
-  const handleVis = async (v: "full" | "busy_only") => {
-    setErr(null);
-    try {
-      await roomsApi.updateVisibility(wr.room.id, workspaceId, v);
-      onRefetch();
-    } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось обновить");
-    }
+  const handleVis = (v: "full" | "busy_only") => {
+    setLocalVis(v);
+    roomsApi.updateVisibility(wr.room.id, workspaceId, v)
+      .then(() => onRefetch())
+      .catch(() => { setLocalVis(wr.visibility ?? "full"); setErr("Не удалось обновить"); });
   };
 
-  const handleJoinMode = async (mode: "open" | "approval" | "closed") => {
-    setErr(null);
-    try {
-      await roomsApi.update(wr.room.id, { join_mode: mode });
-      onRefetch();
-    } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось обновить");
-    }
+  const handleJoinMode = (mode: "open" | "approval" | "closed") => {
+    setLocalJoinMode(mode);
+    roomsApi.update(wr.room.id, { join_mode: mode })
+      .then(() => onRefetch())
+      .catch(() => { setLocalJoinMode(wr.room.join_mode ?? "approval"); setErr("Не удалось обновить"); });
   };
 
   const handleShare = async () => {
@@ -820,7 +825,7 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
               { v: "approval", label: "С подтверждением" },
               { v: "closed",   label: "Закрытое" },
             ] as const).map(({ v, label }) => {
-              const active = (wr.room.join_mode ?? "approval") === v;
+              const active = localJoinMode === v;
               return (
                 <button key={v} onClick={() => handleJoinMode(v)} disabled={active}
                   className="px-2 py-1 text-xs font-semibold transition-all"
@@ -841,7 +846,7 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
           <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Видимость:</span>
           <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--border)" }}>
             {(["full", "busy_only"] as const).map(v => {
-              const active = wr.visibility === v;
+              const active = localVis === v;
               return (
                 <button key={v} onClick={() => handleVis(v)} disabled={active}
                   className="px-2.5 py-1 text-xs font-semibold transition-all"

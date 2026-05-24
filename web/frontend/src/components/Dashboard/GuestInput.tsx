@@ -27,6 +27,7 @@ export function GuestInput({
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [input, setInput] = useState("");
   const [focused, setFocused] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -41,6 +42,12 @@ export function GuestInput({
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
+
+  useEffect(() => {
+    if (!focused || !wrapRef.current) return;
+    const rect = wrapRef.current.getBoundingClientRect();
+    setDropUp(window.innerHeight - rect.bottom < 300);
+  }, [focused, mode]);
 
   const byPosition = POSITIONS.reduce<Record<string, typeof allUsers>>((acc, pos) => {
     acc[pos] = allUsers.filter(u => u.username && u.position === pos);
@@ -105,10 +112,10 @@ export function GuestInput({
         <AnimatePresence>
           {focused && (
             <motion.div
-              initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+              initial={{ opacity: 0, y: dropUp ? 4 : -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: dropUp ? 4 : -4 }}
               transition={{ duration: 0.12 }}
-              className="absolute z-50 left-0 right-0 mt-1 rounded-xl overflow-hidden"
-              style={{ background: isDark ? "#0f172a" : "#ffffff", border: "1px solid var(--border)", boxShadow: dropShadow, maxHeight: 320, overflowY: "auto" }}
+              className={`absolute z-50 left-0 right-0 rounded-xl overflow-hidden ${dropUp ? "bottom-full mb-1" : "mt-1"}`}
+              style={{ background: isDark ? "#0f172a" : "#ffffff", border: "1px solid var(--border)", boxShadow: dropShadow, maxHeight: 300, overflowY: "auto" }}
               onPointerDown={e => e.stopPropagation()}>
 
               {/* Mode selector */}

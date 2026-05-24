@@ -9,6 +9,7 @@ import { useWorkspace } from "../../contexts/WorkspaceContext";
 
 import { useBookings, useCreateBooking, useDeleteBooking, useUpdateBooking } from "../../hooks/useBookings";
 import { bookingsApi } from "../../api/bookings";
+import { meetingsApi } from "../../api/meetings";
 import type { Booking } from "../../types";
 import { GuestInput } from "./GuestInput";
 import { AttachmentsSection } from "./AttachmentsSection";
@@ -105,9 +106,21 @@ export function BookingModal({
   };
 
   const [copiedLink, setCopiedLink] = useState(false);
+  const [guestInviteUrl, setGuestInviteUrl] = useState<string | null>(null);
+  const [guestInviteLoading, setGuestInviteLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !editBooking?.video_enabled || !editBooking?.id) { setGuestInviteUrl(null); return; }
+    setGuestInviteLoading(true);
+    meetingsApi.createInvite(editBooking.id)
+      .then(r => setGuestInviteUrl(r.invite_url))
+      .catch(console.warn)
+      .finally(() => setGuestInviteLoading(false));
+  }, [isOpen, editBooking?.id, editBooking?.video_enabled]);
+
   const handleCopyMeetingLink = () => {
-    if (!editBooking) return;
-    const url = `${window.location.origin}/meeting/${editBooking.id}`;
+    const url = guestInviteUrl;
+    if (!url) return;
     navigator.clipboard.writeText(url).then(() => {
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
@@ -295,11 +308,14 @@ export function BookingModal({
   const [videoEnabled, setVideoEnabled] = useState(false);
   const [bookingType, setBookingType] = useState<"physical" | "virtual" | "hybrid">("physical");
   const [selectedRoomId, setSelectedRoomId] = useState<number | "">("");
+  const [roomDropOpen, setRoomDropOpen] = useState(false);
+  const roomDropRef = useRef<HTMLDivElement | null>(null);
   const [deleteSeries,setDelSeries] = useState(false);
   const [pendingFiles,setPendingFiles] = useState<File[]>([]);
   const [error,       setError]     = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{ title?: string; time?: string; days?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ title?: string; time?: string; days?: string; room?: string }>({});
   const [formReady,   setFormReady] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [easterMsg, setEasterMsg] = useState<string | null>(null);
   const longMeetingShown = useRef(false);
   const weekendShown = useRef(false);
@@ -327,6 +343,7 @@ export function BookingModal({
   useEffect(() => {
     if (!isOpen) {
       setFormReady(false);
+      setShowAdvanced(false);
       longMeetingShown.current = false;
       weekendShown.current = false;
       importantShown.current = false;
@@ -409,7 +426,7 @@ export function BookingModal({
     setEnd(toLocal(new Date(new Date(startTime).getTime() + mins * 60_000)));
 
   const validateFields = (): boolean => {
-    const errs: { title?: string; time?: string; days?: string } = {};
+    const errs: { title?: string; time?: string; days?: string; room?: string } = {};
     if (!title.trim()) errs.title = t("booking.titleError");
     const sMs = new Date(startTime).getTime();
     const eMs = new Date(endTime).getTime();
@@ -418,6 +435,7 @@ export function BookingModal({
     else if (durMin < 15) errs.time = t("booking.minDur");
     else if (durMin > 480) errs.time = t("booking.maxDur");
     if (recurrence === "custom" && recurDays.length === 0) errs.days = t("booking.pickDays");
+    if (bookingType !== "virtual" && selectedRoomId === "") errs.room = "Выберите переговорную";
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -525,9 +543,10 @@ export function BookingModal({
                   ? "0 32px 80px rgba(0,0,0,0.8)"
                   : "0 8px 16px rgba(0,0,0,0.10), 0 24px 64px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.06)",
                 maxHeight: "90vh",
-                overflowY: "auto",
+                overflow: "hidden",
                 cursor: "default",
               }}>
+              <div style={{ overflowY: "auto", maxHeight: "90vh" }}>
 
               {/* Header — drag handle (only this area initiates drag) */}
               <div className="flex items-center justify-between px-6 pt-4 pb-3"
@@ -607,22 +626,32 @@ export function BookingModal({
                       </a>
                     )}
                     {editBooking.video_enabled && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleJoinVideo}
-                          className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all"
-                          style={{ background: "linear-gradient(135deg,#1565a8,#114e85)", boxShadow: "0 4px 16px rgba(21,101,168,0.3)" }}
-                        >
-                          🎥 Присоединиться к конференции
-                        </button>
-                        <button
-                          onClick={handleCopyMeetingLink}
-                          title="Скопировать ссылку для гостей"
-                          className="px-3 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center"
-                          style={{ background: copiedLink ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copiedLink ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copiedLink ? "#22c55e" : "var(--text-sec)", minWidth: 42 }}
-                        >
-                          {copiedLink ? "✓" : "🔗"}
-                        </button>
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleJoinVideo}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all"
+                            style={{ background: "linear-gradient(135deg,#1565a8,#114e85)", boxShadow: "0 4px 16px rgba(21,101,168,0.3)" }}
+                          >
+                            🎥 Присоединиться к конференции
+                          </button>
+                          <button
+                            onClick={handleCopyMeetingLink}
+                            disabled={!guestInviteUrl}
+                            title="Скопировать ссылку для гостей"
+                            className="px-3 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center disabled:opacity-40"
+                            style={{ background: copiedLink ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copiedLink ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copiedLink ? "#22c55e" : "var(--text-sec)", minWidth: 42 }}
+                          >
+                            {copiedLink ? "✓" : "🔗"}
+                          </button>
+                        </div>
+                        {guestInviteLoading ? (
+                          <p className="text-xs" style={{ color: "var(--text-muted)" }}>Создание ссылки…</p>
+                        ) : guestInviteUrl ? (
+                          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+                            <span className="flex-1 text-xs truncate" style={{ color: "var(--text-muted)" }}>{guestInviteUrl}</span>
+                          </div>
+                        ) : null}
                       </div>
                     )}
                     <button onClick={onClose}
@@ -740,20 +769,6 @@ export function BookingModal({
                     )}
                   </div>
 
-                  {/* Description */}
-                  <div>
-                    <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--text-sec)" }}>
-                      {t("booking.agenda")} <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>{t("booking.agendaOptional")}</span>
-                    </label>
-                    <textarea value={description} onChange={e => setDesc(e.target.value)}
-                      placeholder={t("booking.agendaPlaceholder")}
-                      rows={2}
-                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition-all resize-none"
-                      style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
-                      onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(21,101,168,0.12)"; }}
-                      onBlur={e => { e.currentTarget.style.borderColor = "var(--input-border)"; e.currentTarget.style.boxShadow = "none"; }} />
-                  </div>
-
                   {/* Room selector — hidden for virtual bookings */}
                   {bookingType !== "virtual" && (() => {
                     const availableRooms = activeWorkspace
@@ -763,62 +778,84 @@ export function BookingModal({
                     return (
                       <div>
                         <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--text-sec)" }}>
-                          Переговорная <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(необязательно)</span>
+                          Переговорная <span style={{ color: "#ef4444", fontWeight: 400 }}>(обязательно)</span>
                         </label>
-                        <select
-                          value={selectedRoomId === "" ? "" : String(selectedRoomId)}
-                          onChange={e => setSelectedRoomId(e.target.value === "" ? "" : Number(e.target.value))}
-                          disabled={isEdit}
-                          className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition-all"
-                          style={{
-                            background: "var(--input-bg)",
-                            border: "1.5px solid var(--input-border)",
-                            color: "var(--text)",
-                            opacity: isEdit ? 0.6 : 1,
-                          }}
-                        >
-                          <option value="">— не выбрана —</option>
-                          {availableRooms.map(wr => (
-                            <option key={wr.room.id} value={wr.room.id}>
-                              {wr.room.name}{wr.role === "shared" ? " (общая)" : ""}
-                            </option>
-                          ))}
-                        </select>
+                        <div ref={roomDropRef} style={{ position: "relative" }}>
+                          <button
+                            type="button"
+                            disabled={isEdit}
+                            onClick={() => !isEdit && setRoomDropOpen(v => !v)}
+                            onBlur={e => { if (!roomDropRef.current?.contains(e.relatedTarget as Node)) setRoomDropOpen(false); }}
+                            className="w-full rounded-xl px-3 py-2.5 text-sm text-left flex items-center justify-between gap-2 transition-all outline-none"
+                            style={{
+                              background: "var(--input-bg)",
+                              border: `1.5px solid ${fieldErrors.room ? "#ef4444" : roomDropOpen ? "var(--primary)" : "var(--input-border)"}`,
+                              color: selectedRoomId === "" ? "var(--text-muted)" : "var(--text)",
+                              opacity: isEdit ? 0.6 : 1,
+                              boxShadow: roomDropOpen ? "0 0 0 3px rgba(21,101,168,0.12)" : "none",
+                            }}
+                          >
+                            <span>
+                              {selectedRoomId === ""
+                                ? "— не выбрана —"
+                                : (() => { const wr = availableRooms.find(r => r.room.id === selectedRoomId); return wr ? `${wr.room.name}${wr.role === "shared" ? " (общая)" : ""}` : "— не выбрана —"; })()}
+                            </span>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0, opacity: 0.5, transform: roomDropOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+                              <path d="m6 9 6 6 6-6"/>
+                            </svg>
+                          </button>
+                          {roomDropOpen && (
+                            <div
+                              style={{
+                                position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 200,
+                                background: isDark ? "#0f172a" : "#ffffff", border: "1.5px solid var(--border)",
+                                borderRadius: 12, overflow: "hidden",
+                                boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.6)" : "0 4px 20px rgba(0,0,0,0.12)",
+                              }}
+                            >
+                              {[{ id: "" as const, name: "— не выбрана —", shared: false }, ...availableRooms.map(wr => ({ id: wr.room.id, name: wr.room.name, shared: wr.role === "shared" }))].map(opt => (
+                                <button
+                                  key={String(opt.id)}
+                                  type="button"
+                                  onMouseDown={() => { setSelectedRoomId(opt.id); setRoomDropOpen(false); if (fieldErrors.room) setFieldErrors(fe => ({ ...fe, room: undefined })); }}
+                                  className="w-full px-3 py-2.5 text-sm text-left flex items-center gap-2 transition-all"
+                                  style={{
+                                    background: selectedRoomId === opt.id ? "var(--primary-light)" : "transparent",
+                                    color: opt.id === "" ? "var(--text-muted)" : "var(--text)",
+                                  }}
+                                  onMouseEnter={e => { if (selectedRoomId !== opt.id) e.currentTarget.style.background = "var(--elevated)"; }}
+                                  onMouseLeave={e => { if (selectedRoomId !== opt.id) e.currentTarget.style.background = "transparent"; }}
+                                >
+                                  {selectedRoomId === opt.id && opt.id !== "" && (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" style={{ color: "var(--primary)", flexShrink: 0 }}><polyline points="20 6 9 17 4 12"/></svg>
+                                  )}
+                                  <span>{opt.name}{opt.shared ? " (общая)" : ""}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {fieldErrors.room && <p className="text-xs mt-1" style={{ color: "#ef4444" }}>{fieldErrors.room}</p>}
                       </div>
                     );
                   })()}
 
-                  {/* Attachments */}
-                  <AttachmentsSection
-                    bookingId={isEdit ? editBooking?.id : undefined}
-                    canManage={!isReadOnly}
-                    pendingFiles={pendingFiles}
-                    onAddPending={files => setPendingFiles(prev => [...prev, ...files])}
-                    onRemovePending={idx => setPendingFiles(prev => prev.filter((_, i) => i !== idx))}
-                  />
-
-                  {/* Guests */}
-                  <GuestInput guests={guests} setGuests={setGuests} />
-
-                  {/* Date/time */}
-                  <div>
-                    <div className="flex gap-3">
+                  {/* Date/time + duration — compact combined block */}
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <DateTimePicker label={t("booking.start")} value={startTime}
                         onChange={v => { setStart(v); setFieldErrors(fe => ({ ...fe, time: undefined })); }} />
-                      <DateTimePicker label={t("booking.end")}  value={endTime}
+                      <DateTimePicker label={t("booking.end")} value={endTime}
                         onChange={v => { setEnd(v); setFieldErrors(fe => ({ ...fe, time: undefined })); }} />
                     </div>
                     {fieldErrors.time && (
-                      <p className="text-xs mt-1 font-medium" style={{ color: "#ef4444" }}>{fieldErrors.time}</p>
+                      <p className="text-xs font-medium" style={{ color: "#ef4444" }}>{fieldErrors.time}</p>
                     )}
-                    {/* Conflict preview */}
                     {!isEdit && conflicts.length > 0 && !fieldErrors.time && (
                       <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-                        className="mt-2 rounded-xl px-3 py-2.5 space-y-1"
+                        className="rounded-xl px-3 py-2 space-y-1"
                         style={{ background: isDark ? "rgba(239,68,68,0.08)" : "#fff1f2", border: "1px solid rgba(239,68,68,0.25)" }}>
-                        <p className="text-xs font-semibold" style={{ color: "#ef4444" }}>
-                          ⚠️ {t("booking.conflictsWith", { n: conflicts.length })}
-                        </p>
+                        <p className="text-xs font-semibold" style={{ color: "#ef4444" }}>⚠️ {t("booking.conflictsWith", { n: conflicts.length })}</p>
                         {conflicts.map(c => (
                           <p key={c.id} className="text-xs" style={{ color: isDark ? "#fca5a5" : "#dc2626" }}>
                             • {c.title} ({fmtHM(c.start_time)}–{fmtHM(c.end_time)})
@@ -826,12 +863,7 @@ export function BookingModal({
                         ))}
                       </motion.div>
                     )}
-                  </div>
-
-                  {/* Quick duration presets */}
-                  <div>
-                    <p className="text-xs font-semibold mb-1.5" style={{ color: "var(--text-muted)" }}>{t("booking.duration")}</p>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5">
                       {PRESETS.map(p => {
                         const active = currentDurationMins === p.minutes;
                         return (
@@ -850,16 +882,18 @@ export function BookingModal({
                     </div>
                   </div>
 
+                  {/* Guests */}
+                  <GuestInput guests={guests} setGuests={setGuests} />
+
                   {/* Recurrence (only on create) */}
                   {!isEdit && (
                     <div className="space-y-2">
                       <label className="block text-xs font-semibold" style={{ color: "var(--text-sec)" }}>{t("booking.recurrence")}</label>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1.5">
                         {RECURRENCE_OPTIONS.map(opt => (
                           <button key={opt.value} type="button"
                             onClick={() => {
                               setRecur(opt.value);
-                              // Автоматически задаём "Повторять до" если не задано
                               if (opt.value !== "none" && !recurUntil) {
                                 const d = new Date(startTime || Date.now());
                                 d.setMonth(d.getMonth() + (opt.value === "daily" ? 1 : 3));
@@ -881,13 +915,13 @@ export function BookingModal({
                           <label className="block text-xs font-semibold mb-1.5" style={{ color: fieldErrors.days ? "#ef4444" : "var(--text-sec)" }}>
                             {t("booking.weekdays")} {fieldErrors.days && <span className="font-normal">— {fieldErrors.days}</span>}
                           </label>
-                          <div className="flex gap-1.5">
+                          <div className="flex gap-1">
                             {WEEKDAYS.map(d => {
                               const on = recurDays.includes(d.idx);
                               return (
                                 <button key={d.idx} type="button"
                                   onClick={() => { setRecurDays(days => on ? days.filter(x => x !== d.idx) : [...days, d.idx].sort()); setFieldErrors(fe => ({ ...fe, days: undefined })); }}
-                                  className="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all"
+                                  className="flex-1 py-1 rounded-lg text-xs font-bold transition-all"
                                   style={{
                                     background: on ? "var(--primary)" : "var(--elevated)",
                                     border: `1.5px solid ${on ? "var(--primary)" : "var(--border)"}`,
@@ -902,12 +936,7 @@ export function BookingModal({
                       )}
                       {recurrence !== "none" && (
                         <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}>
-                          <DateTimePicker
-                            label={t("booking.repeatUntil")}
-                            value={recurUntil}
-                            onChange={setRecurUntil}
-                            dateOnly
-                          />
+                          <DateTimePicker label={t("booking.repeatUntil")} value={recurUntil} onChange={setRecurUntil} dateOnly />
                         </motion.div>
                       )}
                     </div>
@@ -942,6 +971,45 @@ export function BookingModal({
                     </div>
                   )}
 
+                  {/* Collapsible: description + attachments */}
+                  <div>
+                    <button type="button" onClick={() => setShowAdvanced(v => !v)}
+                      className="flex items-center gap-1.5 w-full text-xs font-medium transition-all py-1"
+                      style={{ color: "var(--text-muted)" }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                        style={{ transform: showAdvanced ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.18s", flexShrink: 0 }}>
+                        <polyline points="9 18 15 12 9 6"/>
+                      </svg>
+                      {showAdvanced ? "Скрыть повестку и материалы" : "Добавить повестку и материалы"}
+                    </button>
+                    <AnimatePresence>
+                      {showAdvanced && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
+                          style={{ overflow: "hidden" }} className="space-y-3 pt-2">
+                          <div>
+                            <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--text-sec)" }}>
+                              {t("booking.agenda")}
+                            </label>
+                            <textarea value={description} onChange={e => setDesc(e.target.value)}
+                              rows={3} placeholder={t("booking.agendaPlaceholder")}
+                              className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition-all resize-none"
+                              style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
+                              onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(21,101,168,0.12)"; }}
+                              onBlur={e => { e.currentTarget.style.borderColor = "var(--input-border)"; e.currentTarget.style.boxShadow = "none"; }} />
+                          </div>
+                          <AttachmentsSection
+                            bookingId={editBooking?.id}
+                            canManage={!isReadOnly}
+                            pendingFiles={pendingFiles}
+                            onAddPending={files => setPendingFiles(pf => [...pf, ...files])}
+                            onRemovePending={i => setPendingFiles(pf => pf.filter((_, idx) => idx !== i))}
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
                   {error && (
                     <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
                       className="text-xs rounded-xl px-3 py-2.5 font-medium"
@@ -951,27 +1019,44 @@ export function BookingModal({
                   )}
 
                   {isEdit && editBooking?.video_enabled && (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleJoinVideo}
-                        className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all"
-                        style={{ background: "linear-gradient(135deg,#1565a8,#114e85)", boxShadow: "0 4px 16px rgba(21,101,168,0.3)" }}
-                      >
-                        🎥 Присоединиться к конференции
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCopyMeetingLink}
-                        title="Скопировать ссылку для гостей"
-                        className="px-3 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center"
-                        style={{ background: copiedLink ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copiedLink ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copiedLink ? "#22c55e" : "var(--text-sec)", minWidth: 42 }}
-                      >
-                        {copiedLink ? "✓" : "🔗"}
-                      </button>
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleJoinVideo}
+                          className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all"
+                          style={{ background: "linear-gradient(135deg,#1565a8,#114e85)", boxShadow: "0 4px 16px rgba(21,101,168,0.3)" }}
+                        >
+                          🎥 Присоединиться к конференции
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCopyMeetingLink}
+                          disabled={!guestInviteUrl}
+                          title="Скопировать ссылку для гостей"
+                          className="px-3 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center disabled:opacity-40"
+                          style={{ background: copiedLink ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copiedLink ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copiedLink ? "#22c55e" : "var(--text-sec)", minWidth: 42 }}
+                        >
+                          {copiedLink ? "✓" : "🔗"}
+                        </button>
+                      </div>
+                      {guestInviteLoading ? (
+                        <p className="text-xs" style={{ color: "var(--text-muted)" }}>Создание ссылки…</p>
+                      ) : guestInviteUrl ? (
+                        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+                          <span className="flex-1 text-xs truncate" style={{ color: "var(--text-muted)" }}>{guestInviteUrl}</span>
+                        </div>
+                      ) : null}
                     </div>
                   )}
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex gap-2" style={{
+                    position: "sticky",
+                    bottom: 0,
+                    background: "var(--modal)",
+                    borderTop: "1px solid var(--border)",
+                    padding: "12px 24px 20px",
+                    margin: "8px -24px -16px",
+                  }}>
                     {isEdit && canDelete && (
                       <motion.button type="button" onClick={() => setView("confirmDelete")}
                         whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
@@ -996,6 +1081,7 @@ export function BookingModal({
                 </motion.form>
                 )}
               </AnimatePresence>
+              </div>
             </motion.div>
           </div>
 

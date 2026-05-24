@@ -152,15 +152,13 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.97 }}
-            transition={{ duration: 0.15 }}
+            initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.14 }}
             className="absolute left-0 top-9 z-50 rounded-xl py-2 w-72"
             style={{
-              background: "var(--modal)",
+              background: isDark ? "#0f172a" : "#ffffff",
               border: "1px solid var(--border)",
-              boxShadow: isDark ? "0 16px 40px rgba(0,0,0,0.6)" : "0 16px 40px rgba(15,23,42,0.18)",
+              boxShadow: isDark ? "0 16px 40px rgba(0,0,0,0.6)" : "0 4px 24px rgba(15,23,42,0.14)",
             }}
           >
             <div className="max-h-60 overflow-y-auto">
@@ -221,7 +219,9 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
                   onKeyDown={e => { if (e.key === "Enter") handleCreate(); }}
                   placeholder="Название пространства"
                   className="w-full rounded-lg px-2.5 py-1.5 text-xs outline-none"
-                  style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)" }}
+                  style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
+                  onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(21,101,168,0.12)"; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = "var(--input-border)"; e.currentTarget.style.boxShadow = "none"; }}
                 />
                 {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}
                 <div className="flex gap-2">
@@ -246,7 +246,9 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
                   onKeyDown={e => { if (e.key === "Enter") handleJoin(); }}
                   placeholder="Инвайт-код"
                   className="w-full rounded-lg px-2.5 py-1.5 text-xs outline-none font-mono"
-                  style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)" }}
+                  style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
+                  onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(21,101,168,0.12)"; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = "var(--input-border)"; e.currentTarget.style.boxShadow = "none"; }}
                 />
                 {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}
                 {info && <p className="text-xs" style={{ color: "#16a34a" }}>{info}</p>}

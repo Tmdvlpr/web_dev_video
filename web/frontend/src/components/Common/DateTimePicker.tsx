@@ -170,16 +170,14 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
           boxShadow: open ? "0 0 0 3px rgba(21,101,168,0.12)" : "none",
         }}>
         <div className="flex items-center gap-2">
-          <div className="flex-1">
-            {dateOnly ? (
-              <div className="text-sm font-bold leading-tight" style={{ color: open ? "var(--primary)" : "var(--text)" }}>{displayDate}</div>
-            ) : (
-              <>
-                <div className="text-xs font-semibold leading-tight" style={{ color: "var(--text-sec)" }}>{displayDate}</div>
-                <div className="text-base font-black leading-tight" style={{ color: open ? "var(--primary)" : "var(--text)" }}>{displayTime}</div>
-              </>
-            )}
-          </div>
+          {dateOnly ? (
+            <div className="flex-1 text-sm font-bold leading-tight" style={{ color: open ? "var(--primary)" : "var(--text)" }}>{displayDate}</div>
+          ) : (
+            <>
+              <div className="flex-1 text-xs font-semibold leading-tight" style={{ color: "var(--text-sec)" }}>{displayDate}</div>
+              <div className="text-base font-black leading-tight shrink-0" style={{ color: open ? "var(--primary)" : "var(--text)" }}>{displayTime}</div>
+            </>
+          )}
           <svg className="w-4 h-4 shrink-0" style={{ color: open ? "var(--primary)" : "var(--text-muted)" }}
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />

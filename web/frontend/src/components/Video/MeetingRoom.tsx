@@ -91,7 +91,11 @@ function fmtTime(d: Date): string {
 }
 
 function fmtElapsed(s: number): string {
-  const m = Math.floor(s / 60), sec = s % 60;
+  if (s <= 0) return "00:00";
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
   return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
@@ -156,7 +160,7 @@ function useMeetingChat(
             return;
           }
           if (msg.type === "admission_response") return;
-          setMessages((prev) => [...prev, msg]);
+          setMessages((prev) => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
           if (!chatVisibleRef.current) setUnread((n) => n + 1);
         } catch (err) { console.warn("Chat WS parse error:", err, e.data); }
       };
@@ -199,8 +203,10 @@ function useMeetingChat(
   const send = useCallback((body: string, fileId?: number) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ body, file_id: fileId ?? null }));
+    } else {
+      meetingsApi.sendChatMessage(bookingId, body, fileId).catch(console.warn);
     }
-  }, []);
+  }, [bookingId]);
 
   const sendReaction = useCallback((emoji: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -213,11 +219,16 @@ function useMeetingChat(
     setUploading(true);
     try {
       const cf = await meetingsApi.uploadFile(bookingId, file);
-      send("", cf.id);
+      // Use REST so we get back the full ChatMessage with file populated;
+      // WS may also broadcast it — dedup by ID in onmessage handles that case.
+      const msg = await meetingsApi.sendChatMessage(bookingId, "", cf.id);
+      setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
+    } catch (e) {
+      console.warn("Failed to send file message:", e);
     } finally {
       setUploading(false);
     }
-  }, [bookingId, send]);
+  }, [bookingId]);
 
   return { messages, unread, send, sendReaction, uploadAndSend, uploading };
 }
@@ -295,18 +306,20 @@ function FocusLayout({
 
   return (
     <>
-      <div className="thumbstrip">
-        {thumbs.map((t) => (
-          <LiveVideoTile
-            key={t.participant.identity}
-            trackRef={t}
-            isActive={pinnedId === t.participant.identity}
-            localIdentity={localIdentity}
-            size="sm"
-            onClick={() => onPin(pinnedId === t.participant.identity ? null : t.participant.identity)}
-          />
-        ))}
-      </div>
+      {thumbs.length > 0 && (
+        <div className="thumbstrip">
+          {thumbs.map((t) => (
+            <LiveVideoTile
+              key={t.participant.identity}
+              trackRef={t}
+              isActive={pinnedId === t.participant.identity}
+              localIdentity={localIdentity}
+              size="sm"
+              onClick={() => onPin(pinnedId === t.participant.identity ? null : t.participant.identity)}
+            />
+          ))}
+        </div>
+      )}
       <div className="mainspeaker">
         {mainTrack && (
           <LiveVideoTile
@@ -680,12 +693,11 @@ function ParticipantsPanel({
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 function Sidebar({
-  activePanel, onPanelChange, onClose, messages, participants, localIdentity,
+  activePanel, onClose, messages, participants, localIdentity,
   localUserId, bookingId, isOrganizer, onSend, onFile, uploading,
   noiseOn, blurOn, onNoise, onBlur,
 }: {
   activePanel: "chat" | "participants" | "settings";
-  onPanelChange: (p: "chat" | "participants" | "settings") => void;
   onClose: () => void;
   messages: ChatMessage[];
   participants: Participant[];
@@ -701,23 +713,14 @@ function Sidebar({
   onNoise: () => void;
   onBlur: () => void;
 }) {
+  const panelTitle = activePanel === "chat" ? "Чат"
+    : activePanel === "participants" ? `Участники (${participants.length})`
+    : "Настройки";
+
   return (
     <div className="sidebar">
       <div className="sidebar__hd">
-        <div className="sidebar__tabs">
-          <button className={`sidebar__tab${activePanel === "chat" ? " sidebar__tab--on" : ""}`}
-            onClick={() => onPanelChange("chat")}>
-            <Ic.Chat sz={13} /><span>Чат</span>
-          </button>
-          <button className={`sidebar__tab${activePanel === "participants" ? " sidebar__tab--on" : ""}`}
-            onClick={() => onPanelChange("participants")}>
-            <Ic.Users sz={13} /><span>Участники ({participants.length})</span>
-          </button>
-          <button className={`sidebar__tab${activePanel === "settings" ? " sidebar__tab--on" : ""}`}
-            onClick={() => onPanelChange("settings")}>
-            <Ic.Settings sz={13} /><span>Настройки</span>
-          </button>
-        </div>
+        <span className="sidebar__hdtitle">{panelTitle}</span>
         <button className="sidebar__close" onClick={onClose}><Ic.Close sz={14} /></button>
       </div>
       <div className="sidebar__body">
@@ -1076,9 +1079,7 @@ function WaitingRoom({ startTime, onLeave, bookingId, onJoin, localUserId }: { s
       <div className={`swrap${chatOpen ? " swrap--on" : ""}`}>
         <div className="sidebar">
           <div className="sidebar__hd">
-            <div className="sidebar__tabs">
-              <button className="sidebar__tab sidebar__tab--on"><Ic.Chat sz={13} /><span>Чат встречи</span></button>
-            </div>
+            <span className="sidebar__hdtitle">Чат встречи</span>
             <button className="sidebar__close" onClick={() => setChatOpen(false)}><Ic.Close sz={14} /></button>
           </div>
           <div className="sidebar__body">
@@ -1259,7 +1260,7 @@ function ConferenceUI({
     const camTrack = pub?.track as LocalVideoTrack | undefined;
     if (!camTrack) return;
     blurApplied.current = true;
-    camTrack.setProcessor(BackgroundBlur(10)).catch(console.warn);
+    camTrack.setProcessor(BackgroundBlur(15)).catch(console.warn);
   }, [localParticipant, isCameraEnabled]);
 
   // ── Noise/blur toggle state (for settings panel) ──────────────────────────
@@ -1284,7 +1285,7 @@ function ConferenceUI({
     const pub = localParticipant.getTrackPublication(Track.Source.Camera);
     const track = pub?.track as LocalVideoTrack | undefined;
     if (!track) return;
-    if (next) await track.setProcessor(BackgroundBlur(10)).catch(console.warn);
+    if (next) await track.setProcessor(BackgroundBlur(15)).catch(console.warn);
     else await track.stopProcessor().catch(console.warn);
   }, [blurOn, localParticipant]);
 
@@ -1415,7 +1416,13 @@ function ConferenceUI({
 
   const handleLeave = () => { setModal(null); onLeave(); };
 
-  const meetingUrl = `${window.location.origin}/meeting/${bookingId}`;
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (modal !== "info" || inviteUrl) return;
+    meetingsApi.createInvite(bookingId)
+      .then((r) => setInviteUrl(r.invite_url))
+      .catch(console.warn);
+  }, [modal, bookingId, inviteUrl]);
 
   return (
     <div className={`conf conf-root fixed inset-0 z-[9999] l-${layoutMode}`}>
@@ -1454,7 +1461,6 @@ function ConferenceUI({
         {activePanel && (
           <Sidebar
             activePanel={activePanel}
-            onPanelChange={setActivePanel}
             onClose={() => setActivePanel(null)}
             messages={messages}
             participants={allParticipants}
@@ -1525,7 +1531,7 @@ function ConferenceUI({
           startTime={joinData.start_time}
           endTime={joinData.end_time}
           participantCount={allParticipants.length}
-          meetingUrl={meetingUrl}
+          meetingUrl={inviteUrl ?? "Создание ссылки…"}
           onClose={() => setModal(null)}
         />
       )}
@@ -1685,14 +1691,45 @@ function WaitingForOrganizer({ onLeave, onRetry }: { onLeave: () => void; onRetr
 }
 
 // ─── Exported component ───────────────────────────────────────────────────────
-export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave: () => void }) {
-  const { data, isLoading, error, refetch } = useQuery({
+export function MeetingRoom({
+  bookingId,
+  onLeave,
+  guestToken,
+  guestServerUrl,
+  guestName,
+  initialVideo = true,
+  initialAudio = true,
+}: {
+  bookingId: number;
+  onLeave: () => void;
+  guestToken?: string;
+  guestServerUrl?: string;
+  guestName?: string;
+  initialVideo?: boolean;
+  initialAudio?: boolean;
+}) {
+  const isGuestMode = !!(guestToken && guestServerUrl);
+
+  const { data: fetchedData, isLoading, error, refetch } = useQuery({
     queryKey: ["meeting-join", bookingId],
     queryFn: () => meetingsApi.join(bookingId),
     retry: false,
     staleTime: Infinity,          // never refetch — prevents double-connection on re-render
     refetchOnWindowFocus: false,
+    enabled: !isGuestMode,
   });
+
+  const guestJoinData = useMemo(() => isGuestMode ? {
+    access_token: guestToken!,
+    livekit_url: guestServerUrl!,
+    start_time: new Date(Date.now() - 60000).toISOString(),
+    end_time: new Date(Date.now() + 7200000).toISOString(),
+    room_name: "",
+    user_identity: `guest-${(guestName ?? "user").slice(0, 8)}`,
+    is_organizer: false,
+  } : null, [isGuestMode, guestToken, guestServerUrl, guestName]);
+
+  const data = isGuestMode ? guestJoinData : fetchedData;
 
   const [isMeetingTime, setIsMeetingTime] = useState(false);
   const [lkDisconnected, setLkDisconnected] = useState(false);
@@ -1706,8 +1743,8 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
         maxFramerate: 30,
       },
       screenShareEncoding: {
-        maxBitrate: 3_000_000,
-        maxFramerate: 15,
+        maxBitrate: 5_000_000,
+        maxFramerate: 30,
       },
     },
     videoCaptureDefaults: {
@@ -1736,6 +1773,7 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
   }, [lkRoom]);
 
   const isOrganizerNotPresent =
+    !isGuestMode &&
     !data &&
     (error as { response?: { status?: number; data?: { detail?: string } } })?.response?.status === 403 &&
     (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail === "organizer_not_present";
@@ -1757,18 +1795,20 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
     onLeave();
   }, [lkRoom, onLeave, intentionalLeaveRef]);
 
-  if (isLoading) return <FullscreenSpinner text="Подключение к встрече…" />;
+  if (isLoading && !isGuestMode) return <FullscreenSpinner text="Подключение к встрече…" />;
 
   if (isOrganizerNotPresent) {
     return <WaitingForOrganizer onLeave={onLeave} onRetry={handleRetry} />;
   }
 
-  if (error || !data) {
+  if (!isGuestMode && (error || !data)) {
     const msg =
       (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
       "Проверьте, что встреча активна и видеоконференция включена.";
     return <FullscreenError message={msg} onClose={onLeave} />;
   }
+
+  if (!data) return <FullscreenSpinner text="Подключение к встрече…" />;
 
   if (!isMeetingTime) {
     const localUserId = parseInt(data.user_identity.replace("user-", ""), 10) || 0;
@@ -1791,8 +1831,8 @@ export function MeetingRoom({ bookingId, onLeave }: { bookingId: number; onLeave
       token={data.access_token}
       serverUrl={data.livekit_url}
       connect
-      video
-      audio
+      video={initialVideo}
+      audio={initialAudio}
       onDisconnected={() => { if (!intentionalLeaveRef.current) setLkDisconnected(true); }}
     >
       <RoomAudioRenderer />
