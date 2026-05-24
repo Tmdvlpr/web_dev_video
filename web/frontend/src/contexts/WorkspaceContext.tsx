@@ -33,14 +33,16 @@ export function WorkspaceProvider({ children, enabled }: { children: React.React
     queryKey: ["workspaces"],
     queryFn: workspacesApi.list,
     enabled,
-    staleTime: 30_000,
+    staleTime: 300_000,
+    gcTime: 600_000,
   });
 
   const { data: myRooms = [], isLoading: roomsLoading, refetch: refetchRooms } = useQuery({
     queryKey: ["rooms"],
     queryFn: roomsApi.list,
     enabled,
-    staleTime: 30_000,
+    staleTime: 300_000,
+    gcTime: 600_000,
   });
 
   const [activeId, setActiveId] = useState<number | null>(() => {

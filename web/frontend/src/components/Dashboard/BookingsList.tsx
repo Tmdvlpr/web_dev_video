@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
-import { InteractiveStripe } from "../Common/InteractiveStripe";
 import { MeetingListSkeleton } from "../Common/Skeleton";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
@@ -16,6 +15,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onCardClick: (b: Booking) => void;
+  onBack?: () => void;
 }
 
 const PALETTES = ["#1565a8","#0891b2","#16a34a","#d97706","#e11d48","#c026d3","#4f46e5","#ea580c"];
@@ -135,7 +135,7 @@ function ExportFooter({ isDark }: { isDark: boolean }) {
   );
 }
 
-export function ActiveMeetings({ isOpen, onClose, onCardClick }: Props) {
+export function ActiveMeetings({ isOpen, onClose, onCardClick, onBack }: Props) {
   const { isDark } = useTheme();
   const { t } = useLocale();
   const { user } = useAuth();
@@ -173,25 +173,27 @@ export function ActiveMeetings({ isOpen, onClose, onCardClick }: Props) {
 
           <motion.div key="panel"
             role="dialog" aria-modal="true" aria-label={t("meetings.title")}
-            initial={{ opacity: 0, x: 340 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 340 }}
-            transition={{ type: "spring", damping: 22, stiffness: 280 }}
-            className="fixed right-0 top-0 bottom-0 z-50 w-[360px] flex flex-col"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
+            className="fixed right-0 top-0 bottom-0 z-50 w-[300px] flex flex-col"
             style={{
               background: "var(--panel)",
               borderLeft: "1px solid var(--border)",
               boxShadow: isDark ? "-20px 0 60px rgba(0,0,0,0.8)" : "-8px 0 40px rgba(15,23,42,0.12)",
             }}>
 
-            <InteractiveStripe />
-
-            <div className="px-5 pt-4 mt-1" style={{ borderBottom: "1px solid var(--border)" }}>
+            <div className="px-5 pt-4" style={{ borderBottom: "1px solid var(--border)" }}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-sm" style={{ color: "var(--text)" }}>{t("meetings.title")}</h3>
-                <button onClick={onClose} type="button" aria-label={t("booking.close")}
-                  className="w-8 h-8 flex items-center justify-center rounded-full text-xl transition-all"
+                <button onClick={onBack ?? onClose} type="button" aria-label={t("booking.close")}
+                  className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
                   style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
                   onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}><span aria-hidden="true">×</span></button>
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}>
+                  {onBack
+                    ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    : <span aria-hidden="true" className="text-xl leading-none">×</span>}
+                </button>
               </div>
               {/* Tabs */}
               <div role="tablist" aria-label={t("meetings.title")} className="flex gap-1 pb-3">

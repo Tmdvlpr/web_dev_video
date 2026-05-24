@@ -27,9 +27,10 @@ interface Props {
   user: User;
   onClose: () => void;
   onSaved: () => void;
+  onBack?: () => void;
 }
 
-export function ProfileEditModal({ open, user, onClose, onSaved }: Props) {
+export function ProfileEditModal({ open, user, onClose, onSaved, onBack }: Props) {
   const { t } = useLocale();
   const { isDark } = useTheme();
   const qc = useQueryClient();
@@ -84,39 +85,35 @@ export function ProfileEditModal({ open, user, onClose, onSaved }: Props) {
   return (
     <AnimatePresence>
       {open && (
-        <motion.div
-          key="bg"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
-          style={{ background: "rgba(15,23,42,0.55)", backdropFilter: "blur(8px)" }}
-          onClick={onClose}
-        >
-          <motion.form
-            initial={{ opacity: 0, y: 12, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.97 }}
-            transition={{ type: "spring", damping: 22, stiffness: 280 }}
-            onSubmit={submit}
-            onClick={e => e.stopPropagation()}
-            className="w-full max-w-sm p-6 rounded-2xl"
+        <>
+          <motion.div key="bd" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[59]"
+            style={{ background: isDark ? "rgba(0,0,0,0.6)" : "rgba(15,23,42,0.3)", backdropFilter: "blur(4px)" }}
+            onClick={onBack ?? onClose} />
+          <motion.div key="panel"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
+            className="fixed right-0 top-0 bottom-0 z-[60] w-[300px] flex flex-col"
             style={{
-              background: "var(--card)",
-              border: "1px solid var(--border)",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
-            }}
-          >
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-bold" style={{ color: "var(--text)" }}>
+              background: "var(--panel)",
+              borderLeft: "1px solid var(--border)",
+              boxShadow: isDark ? "-20px 0 60px rgba(0,0,0,0.8)" : "-8px 0 40px rgba(15,23,42,0.12)",
+            }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+              <h3 className="font-bold text-sm" style={{ color: "var(--text)" }}>
                 {t("profile.editTitle")}
-              </h2>
-              <button type="button" onClick={onClose}
-                className="w-7 h-7 flex items-center justify-center rounded-full text-lg leading-none"
-                style={{ color: "var(--text-muted)", background: "var(--elevated)" }}>
-                ×
+              </h3>
+              <button type="button" onClick={onBack ?? onClose}
+                className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
+                style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
+                onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
+                onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>
+                {onBack
+                  ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                  : <span className="text-xl leading-none">×</span>}
               </button>
             </div>
+            <form onSubmit={submit} className="px-5 py-4 flex-1 overflow-y-auto flex flex-col">
 
             {/* Name */}
             <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-sec)" }}>
@@ -232,8 +229,9 @@ export function ProfileEditModal({ open, user, onClose, onSaved }: Props) {
             >
               {isPending ? t("common.loading") : t("common.save")}
             </button>
-          </motion.form>
-        </motion.div>
+            </form>
+          </motion.div>
+        </>
       )}
     </AnimatePresence>
   );

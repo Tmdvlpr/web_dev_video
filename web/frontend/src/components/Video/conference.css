@@ -61,7 +61,7 @@
 .conf.l-focus .conf__videos { flex-direction:row }
 .thumbstrip { display:flex; flex-direction:column; gap:6px; padding:10px 7px; overflow-y:auto; flex-shrink:0; width:158px; border-right:1px solid var(--brd); background:var(--bg) }
 .mainspeaker { flex:1; display:flex; padding:10px; min-width:0 }
-.mainspeaker .vtile--lg { width:100%; border-radius:var(--rl) }
+.mainspeaker .vtile--lg { width:100%; height:100%; border-radius:var(--rl) }
 
 /* Gallery */
 .conf.l-gallery .conf__videos { padding:10px }
@@ -144,13 +144,9 @@
 .swrap { flex-shrink:0; display:flex; overflow:hidden; width:0; transition:width .22s ease }
 .swrap--on { width:300px }
 .sidebar { width:300px; height:100%; background:var(--surf); border-left:1px solid var(--brd); display:flex; flex-direction:column; overflow:hidden; flex-shrink:0 }
-.sidebar__hd { display:flex; align-items:center; padding:10px 10px 0; border-bottom:1px solid var(--brd); gap:4px; flex-shrink:0 }
-.sidebar__tabs { display:flex; flex:1; gap:0 }
-.sidebar__tab { display:flex; align-items:center; gap:5px; padding:9px 10px; background:none; border:none; border-bottom:2px solid transparent; color:var(--tx2); font-size:12.5px; font-weight:500; transition:color .12s,border-color .12s; margin-bottom:-1px; white-space:nowrap }
-.sidebar__tab--on { color:var(--accent); border-bottom-color:var(--accent) }
-:root:not([data-theme="dark"]) .conf-root .sidebar__tab--on { color:var(--tx); border-bottom-color:var(--tx2); }
-.sidebar__tab:hover:not(.sidebar__tab--on) { color:var(--tx) }
-.sidebar__close { background:none; border:none; color:var(--tx3); padding:6px; border-radius:var(--rs); display:flex; transition:background .1s,color .1s; margin-bottom:8px }
+.sidebar__hd { display:flex; align-items:center; padding:10px 12px; border-bottom:1px solid var(--brd); gap:4px; flex-shrink:0 }
+.sidebar__hdtitle { flex:1; font-size:13px; font-weight:600; color:var(--tx) }
+.sidebar__close { background:none; border:none; color:var(--tx3); padding:6px; border-radius:var(--rs); display:flex; transition:background .1s,color .1s }
 .sidebar__close:hover { background:var(--elev); color:var(--tx) }
 .sidebar__body { flex:1; display:flex; flex-direction:column; overflow:hidden }
 

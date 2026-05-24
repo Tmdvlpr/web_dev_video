@@ -12,6 +12,7 @@ interface Props {
   onClose: () => void;
   onSuccess?: (msg: string) => void;
   onError?: (msg: string) => void;
+  onBack?: () => void;
 }
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -29,7 +30,7 @@ const STATUS_META: Record<SubmissionStatus, { bg: string; color: string; border:
   closed:      { bg: "rgba(22,163,74,0.12)",  color: "#15803d", border: "rgba(22,163,74,0.3)",  dot: "#22c55e" },
 };
 
-export function FeedbackModal({ open, onClose, onSuccess, onError }: Props) {
+export function FeedbackModal({ open, onClose, onSuccess, onError, onBack }: Props) {
   const { t, locale } = useLocale();
   const { isDark } = useTheme();
   const qc = useQueryClient();
@@ -96,7 +97,7 @@ export function FeedbackModal({ open, onClose, onSuccess, onError }: Props) {
     return t("submissions.statusClosed");
   };
 
-  const handleClose = () => { setView("list"); onClose(); };
+  const handleClose = () => { setView("list"); (onBack ?? onClose)(); };
 
   return (
     <AnimatePresence>
@@ -114,13 +115,13 @@ export function FeedbackModal({ open, onClose, onSuccess, onError }: Props) {
           {/* Panel — right-side drawer style */}
           <motion.div
             key="panel"
-            initial={{ opacity: 0, x: 360 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 360 }}
-            transition={{ type: "spring", damping: 24, stiffness: 300 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
             className="fixed right-0 top-0 bottom-0 z-[51] flex flex-col"
             style={{
-              width: "min(400px, 100vw)",
+              width: 300,
               background: isDark ? "#13111a" : "#ffffff",
               borderLeft: `1px solid ${isDark ? "rgba(21,101,168,0.2)" : "#e5e7eb"}`,
               boxShadow: isDark
@@ -128,9 +129,6 @@ export function FeedbackModal({ open, onClose, onSuccess, onError }: Props) {
                 : "-8px 0 40px rgba(15,23,42,0.14)",
             }}
           >
-            {/* Gradient top accent */}
-            <div style={{ height: 3, background: "linear-gradient(90deg,#1565a8,#06b6d4,#114e85)", flexShrink: 0 }} />
-
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 shrink-0"
               style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "#f0f0f0"}` }}>
@@ -157,11 +155,13 @@ export function FeedbackModal({ open, onClose, onSuccess, onError }: Props) {
                 </div>
               </div>
               <button onClick={handleClose}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-xl transition-all"
+                className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
                 style={{ color: isDark ? "#64748b" : "#94a3b8", background: isDark ? "rgba(255,255,255,0.06)" : "#f5f5f5" }}
                 onMouseEnter={e => { e.currentTarget.style.color = isDark ? "#e2e8f0" : "#0f172a"; }}
                 onMouseLeave={e => { e.currentTarget.style.color = isDark ? "#64748b" : "#94a3b8"; }}>
-                ×
+                {onBack && view === "list"
+                  ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                  : <span className="text-xl leading-none">×</span>}
               </button>
             </div>
 

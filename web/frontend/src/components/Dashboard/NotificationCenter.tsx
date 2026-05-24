@@ -1,6 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
-import { InteractiveStripe } from "../Common/InteractiveStripe";
+import { useEffect, useState } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
 import type { NotificationRecord } from "../../types";
@@ -36,13 +35,18 @@ export function setReminderMinutes(minutes: number[]) {
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  onBack?: () => void;
 }
 
-export function NotificationCenter({ isOpen, onClose }: Props) {
+export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
   const { isDark } = useTheme();
   const { t } = useLocale();
   const [notifications, setNotifications] = useState<NotificationRecord[]>(() => getStoredNotifications());
   const [reminderMins, setReminderMins] = useState<number[]>(() => getReminderMinutes());
+
+  useEffect(() => {
+    if (isOpen) setNotifications(getStoredNotifications());
+  }, [isOpen]);
 
   const timeAgo = (ms: number): string => {
     const diff = Math.round((Date.now() - ms) / 60_000);
@@ -79,28 +83,30 @@ export function NotificationCenter({ isOpen, onClose }: Props) {
             style={{ background: isDark ? "rgba(0,0,0,0.6)" : "rgba(15,23,42,0.3)", backdropFilter: "blur(4px)" }} />
 
           <motion.div key="panel"
-            initial={{ opacity: 0, x: 340 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 340 }}
-            transition={{ type: "spring", damping: 22, stiffness: 280 }}
-            className="fixed right-0 top-0 bottom-0 z-50 w-80 flex flex-col"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
+            className="fixed right-0 top-0 bottom-0 z-50 w-[300px] flex flex-col"
             style={{
               background: "var(--panel)",
               borderLeft: "1px solid var(--border)",
               boxShadow: isDark ? "-20px 0 60px rgba(0,0,0,0.8)" : "-8px 0 40px rgba(15,23,42,0.12)",
             }}>
 
-            <InteractiveStripe />
-
-            <div className="flex items-center justify-between px-5 py-4 mt-1"
+            <div className="flex items-center justify-between px-5 py-4"
               style={{ borderBottom: "1px solid var(--border)" }}>
               <div>
                 <h3 className="font-bold text-sm" style={{ color: "var(--text)" }}>{t("nav.notifications")}</h3>
                 <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{t("notif.history")}</p>
               </div>
-              <button onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-xl transition-all"
+              <button onClick={onBack ?? onClose}
+                className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
                 style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
                 onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
-                onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>×</button>
+                onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>
+                {onBack
+                  ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                  : <span className="text-xl leading-none">×</span>}
+              </button>
             </div>
 
             <div className="px-5 py-3" style={{ borderBottom: "1px solid var(--border)" }}>

@@ -1,7 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { ConfirmDialog } from "../Common/ConfirmDialog";
-import { InteractiveStripe } from "../Common/InteractiveStripe";
 import { MeetingListSkeleton } from "../Common/Skeleton";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
@@ -14,6 +13,7 @@ import { useAuth } from "../../hooks/useAuth";
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  onBack?: () => void;
 }
 
 type Tab = "stats" | "bookings" | "users";
@@ -33,7 +33,7 @@ function fmtRange(start: string, end: string) {
   return `${fmtDT(start)} — ${fmtHM(end)}`;
 }
 
-export function AdminPanel({ isOpen, onClose }: Props) {
+export function AdminPanel({ isOpen, onClose, onBack }: Props) {
   const { isDark } = useTheme();
   const { t } = useLocale();
   const [tab, setTab] = useState<Tab>("stats");
@@ -117,10 +117,10 @@ export function AdminPanel({ isOpen, onClose }: Props) {
 
   const statCards = stats ? [
     ...(isSuperadmin
-      ? [{ label: t("admin.statUsers"), value: stats.total_users, icon: "👤", color: "#7c3aed", goTo: "users" as Tab }]
+      ? [{ label: t("admin.statUsers"), value: stats.total_users, color: "#7c3aed", goTo: "users" as Tab }]
       : []),
-    { label: t("admin.statTotalBookings"), value: stats.total_bookings, icon: "📅", color: "#0891b2", goTo: "bookings" as Tab },
-    { label: t("admin.statActiveBookings"), value: stats.active_bookings, icon: "🟢", color: "#16a34a", goTo: "bookings" as Tab },
+    { label: t("admin.statTotalBookings"), value: stats.total_bookings, color: "#0891b2", goTo: "bookings" as Tab },
+    { label: t("admin.statActiveBookings"), value: stats.active_bookings, color: "#16a34a", goTo: "bookings" as Tab },
   ] : [];
 
   const roleBadge = (role: string) => {
@@ -138,20 +138,18 @@ export function AdminPanel({ isOpen, onClose }: Props) {
             style={{ background: isDark ? "rgba(0,0,0,0.6)" : "rgba(15,23,42,0.3)", backdropFilter: "blur(4px)" }} />
 
           <motion.div key="panel"
-            initial={{ opacity: 0, x: 400 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 400 }}
-            transition={{ type: "spring", damping: 22, stiffness: 280 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
             className="fixed right-0 top-0 bottom-0 z-50 flex flex-col"
             style={{
-              width: "min(420px, 100vw)",
+              width: 300,
               background: "var(--panel)",
               borderLeft: "1px solid var(--border)",
               boxShadow: isDark ? "-20px 0 60px rgba(0,0,0,0.8)" : "-8px 0 40px rgba(15,23,42,0.12)",
             }}>
 
-            <InteractiveStripe />
-
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 mt-1"
+            <div className="flex items-center justify-between px-5 py-4"
               style={{ borderBottom: "1px solid var(--border)" }}>
               <div>
                 <h3 className="font-bold text-sm" style={{ color: "var(--text)" }}>{t("admin.title")}</h3>
@@ -159,11 +157,15 @@ export function AdminPanel({ isOpen, onClose }: Props) {
                   {isSuperadmin ? t("admin.superadmin") : t("admin.subtitle")}
                 </p>
               </div>
-              <button onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-xl transition-all"
+              <button onClick={onBack ?? onClose}
+                className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
                 style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
                 onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
-                onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>×</button>
+                onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>
+                {onBack
+                  ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                  : <span className="text-xl leading-none">×</span>}
+              </button>
             </div>
 
             {/* Tabs */}
@@ -203,7 +205,6 @@ export function AdminPanel({ isOpen, onClose }: Props) {
                         style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}
                         onMouseEnter={e => { e.currentTarget.style.borderColor = s.color; }}
                         onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; }}>
-                        <div className="text-3xl">{s.icon}</div>
                         <div className="flex-1">
                           <div className="text-2xl font-black" style={{ color: s.color }}>{s.value}</div>
                           <div className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{s.label}</div>
@@ -399,14 +400,14 @@ export function AdminPanel({ isOpen, onClose }: Props) {
                                 <button
                                   onClick={() => setRole({ userId: u.id, role: u.role === "admin" ? "user" : "admin" })}
                                   disabled={roleVars?.userId === u.id}
-                                  className="text-xs px-2 py-1 rounded-lg font-semibold transition-all disabled:opacity-40"
+                                  className="w-7 h-7 flex items-center justify-center rounded-lg text-sm font-bold transition-all disabled:opacity-40"
                                   style={u.role === "admin"
                                     ? { background: "rgba(124,58,237,0.12)", color: "var(--primary)", border: "1px solid var(--primary-border)" }
                                     : { background: "var(--elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }
                                   }
                                   title={u.role === "admin" ? t("admin.removeAdmin") : t("admin.giveAdmin")}
                                 >
-                                  {u.role === "admin" ? t("admin.removeAdmin") : t("admin.giveAdmin")}
+                                  {u.role === "admin" ? "−" : "+"}
                                 </button>
                               )}
                               <button

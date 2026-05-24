@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useCalendarDrag } from "../../contexts/CalendarDragContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useTelegram } from "../../hooks/useTelegram";
+import { meetingsApi } from "../../api/meetings";
 import type { Booking, User } from "../../types";
 
 interface BookingCardProps {
@@ -55,12 +56,16 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
     return now >= startOfDay && now.getTime() <= end.getTime() + 2 * 3_600_000;
   })();
 
-  const handleJoinVideo = (e: React.MouseEvent) => {
+  const handleJoinVideo = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isMiniApp) {
-      const url = `${window.location.origin}/meeting/${booking.id}`;
-      (window as unknown as { Telegram?: { WebApp?: { openLink?: (u: string, opts?: object) => void } } })
-        .Telegram?.WebApp?.openLink?.(url, { try_instant_view: false });
+      try {
+        const { invite_url } = await meetingsApi.createInvite(booking.id);
+        (window as unknown as { Telegram?: { WebApp?: { openLink?: (u: string, opts?: object) => void } } })
+          .Telegram?.WebApp?.openLink?.(invite_url, { try_instant_view: false });
+      } catch {
+        navigate(`/meeting/${booking.id}`);
+      }
     } else {
       navigate(`/meeting/${booking.id}`);
     }

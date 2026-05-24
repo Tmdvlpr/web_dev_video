@@ -9,8 +9,8 @@ export function useBookings(date: string | undefined, workspaceId?: number) {
     queryKey: ["bookings", date, workspaceId ?? null],
     queryFn: () => bookingsApi.getByDate(date!, workspaceId),
     enabled: !!date,
-    staleTime: 5_000,
-    refetchInterval: 5_000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
     placeholderData: (prev) => prev,
   });
 }
@@ -19,7 +19,8 @@ export function useActiveBookings() {
   return useQuery({
     queryKey: ["bookings", "active"],
     queryFn: bookingsApi.getActive,
-    refetchInterval: 5_000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 }
 

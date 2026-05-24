@@ -1,179 +1,12 @@
-import "@livekit/components-styles";
-import {
-  LiveKitRoom,
-  RoomAudioRenderer,
-  VideoTrack,
-  useIsSpeaking,
-  useLocalParticipant,
-  useParticipants,
-  useTracks,
-} from "@livekit/components-react";
-import type { TrackReferenceOrPlaceholder, TrackReference } from "@livekit/components-react";
-import { Track } from "livekit-client";
-import type { Participant } from "livekit-client";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { meetingsApi } from "../../api/meetings";
 import type { GuestJoinInfo } from "../../types";
+import { MeetingRoom } from "./MeetingRoom";
 import "./conference.css";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const COLORS = ["#4f7cff", "#a855f7", "#06b6d4", "#f59e0b", "#22c55e", "#f43f5e", "#ec4899"];
-
-function colorFromIdentity(id: string): string {
-  let h = 0;
-  for (const c of id) h = (h * 31 + c.charCodeAt(0)) & 0x7fffffff;
-  return COLORS[h % COLORS.length];
-}
-
-function initialsFromName(name: string): string {
-  const p = name.trim().split(/\s+/);
-  return p.length >= 2 ? (p[0][0] + p[1][0]).toUpperCase() : name.slice(0, 2).toUpperCase();
-}
-
 function fmtTime(d: Date): string {
   return d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-}
-
-// ─── Stable track constants ───────────────────────────────────────────────────
-const TRACK_SOURCES = [
-  { source: Track.Source.Camera, withPlaceholder: true },
-  { source: Track.Source.ScreenShare, withPlaceholder: false },
-];
-const TRACK_OPTIONS = { onlySubscribed: false };
-
-// ─── Guest video tile ─────────────────────────────────────────────────────────
-const GuestVideoTile = React.memo(function GuestVideoTile({
-  trackRef,
-  localIdentity,
-}: {
-  trackRef: TrackReferenceOrPlaceholder;
-  localIdentity: string;
-}) {
-  const participant = trackRef.participant as Participant;
-  const isSpeaking = useIsSpeaking(participant);
-  if (!participant) return null;
-  const hasVideo = !!(trackRef.publication?.isEnabled && trackRef.publication?.track);
-  const isLocal = participant.identity === localIdentity;
-  const color = colorFromIdentity(participant.identity);
-  const displayName = participant.name ?? participant.identity;
-  const initials = initialsFromName(displayName);
-  const shortName = isLocal ? "Вы" : displayName.split(" ").slice(0, 2).join(" ");
-
-  return (
-    <div className={`vtile vtile--md${isSpeaking ? " vtile--speaking" : ""}`}>
-      <div className="vtile__bg" />
-      {hasVideo ? (
-        <VideoTrack
-          trackRef={trackRef as TrackReference}
-          className={`vtile__video${isLocal ? " vtile__video--mirror" : ""}`}
-        />
-      ) : (
-        <div className="vtile__avwrap">
-          <div className="vtile__av" style={{ background: `${color}1a`, border: `2px solid ${color}44`, color }}>
-            {initials}
-          </div>
-        </div>
-      )}
-      <div className="vtile__footer">
-        <span className="vtile__name">{shortName}</span>
-        {!participant.isMicrophoneEnabled && (
-          <div className="vtile__mutebadge" style={{ fontSize: 9 }}>🔇</div>
-        )}
-      </div>
-      {isSpeaking && <div className="vtile__sring" />}
-    </div>
-  );
-});
-
-// ─── Guest conference UI (inner, uses LiveKit hooks) ──────────────────────────
-function GuestConferenceUI({
-  guestName,
-  onLeave,
-}: {
-  guestName: string;
-  onLeave: () => void;
-}) {
-  const { localParticipant, isMicrophoneEnabled, isCameraEnabled } = useLocalParticipant();
-  const remoteParticipants = useParticipants();
-  const allTracks = useTracks(TRACK_SOURCES, TRACK_OPTIONS);
-  const camTracks = allTracks.filter((t) => t.source === Track.Source.Camera);
-  const [confirmLeave, setConfirmLeave] = useState(false);
-
-  return (
-    <div className="conf-root fixed inset-0 z-[9999] flex flex-col" style={{ background: "#0f1117" }}>
-      {/* Header */}
-      <div className="mhdr" style={{ background: "rgba(15,17,23,0.9)" }}>
-        <div className="mhdr__left">
-          <span className="mhdr__title">Видеоконференция</span>
-          <span className="mhdr__badge" style={{ marginLeft: 8 }}>
-            {remoteParticipants.length + 1} участн.
-          </span>
-          <span className="mhdr__badge" style={{ marginLeft: 4, color: "#94a3b8", fontSize: 11 }}>
-            Гость: {guestName}
-          </span>
-        </div>
-      </div>
-
-      {/* Video grid */}
-      <div style={{ flex: 1, overflow: "hidden" }}>
-        <div className="gallerygrid" style={{ height: "100%", padding: 8 }}>
-          {camTracks.slice(0, 9).map((t) => (
-            <GuestVideoTile
-              key={t.participant.identity}
-              trackRef={t}
-              localIdentity={localParticipant.identity}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Controls */}
-      <div className="ctrlbar">
-        <div className="ctrlbar__inner">
-          <div className="ctrlbar__group">
-            <button
-              className={`ctrlbtn${!isMicrophoneEnabled ? " ctrlbtn--active" : ""}`}
-              onClick={() => localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled).catch(console.warn)}
-              title={isMicrophoneEnabled ? "Выключить микрофон" : "Включить микрофон"}
-            >
-              <div className="ctrlbtn__icon">{isMicrophoneEnabled ? "🎤" : "🔇"}</div>
-              <span className="ctrlbtn__label">{isMicrophoneEnabled ? "Мут" : "Анмут"}</span>
-            </button>
-            <button
-              className={`ctrlbtn${!isCameraEnabled ? " ctrlbtn--active" : ""}`}
-              onClick={() => localParticipant.setCameraEnabled(!isCameraEnabled).catch(console.warn)}
-              title={isCameraEnabled ? "Выключить камеру" : "Включить камеру"}
-            >
-              <div className="ctrlbtn__icon">{isCameraEnabled ? "📹" : "📷"}</div>
-              <span className="ctrlbtn__label">{isCameraEnabled ? "Камера" : "Вкл"}</span>
-            </button>
-          </div>
-          <div className="ctrlbar__group ctrlbar__group--right">
-            <button className="ctrlbtn ctrlbtn--leave" onClick={() => setConfirmLeave(true)}>
-              <div className="ctrlbtn__icon">🚪</div>
-              <span className="ctrlbtn__label">Покинуть</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Leave confirm */}
-      {confirmLeave && (
-        <div className="overlay" onClick={() => setConfirmLeave(false)}>
-          <div className="modal modal--sm" onClick={(e) => e.stopPropagation()}>
-            <div className="modal__hd">
-              <span>Покинуть встречу?</span>
-              <button className="modal__x" onClick={() => setConfirmLeave(false)}>✕</button>
-            </div>
-            <div className="modal__ft modal__ft--col">
-              <button className="modal__btn modal__btn--danger" onClick={onLeave}>Покинуть</button>
-              <button className="modal__btn" onClick={() => setConfirmLeave(false)}>Отмена</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ─── Camera preview ───────────────────────────────────────────────────────────
@@ -337,17 +170,15 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
   // ── Approved — enter LiveKit room ────────────────────────────────────────────
   if (phase === "approved" && livekitToken && livekitUrl) {
     return (
-      <LiveKitRoom
-        token={livekitToken}
-        serverUrl={livekitUrl}
-        connect
-        video={camOn}
-        audio={micOn}
-        onDisconnected={() => setPhase("left")}
-      >
-        <RoomAudioRenderer />
-        <GuestConferenceUI guestName={name} onLeave={() => setPhase("left")} />
-      </LiveKitRoom>
+      <MeetingRoom
+        bookingId={0}
+        guestToken={livekitToken}
+        guestServerUrl={livekitUrl}
+        guestName={name}
+        initialVideo={camOn}
+        initialAudio={micOn}
+        onLeave={() => setPhase("left")}
+      />
     );
   }
 

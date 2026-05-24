@@ -7,6 +7,7 @@ import { useLocale } from "../../contexts/LocaleContext";
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  onBack?: () => void;
 }
 
 const STATUS_COLORS: Record<SubmissionStatus, { bg: string; color: string; border: string }> = {
@@ -22,7 +23,7 @@ function fmtDate(iso: string, locale: string) {
   });
 }
 
-export function SubmissionsPanel({ isOpen, onClose }: Props) {
+export function SubmissionsPanel({ isOpen, onClose, onBack }: Props) {
   const { isDark } = useTheme();
   const { t, locale } = useLocale();
   const qc = useQueryClient();
@@ -76,22 +77,28 @@ export function SubmissionsPanel({ isOpen, onClose }: Props) {
             style={{ background: isDark ? "rgba(0,0,0,0.6)" : "rgba(15,23,42,0.3)", backdropFilter: "blur(4px)" }} />
 
           <motion.div key="panel"
-            initial={{ opacity: 0, x: 400 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 400 }}
-            transition={{ type: "spring", damping: 22, stiffness: 280 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
             className="fixed right-0 top-0 bottom-0 z-50 flex flex-col"
             style={{
-              width: "min(460px, 100vw)",
+              width: 300,
               background: "var(--panel)",
               borderLeft: "1px solid var(--border)",
               boxShadow: isDark ? "-20px 0 60px rgba(0,0,0,0.8)" : "-8px 0 40px rgba(15,23,42,0.12)",
             }}>
 
-            <div className="flex items-center justify-between px-5 py-4 mt-1"
+            <div className="flex items-center justify-between px-5 py-4"
               style={{ borderBottom: "1px solid var(--border)" }}>
               <h3 className="font-bold text-sm" style={{ color: "var(--text)" }}>{t("submissions.title")}</h3>
-              <button onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-xl"
-                style={{ color: "var(--text-muted)", background: "var(--elevated)" }}>×</button>
+              <button onClick={onBack ?? onClose}
+                className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
+                style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
+                onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
+                onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>
+                {onBack
+                  ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                  : <span className="text-xl leading-none">×</span>}
+              </button>
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
