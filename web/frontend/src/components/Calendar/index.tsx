@@ -412,16 +412,30 @@ function RoomPicker({ activeRoomId, onRoomChange }: { activeRoomId: number | nul
 }
 
 /* ── Room status widget ── */
-function RoomStatus({ roomId }: { roomId?: number | null }) {
+function RoomStatus({ roomId, workspaceId }: { roomId?: number | null; workspaceId?: number | null }) {
   const { isDark } = useTheme();
   const { t } = useLocale();
+  const [popupOpen, setPopupOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
   const { data: allBookings = [] } = useQuery({
-    queryKey: ["bookings", "room-status"],
-    queryFn: bookingsApi.getRoomStatus,
+    queryKey: ["bookings", "room-status", workspaceId ?? null],
+    queryFn: () => bookingsApi.getRoomStatus(workspaceId ?? undefined),
     refetchInterval: 60_000,
   });
 
-  const rooms = roomId ? allBookings.filter((b) => b.room_id === roomId) : allBookings;
+  React.useEffect(() => {
+    if (!popupOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setPopupOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [popupOpen]);
+
+  // Only physical/hybrid bookings occupy the room; virtual meetings don't take physical space
+  const physicalBookings = allBookings.filter((b) => b.booking_type !== "virtual");
+  const rooms = roomId ? physicalBookings.filter((b) => b.room_id === roomId) : physicalBookings;
 
   const now = Date.now();
   const current = rooms.find(
@@ -429,31 +443,74 @@ function RoomStatus({ roomId }: { roomId?: number | null }) {
   );
   const next = rooms.find((b) => new Date(b.start_time).getTime() > now);
 
-  if (current) {
-    const endTime = new Date(current.end_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  const fmtTime = (s: string) => new Date(s).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+
+  const popupStyle: React.CSSProperties = {
+    position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 200,
+    background: isDark ? "#1e2640" : "#fff",
+    border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
+    borderRadius: 12, padding: "12px 14px", minWidth: 220,
+    boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+    color: isDark ? "#eceef5" : "#1a2038",
+  };
+
+  const renderPopup = (booking: typeof current) => {
+    if (!booking) return null;
+    const isNow = new Date(booking.start_time).getTime() <= now;
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
-        style={{
-          background: isDark ? "rgba(239,68,68,0.1)" : "#fff1f2",
-          border: "1px solid #fecdd3",
-          color: "#dc2626",
-        }}>
-        <motion.div animate={{ scale: [1, 1.4, 1], opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }}
-          className="w-2 h-2 rounded-full" style={{ background: "#ef4444" }} />
-        <span>{t("status.busyUntil", { time: endTime })}</span>
+      <div style={popupStyle}>
+        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: isNow ? "#dc2626" : "#d97706", marginBottom: 6 }}>
+          {isNow ? "Идёт сейчас" : "Скоро начнётся"}
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{booking.title}</div>
+        <div style={{ fontSize: 12, color: isDark ? "#7882a8" : "#546080", marginBottom: 2 }}>
+          {fmtTime(booking.start_time)} — {fmtTime(booking.end_time)}
+        </div>
+        {booking.user?.display_name && (
+          <div style={{ fontSize: 12, color: isDark ? "#7882a8" : "#546080" }}>
+            Организатор: {booking.user.display_name}
+          </div>
+        )}
+        {booking.description && (
+          <div style={{ fontSize: 12, color: isDark ? "#9aa3c0" : "#546080", marginTop: 6, borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"}`, paddingTop: 6 }}>
+            {booking.description}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (current) {
+    const endTime = fmtTime(current.end_time);
+    return (
+      <div ref={ref} style={{ position: "relative" }}>
+        <button
+          onClick={() => setPopupOpen((v) => !v)}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
+          style={{ background: isDark ? "rgba(239,68,68,0.1)" : "#fff1f2", border: "1px solid #fecdd3", color: "#dc2626", cursor: "pointer" }}>
+          <motion.div animate={{ scale: [1, 1.4, 1], opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }}
+            className="w-2 h-2 rounded-full" style={{ background: "#ef4444" }} />
+          <span>{t("status.busyUntil", { time: endTime })}</span>
+        </button>
+        {popupOpen && renderPopup(current)}
       </div>
     );
   }
 
   if (next) {
-    const startTime = new Date(next.start_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+    const startTime = fmtTime(next.start_time);
     const minsLeft = Math.round((new Date(next.start_time).getTime() - now) / 60_000);
     if (minsLeft <= 30) {
       return (
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
-          style={{ background: isDark ? "rgba(217,119,6,0.1)" : "#fffbeb", border: "1px solid #fde68a", color: "#d97706" }}>
-          <div className="w-2 h-2 rounded-full" style={{ background: "#f59e0b" }} />
-          <span>{t("status.busyAt", { time: startTime })}</span>
+        <div ref={ref} style={{ position: "relative" }}>
+          <button
+            onClick={() => setPopupOpen((v) => !v)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
+            style={{ background: isDark ? "rgba(217,119,6,0.1)" : "#fffbeb", border: "1px solid #fde68a", color: "#d97706", cursor: "pointer" }}>
+            <div className="w-2 h-2 rounded-full" style={{ background: "#f59e0b" }} />
+            <span>{t("status.busyAt", { time: startTime })}</span>
+          </button>
+          {popupOpen && renderPopup(next)}
         </div>
       );
     }
@@ -731,7 +788,7 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
         <div className="ml-auto flex items-center gap-2">
           <RoomPicker activeRoomId={activeRoomId} onRoomChange={setActiveRoomId} />
           <div className="w-px h-4 mx-0.5" style={{ background: "var(--border)" }} />
-          <RoomStatus roomId={activeRoomId} />
+          <RoomStatus roomId={activeRoomId} workspaceId={activeWorkspace?.id} />
 
           <button
             onClick={() => { setSearchOpen((v) => !v); if (searchOpen) setSearchQuery(""); }}

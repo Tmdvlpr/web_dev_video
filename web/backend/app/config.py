@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     VIDEO_ENABLED: bool = True
     VIDEO_MAX_PARTICIPANTS: int = 50
     VIDEO_RECORDING_ENABLED: bool = True
-    CHAT_FILES_PATH: str = "/app/data/chat-files"
-    CHAT_FILES_MAX_SIZE: int = 50 * 1024 * 1024  # 50 MB
+    CHAT_FILES_MAX_SIZE: int = 20 * 1024 * 1024  # 20 MB
+    CHAT_RETENTION_DAYS: int = 10  # days after meeting end to keep chat data
     RECORDINGS_PATH: str = "/app/data/recordings"
 
     class Config:

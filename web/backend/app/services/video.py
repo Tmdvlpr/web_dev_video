@@ -7,9 +7,7 @@ NOTE: Verify method signatures against the installed livekit-api version.
 import hashlib
 import hmac as _hmac
 import secrets
-import uuid
 from datetime import timedelta
-from pathlib import Path
 
 from app.config import settings
 
@@ -178,12 +176,3 @@ def verify_webhook(body: bytes, auth_header: str) -> object:
     )
     webhook_receiver = WebhookReceiver(token_verifier=token_verifier)
     return webhook_receiver.receive(body=body.decode("utf-8"), auth_token=auth_header)
-
-
-def get_chat_file_path(booking_id: int, original_filename: str) -> Path:
-    """Return a unique file path under CHAT_FILES_PATH for a given booking."""
-    ext = Path(original_filename).suffix
-    safe_name = f"{uuid.uuid4().hex}{ext}"
-    directory = Path(settings.CHAT_FILES_PATH) / str(booking_id)
-    directory.mkdir(parents=True, exist_ok=True)
-    return directory / safe_name

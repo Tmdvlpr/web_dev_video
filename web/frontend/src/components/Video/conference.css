@@ -166,9 +166,10 @@
 .cmsg { display:flex; gap:8px; align-items:flex-start }
 .cmsg--self { flex-direction:row-reverse }
 .cmsg__av { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; flex-shrink:0; margin-top:2px }
-.cmsg__body { display:flex; flex-direction:column; gap:3px; max-width:calc(100% - 44px) }
+.cmsg__body { display:flex; flex-direction:column; gap:3px; max-width:72% }
 .cmsg--self .cmsg__body { align-items:flex-end }
 .cmsg__author { font-size:11px; font-weight:600 }
+.cmsg--self .cmsg__author { display:none }
 .cmsg__bubble { background:var(--elev); border-radius:10px; padding:7px 10px; display:flex; align-items:flex-end; gap:8px }
 .cmsg--self .cmsg__bubble { background:var(--accent-dim); border:1px solid rgba(79,124,255,.18) }
 .cmsg__text { font-size:13px; line-height:1.5; color:var(--tx); word-break:break-word }

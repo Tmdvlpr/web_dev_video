@@ -40,6 +40,34 @@ async def _cleanup_expired_sessions() -> None:
             logger.warning(f"Session cleanup failed: {exc}")
 
 
+async def _cleanup_chat_data() -> None:
+    """Delete chat messages and files for meetings that ended > CHAT_RETENTION_DAYS ago."""
+    from app.models.meeting import MeetingChatFile, MeetingChatMessage
+    from app.models.booking import Booking
+    from datetime import timedelta
+    from sqlalchemy import select
+    while True:
+        await asyncio.sleep(3600)
+        try:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=settings.CHAT_RETENTION_DAYS)
+            async with AsyncSession(engine) as session:
+                old_bookings = await session.execute(
+                    select(Booking.id).where(Booking.end_time < cutoff, Booking.deleted_at.is_(None))
+                )
+                old_ids = [row[0] for row in old_bookings.all()]
+                if old_ids:
+                    await session.execute(
+                        delete(MeetingChatMessage).where(MeetingChatMessage.booking_id.in_(old_ids))
+                    )
+                    await session.execute(
+                        delete(MeetingChatFile).where(MeetingChatFile.booking_id.in_(old_ids))
+                    )
+                    await session.commit()
+                    logger.info(f"Chat cleanup: purged data for {len(old_ids)} expired meetings")
+        except Exception as exc:
+            logger.warning(f"Chat cleanup failed: {exc}")
+
+
 async def _cleanup_attachment_data() -> None:
     """После окончания встречи обнуляет бинарные данные вложений (запись остаётся)."""
     from app.models.attachment import BookingAttachment
@@ -258,9 +286,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
   filename VARCHAR(255) NOT NULL,
   mime_type VARCHAR(128) NOT NULL,
   size INTEGER NOT NULL,
-  storage_path VARCHAR(512) NOT NULL,
+  content BYTEA NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 )""",
+            # migrate existing installs: swap storage_path → content
+            "ALTER TABLE video.meeting_chat_files ADD COLUMN IF NOT EXISTS content BYTEA NOT NULL DEFAULT ''",
+            "ALTER TABLE video.meeting_chat_files DROP COLUMN IF EXISTS storage_path",
             "CREATE INDEX IF NOT EXISTS ix_mcf_booking ON video.meeting_chat_files(booking_id)",
             # video.meeting_chat_messages
             """CREATE TABLE IF NOT EXISTS video.meeting_chat_messages (
@@ -319,6 +350,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # ── 2. Start background session cleanup ───────────────────────────────────
     cleanup_task = asyncio.create_task(_cleanup_expired_sessions())
     attachment_task = asyncio.create_task(_cleanup_attachment_data())
+    chat_cleanup_task = asyncio.create_task(_cleanup_chat_data())
 
     if not settings.BOT_SECRET:
         logger.warning("BOT_SECRET is not set — internal bot API will return 503 on all requests")
@@ -328,6 +360,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     cleanup_task.cancel()
     attachment_task.cancel()
+    chat_cleanup_task.cancel()
     logger.info("Backend shutting down.")
 
 

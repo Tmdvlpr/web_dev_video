@@ -7,13 +7,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
-import aiofiles
 import pyseto
 from fastapi import (
     APIRouter, Depends, File, HTTPException, Query,
     UploadFile, WebSocket, WebSocketDisconnect, status,
 )
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pyseto import Key
 from pyseto.exceptions import DecryptError, PysetoError, VerifyError
 from sqlalchemy import select
@@ -361,11 +360,6 @@ async def upload_chat_file(
     if not content:
         raise HTTPException(400, "Empty file")
 
-    from app.services.video import get_chat_file_path
-    storage_path = get_chat_file_path(booking_id, file.filename or "file")
-    async with aiofiles.open(storage_path, "wb") as f_out:
-        await f_out.write(content)
-
     mime = file.content_type or mimetypes.guess_type(file.filename or "")[0] or "application/octet-stream"
     chat_file = MeetingChatFile(
         booking_id=booking_id,
@@ -373,7 +367,7 @@ async def upload_chat_file(
         filename=file.filename or "file",
         mime_type=mime,
         size=len(content),
-        storage_path=str(storage_path),
+        content=content,
     )
     db.add(chat_file)
     await db.commit()
@@ -387,7 +381,7 @@ async def download_chat_file(
     file_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> FileResponse:
+) -> Response:
     booking = await _get_active_booking(booking_id, db)
     await _check_meeting_access(booking, current_user, db)
 
@@ -400,14 +394,13 @@ async def download_chat_file(
     chat_file = result.scalar_one_or_none()
     if not chat_file:
         raise HTTPException(404, "File not found")
-    if not Path(chat_file.storage_path).is_file():
-        raise HTTPException(410, "File no longer available on disk")
+    if not chat_file.content:
+        raise HTTPException(410, "File no longer available")
 
-    return FileResponse(
-        chat_file.storage_path,
-        filename=chat_file.filename,
-        media_type="application/octet-stream",
-        content_disposition_type="attachment",
+    return Response(
+        content=chat_file.content,
+        media_type=chat_file.mime_type or "application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{chat_file.filename}"'},
     )
 
 

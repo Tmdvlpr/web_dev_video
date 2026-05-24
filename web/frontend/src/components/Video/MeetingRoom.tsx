@@ -249,8 +249,10 @@ function useMeetingChat(
     }
   }, []);
 
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const uploadAndSend = useCallback(async (file: File) => {
-    if (file.size > 50 * 1024 * 1024) { alert("Файл слишком большой (макс. 50 МБ)"); return; }
+    if (file.size > 20 * 1024 * 1024) { alert("Файл слишком большой (макс. 20 МБ)"); return; }
     setUploading(true);
     try {
       const cf = await meetingsApi.uploadFile(bookingId, file);
@@ -260,12 +262,14 @@ function useMeetingChat(
       setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
     } catch (e) {
       console.warn("Failed to send file message:", e);
+      setUploadError("Не удалось отправить файл");
+      setTimeout(() => setUploadError(null), 4000);
     } finally {
       setUploading(false);
     }
   }, [bookingId]);
 
-  return { messages, unread, send, sendReaction, sendHandRaise, sendGrantRecord, uploadAndSend, uploading };
+  return { messages, unread, send, sendReaction, sendHandRaise, sendGrantRecord, uploadAndSend, uploading, uploadError };
 }
 
 // ─── Video tile ───────────────────────────────────────────────────────────────
@@ -1388,8 +1392,6 @@ function ConferenceUI({
   const [isRecording, setIsRecording] = useState(false);
   const [canRecord, setCanRecord] = useState(isOrganizer);
   const [raisedHands, setRaisedHands] = useState<Map<number, string>>(new Map());
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordingChunksRef = useRef<BlobPart[]>([]);
   const [floatReactions, setFloatReactions] = useState<{ id: number; emoji: string }[]>([]);
   const [modal, setModal] = useState<"info" | "leave" | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -1398,7 +1400,7 @@ function ConferenceUI({
   const dismissedAdmissions = useRef<Set<string>>(new Set());
 
   const chatVisible = activePanel === "chat";
-  const { messages, unread, send, sendReaction, sendHandRaise, sendGrantRecord, uploadAndSend, uploading } = useMeetingChat(
+  const { messages, unread, send, sendReaction, sendHandRaise, sendGrantRecord, uploadAndSend, uploading, uploadError } = useMeetingChat(
     bookingId,
     chatVisible,
     (emoji) => {
@@ -1473,28 +1475,16 @@ function ConferenceUI({
   const handleRecord = async () => {
     if (!canRecord) return;
     if (isRecording) {
-      mediaRecorderRef.current?.stop();
+      try {
+        await meetingsApi.stopRecording(bookingId);
+      } catch (e) {
+        console.warn("stop recording failed:", e);
+      }
       setIsRecording(false);
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 } as MediaTrackConstraints, audio: true });
-      recordingChunksRef.current = [];
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
-        ? "video/webm;codecs=vp8,opus" : "video/webm";
-      const recorder = new MediaRecorder(stream, { mimeType });
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) recordingChunksRef.current.push(e.data); };
-      recorder.onstop = () => {
-        const blob = new Blob(recordingChunksRef.current, { type: "video/webm" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = `meeting-${Date.now()}.webm`; a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 10000);
-        stream.getTracks().forEach((t) => t.stop());
-      };
-      stream.getTracks().forEach((t) => { t.onended = () => { setIsRecording(false); }; });
-      mediaRecorderRef.current = recorder;
-      recorder.start(1000);
+      await meetingsApi.startRecording(bookingId);
       setIsRecording(true);
     } catch {
       setRecordingError("Не удалось начать запись");
@@ -1603,15 +1593,15 @@ function ConferenceUI({
         ))}
       </div>
 
-      {/* Recording error toast */}
-      {recordingError && (
+      {/* Error toasts */}
+      {(recordingError || uploadError) && (
         <div style={{
           position: "fixed", top: 60, left: "50%", transform: "translateX(-50%)",
           background: "rgba(239,68,68,0.9)", color: "#fff", padding: "10px 20px",
           borderRadius: 10, fontSize: 13, fontWeight: 600, zIndex: 10001,
           boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
         }}>
-          ⚠️ {recordingError}
+          ⚠️ {recordingError || uploadError}
         </div>
       )}
 

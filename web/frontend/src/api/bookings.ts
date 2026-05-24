@@ -9,8 +9,10 @@ export const bookingsApi = {
     return res.data;
   },
 
-  getRoomStatus: async (): Promise<Booking[]> => {
-    const res = await apiClient.get<Booking[]>("/api/v1/bookings/room-status");
+  getRoomStatus: async (workspaceId?: number): Promise<Booking[]> => {
+    const params: Record<string, number> = {};
+    if (workspaceId != null) params.workspace_id = workspaceId;
+    const res = await apiClient.get<Booking[]>("/api/v1/bookings/room-status", { params });
     return res.data;
   },
 
