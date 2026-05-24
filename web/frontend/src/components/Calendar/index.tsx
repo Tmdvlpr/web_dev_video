@@ -415,8 +415,8 @@ function RoomPicker({ activeRoomId, onRoomChange }: { activeRoomId: number | nul
 function RoomStatus({ roomId, workspaceId }: { roomId?: number | null; workspaceId?: number | null }) {
   const { isDark } = useTheme();
   const { t } = useLocale();
-  const [popupOpen, setPopupOpen] = React.useState(false);
-  const ref = React.useRef<HTMLDivElement>(null);
+  const [popupOpen, setPopupOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   const { data: allBookings = [] } = useQuery({
     queryKey: ["bookings", "room-status", workspaceId ?? null],
@@ -424,7 +424,7 @@ function RoomStatus({ roomId, workspaceId }: { roomId?: number | null; workspace
     refetchInterval: 60_000,
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!popupOpen) return;
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setPopupOpen(false);
