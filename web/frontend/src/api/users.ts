@@ -1,6 +1,17 @@
 import { apiClient } from "./axios";
 import type { AdminStats, User } from "../types";
 
+export interface AdminAnalytics {
+  period_days: number;
+  workspace_id: number | null;
+  total_members: number;
+  total_meetings: number;
+  new_members: Array<{ date: string; count: number }>;
+  meetings_by_day: Array<{ date: string; count: number }>;
+  top_organizers: Array<{ user_id: number; user_name: string; count: number }>;
+  workspaces: Array<{ id: number; name: string }>;
+}
+
 export const usersApi = {
   getMe: async (): Promise<User> => {
     const res = await apiClient.get<User>("/api/v1/users/me");
@@ -47,5 +58,9 @@ export const usersApi = {
 
   setAvatar: async (avatar: string | null): Promise<void> => {
     await apiClient.patch("/api/v1/users/me/avatar", { avatar });
+  },
+  adminGetAnalytics: async (params: { period_days?: number; workspace_id?: number } = {}): Promise<AdminAnalytics> => {
+    const res = await apiClient.get<AdminAnalytics>("/api/v1/users/admin/analytics", { params });
+    return res.data;
   },
 };

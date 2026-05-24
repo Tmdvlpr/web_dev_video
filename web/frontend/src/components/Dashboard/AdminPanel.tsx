@@ -5,7 +5,8 @@ import { MeetingListSkeleton } from "../Common/Skeleton";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
 import { useAdminBookings, useAdminStats, useAdminUsers } from "../../hooks/useBookings";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { AdminAnalytics } from "../../api/users";
 import { bookingsApi } from "../../api/bookings";
 import { usersApi } from "../../api/users";
 import { useAuth } from "../../hooks/useAuth";
@@ -16,7 +17,7 @@ interface Props {
   onBack?: () => void;
 }
 
-type Tab = "stats" | "bookings" | "users";
+type Tab = "stats" | "bookings" | "users" | "analytics";
 
 const PALETTES = ["#7c3aed","#0891b2","#16a34a","#d97706","#e11d48","#c026d3","#4f46e5","#ea580c"];
 function color(uid: number) { return PALETTES[uid % PALETTES.length]; }
@@ -51,6 +52,14 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
   const [newUsername, setNewUsername] = useState("");
   const [inviteResult, setInviteResult] = useState<{ created: boolean; sent: boolean; link: string } | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
+
+  const [analyticsWorkspaceId, setAnalyticsWorkspaceId] = useState<number | undefined>(undefined);
+  const [analyticsPeriod, setAnalyticsPeriod] = useState(30);
+  const { data: analyticsData, isLoading: analyticsLoading } = useQuery<AdminAnalytics>({
+    queryKey: ["admin-analytics", analyticsPeriod, analyticsWorkspaceId],
+    queryFn: () => usersApi.adminGetAnalytics({ period_days: analyticsPeriod, workspace_id: analyticsWorkspaceId }),
+    enabled: tab === "analytics" && isSuperadmin,
+  });
 
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -170,7 +179,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
 
             {/* Tabs */}
             <div className="flex px-4 pt-3 gap-2" style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.75rem" }}>
-              {(isSuperadmin ? (["stats", "bookings", "users"] as Tab[]) : (["stats", "bookings"] as Tab[])).map(tt => (
+              {(isSuperadmin ? (["stats", "bookings", "users", "analytics"] as Tab[]) : (["stats", "bookings"] as Tab[])).map(tt => (
                 <button key={tt} onClick={() => setTab(tt)}
                   className="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all"
                   style={{
@@ -178,7 +187,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                     border: `1.5px solid ${tab === tt ? "var(--primary)" : "var(--border)"}`,
                     color: tab === tt ? "#fff" : "var(--text-sec)",
                   }}>
-                  {tt === "stats" ? t("admin.tabStats") : tt === "bookings" ? t("admin.tabBookings") : t("admin.tabUsers")}
+                  {tt === "stats" ? t("admin.tabStats") : tt === "bookings" ? t("admin.tabBookings") : tt === "users" ? t("admin.tabUsers") : "Аналитика"}
                 </button>
               ))}
             </div>
@@ -430,6 +439,89 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                   </div>
                 )
               )}
+              {/* Analytics tab */}
+              {tab === "analytics" && isSuperadmin && (
+                <div className="space-y-4 pb-20">
+                  {/* Period + workspace filter */}
+                  <div className="space-y-2">
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[7, 30, 90].map(d => (
+                        <button key={d} onClick={() => setAnalyticsPeriod(d)}
+                          className="px-3 py-1 rounded-lg text-xs font-semibold transition-all"
+                          style={{
+                            background: analyticsPeriod === d ? "var(--primary)" : "var(--elevated)",
+                            color: analyticsPeriod === d ? "#fff" : "var(--text-muted)",
+                            border: `1px solid ${analyticsPeriod === d ? "var(--primary)" : "var(--border)"}`,
+                          }}>
+                          {d} дн.
+                        </button>
+                      ))}
+                    </div>
+                    {(analyticsData?.workspaces?.length ?? 0) > 0 && (
+                      <select value={analyticsWorkspaceId ?? ""} onChange={e => setAnalyticsWorkspaceId(e.target.value ? Number(e.target.value) : undefined)}
+                        className="w-full rounded-lg px-2.5 py-1.5 text-xs outline-none"
+                        style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }}>
+                        <option value="">Все пространства</option>
+                        {analyticsData!.workspaces.map(ws => (
+                          <option key={ws.id} value={ws.id}>{ws.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  {analyticsLoading ? (
+                    <div className="space-y-3">
+                      {[1,2,3].map(i => <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "var(--elevated)" }} />)}
+                    </div>
+                  ) : (
+                    <>
+                      {/* Summary */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-xl p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+                          <div className="text-2xl font-black" style={{ color: "#7c3aed" }}>{analyticsData?.total_members ?? 0}</div>
+                          <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Участников</div>
+                        </div>
+                        <div className="rounded-xl p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+                          <div className="text-2xl font-black" style={{ color: "#0891b2" }}>{analyticsData?.total_meetings ?? 0}</div>
+                          <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Встреч</div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-bold mb-1.5" style={{ color: "var(--text-sec)" }}>Новые участники</p>
+                        <AdminBarChart data={analyticsData?.new_members ?? []} color="#7c3aed" />
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-bold mb-1.5" style={{ color: "var(--text-sec)" }}>Частота встреч</p>
+                        <AdminBarChart data={analyticsData?.meetings_by_day ?? []} color="#0891b2" />
+                      </div>
+
+                      {(analyticsData?.top_organizers?.length ?? 0) > 0 && (
+                        <div>
+                          <p className="text-xs font-bold mb-1.5" style={{ color: "var(--text-sec)" }}>Топ организаторов</p>
+                          <div className="space-y-2">
+                            {analyticsData!.top_organizers.map((item, i) => {
+                              const max = Math.max(...analyticsData!.top_organizers.map(x => x.count), 1);
+                              return (
+                                <div key={i}>
+                                  <div className="flex justify-between mb-0.5" style={{ fontSize: 11 }}>
+                                    <span className="font-semibold truncate" style={{ color: "var(--text)" }}>{item.user_name}</span>
+                                    <span style={{ color: "var(--text-muted)", flexShrink: 0, marginLeft: 6 }}>{item.count}</span>
+                                  </div>
+                                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--elevated)" }}>
+                                    <div className="h-full rounded-full" style={{ width: `${(item.count / max) * 100}%`, background: "linear-gradient(90deg,#7c3aed,#a855f7)" }} />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             <AnimatePresence>
@@ -510,5 +602,37 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
         onCancel={() => setDeleteBookingTarget(null)}
       />
     </AnimatePresence>
+  );
+}
+
+function AdminBarChart({ data, color }: { data: Array<{ date: string; count: number }>; color: string }) {
+  if (data.length === 0) return (
+    <p className="text-xs py-2 text-center" style={{ color: "var(--text-muted)" }}>Нет данных</p>
+  );
+  const H = 60;
+  const max = Math.max(...data.map(d => d.count), 1);
+  const n = data.length;
+  return (
+    <div>
+      <svg width="100%" height={H}>
+        {data.map((d, i) => {
+          const barH = Math.max(3, (d.count / max) * (H - 4));
+          const xPct = (i / n) * 100;
+          const wPct = (1 / n) * 100;
+          return (
+            <rect key={i}
+              x={`${xPct + wPct * 0.1}%`} y={H - barH}
+              width={`${wPct * 0.8}%`} height={barH}
+              rx={2} fill={color} opacity={0.8}>
+              <title>{d.date}: {d.count}</title>
+            </rect>
+          );
+        })}
+      </svg>
+      <div className="flex justify-between mt-0.5" style={{ fontSize: 10, color: "var(--text-muted)" }}>
+        <span>{data[0]?.date?.slice(5)}</span>
+        <span>{data[data.length - 1]?.date?.slice(5)}</span>
+      </div>
+    </div>
   );
 }

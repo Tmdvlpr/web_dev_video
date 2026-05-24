@@ -297,3 +297,103 @@ async def admin_stats(
         "total_bookings": total_bookings,
         "active_bookings": active_bookings,
     }
+
+
+@router.get("/admin/analytics")
+async def admin_analytics(
+    period_days: int = Query(default=30, ge=7, le=365),
+    workspace_id: int | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    from app.models.workspace import WorkspaceMember, WorkspaceMemberStatus, Workspace
+    from datetime import timedelta
+
+    if current_user.role not in (Role.superadmin,):
+        raise HTTPException(403, "Superadmin only")
+
+    since = datetime.now(timezone.utc) - timedelta(days=period_days)
+
+    # Base filters
+    booking_filters = [Booking.deleted_at.is_(None), Booking.start_time >= since]
+    member_filters = [WorkspaceMember.status == WorkspaceMemberStatus.active]
+    if workspace_id is not None:
+        booking_filters.append(Booking.workspace_id == workspace_id)
+        member_filters.append(WorkspaceMember.workspace_id == workspace_id)
+
+    total_members = (await db.execute(
+        select(func.count(WorkspaceMember.id)).where(*member_filters)
+    )).scalar_one()
+
+    total_meetings = (await db.execute(
+        select(func.count(Booking.id)).where(*booking_filters)
+    )).scalar_one()
+
+    # New members per day
+    mem_day_filters = [WorkspaceMember.created_at >= since]
+    if workspace_id is not None:
+        mem_day_filters.append(WorkspaceMember.workspace_id == workspace_id)
+    members_by_day_res = await db.execute(
+        select(
+            func.date(WorkspaceMember.created_at).label("day"),
+            func.count(WorkspaceMember.id).label("cnt"),
+        )
+        .where(*mem_day_filters)
+        .group_by(func.date(WorkspaceMember.created_at))
+        .order_by(func.date(WorkspaceMember.created_at))
+    )
+    new_members = [{"date": str(r.day), "count": r.cnt} for r in members_by_day_res.all()]
+
+    # Meetings per day
+    meetings_by_day_res = await db.execute(
+        select(
+            func.date(Booking.start_time).label("day"),
+            func.count(Booking.id).label("cnt"),
+        )
+        .where(*booking_filters)
+        .group_by(func.date(Booking.start_time))
+        .order_by(func.date(Booking.start_time))
+    )
+    meetings_by_day = [{"date": str(r.day), "count": r.cnt} for r in meetings_by_day_res.all()]
+
+    # Top organizers
+    top_filters = [Booking.deleted_at.is_(None), Booking.start_time >= since]
+    if workspace_id is not None:
+        top_filters.append(Booking.workspace_id == workspace_id)
+    top_res = await db.execute(
+        select(
+            User.id,
+            User.first_name,
+            User.last_name,
+            User.username,
+            func.count(Booking.id).label("cnt"),
+        )
+        .join(Booking, Booking.user_id == User.id)
+        .where(*top_filters)
+        .group_by(User.id, User.first_name, User.last_name, User.username)
+        .order_by(func.count(Booking.id).desc())
+        .limit(10)
+    )
+    top_organizers = [
+        {
+            "user_id": r.id,
+            "user_name": f"{r.first_name or ''} {r.last_name or ''}".strip() or r.username or f"user-{r.id}",
+            "count": r.cnt,
+        }
+        for r in top_res.all()
+    ]
+
+    # Workspaces list for filter UI
+    ws_res = await db.execute(select(Workspace.id, Workspace.name).where(Workspace.archived_at.is_(None)).order_by(Workspace.name))
+    workspaces = [{"id": r.id, "name": r.name} for r in ws_res.all()]
+
+    return {
+        "period_days": period_days,
+        "workspace_id": workspace_id,
+        "total_members": total_members,
+        "total_meetings": total_meetings,
+        "new_members": new_members,
+        "meetings_by_day": meetings_by_day,
+        "top_organizers": top_organizers,
+        "workspaces": workspaces,
+    }

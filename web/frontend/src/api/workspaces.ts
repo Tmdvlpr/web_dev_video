@@ -1,6 +1,15 @@
 import { apiClient } from "./axios";
 import type { Workspace, WorkspaceDetail, WorkspaceMember } from "../types";
 
+export interface WorkspaceAnalytics {
+  period_days: number;
+  total_members: number;
+  total_meetings: number;
+  new_members: Array<{ date: string; count: number }>;
+  meetings_by_day: Array<{ date: string; count: number }>;
+  top_organizers: Array<{ user_id: number; user_name: string; count: number }>;
+}
+
 export const workspacesApi = {
   list: async (): Promise<Workspace[]> => {
     const res = await apiClient.get<Workspace[]>("/api/v1/workspaces");
@@ -46,6 +55,14 @@ export const workspacesApi = {
   },
   join: async (invite_code: string): Promise<WorkspaceMember> => {
     const res = await apiClient.post<WorkspaceMember>("/api/v1/workspaces/join", { invite_code });
+    return res.data;
+  },
+  getAnalytics: async (id: number, periodDays = 30): Promise<WorkspaceAnalytics> => {
+    const res = await apiClient.get<WorkspaceAnalytics>(`/api/v1/workspaces/${id}/analytics`, { params: { period_days: periodDays } });
+    return res.data;
+  },
+  updateMemberProfile: async (wsId: number, memberId: number, payload: { first_name?: string; last_name?: string; position?: string }): Promise<WorkspaceMember> => {
+    const res = await apiClient.patch<WorkspaceMember>(`/api/v1/workspaces/${wsId}/members/${memberId}`, payload);
     return res.data;
   },
 };

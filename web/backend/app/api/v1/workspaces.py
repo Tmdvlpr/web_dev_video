@@ -1,15 +1,16 @@
 import re
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import and_, select
+from sqlalchemy import and_, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.models.booking import Booking
 from app.models.user import Role, User
 from app.models.workspace import (
     Workspace,
@@ -119,9 +120,13 @@ class MemberPatchBody(BaseModel):
     Accepts either:
       - {"approve": true|false}   — approve/reject pending member
       - {"role": "admin"|"member"} — change role (owner only)
+      - profile fields            — edit user profile (admin/owner only)
     """
     approve: bool | None = None
     role: WorkspaceMemberRole | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    position: str | None = None
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
@@ -511,6 +516,25 @@ async def update_member(
         )
         return res.scalar_one()
 
+    if any(v is not None for v in [payload.first_name, payload.last_name, payload.position]):
+        if my_membership.role not in (WorkspaceMemberRole.owner, WorkspaceMemberRole.admin):
+            raise HTTPException(403, "Only admins can edit user profiles")
+        user = target.user
+        if user:
+            if payload.first_name is not None:
+                user.first_name = payload.first_name
+            if payload.last_name is not None:
+                user.last_name = payload.last_name
+            if payload.position is not None:
+                user.position = payload.position
+            await db.commit()
+        res = await db.execute(
+            select(WorkspaceMember)
+            .options(selectinload(WorkspaceMember.user))
+            .where(WorkspaceMember.id == target.id)
+        )
+        return res.scalar_one()
+
     raise HTTPException(400, "Body must contain either `approve` or `role`")
 
 
@@ -547,3 +571,100 @@ async def remove_member(
 
     await db.delete(target)
     await db.commit()
+
+
+@router.get("/{ws_id}/analytics")
+async def get_workspace_analytics(
+    ws_id: int,
+    period_days: int = Query(default=30, ge=7, le=365),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    my_membership = await _get_my_membership(ws_id, current_user, db)
+    if my_membership.role not in (WorkspaceMemberRole.owner, WorkspaceMemberRole.admin):
+        raise HTTPException(403, "Admin or owner only")
+
+    since = datetime.now(timezone.utc) - timedelta(days=period_days)
+
+    total_members = (await db.execute(
+        select(func.count(WorkspaceMember.id)).where(
+            WorkspaceMember.workspace_id == ws_id,
+            WorkspaceMember.status == WorkspaceMemberStatus.active,
+        )
+    )).scalar_one()
+
+    total_meetings = (await db.execute(
+        select(func.count(Booking.id)).where(
+            Booking.workspace_id == ws_id,
+            Booking.deleted_at.is_(None),
+            Booking.start_time >= since,
+        )
+    )).scalar_one()
+
+    # New members per day
+    members_by_day_res = await db.execute(
+        select(
+            func.date(WorkspaceMember.created_at).label("day"),
+            func.count(WorkspaceMember.id).label("cnt"),
+        )
+        .where(
+            WorkspaceMember.workspace_id == ws_id,
+            WorkspaceMember.created_at >= since,
+        )
+        .group_by(func.date(WorkspaceMember.created_at))
+        .order_by(func.date(WorkspaceMember.created_at))
+    )
+    new_members = [{"date": str(r.day), "count": r.cnt} for r in members_by_day_res.all()]
+
+    # Meetings per day
+    meetings_by_day_res = await db.execute(
+        select(
+            func.date(Booking.start_time).label("day"),
+            func.count(Booking.id).label("cnt"),
+        )
+        .where(
+            Booking.workspace_id == ws_id,
+            Booking.deleted_at.is_(None),
+            Booking.start_time >= since,
+        )
+        .group_by(func.date(Booking.start_time))
+        .order_by(func.date(Booking.start_time))
+    )
+    meetings_by_day = [{"date": str(r.day), "count": r.cnt} for r in meetings_by_day_res.all()]
+
+    # Top organizers
+    top_res = await db.execute(
+        select(
+            User.id,
+            User.first_name,
+            User.last_name,
+            User.username,
+            func.count(Booking.id).label("cnt"),
+        )
+        .join(Booking, Booking.user_id == User.id)
+        .where(
+            Booking.workspace_id == ws_id,
+            Booking.deleted_at.is_(None),
+            Booking.start_time >= since,
+        )
+        .group_by(User.id, User.first_name, User.last_name, User.username)
+        .order_by(func.count(Booking.id).desc())
+        .limit(10)
+    )
+    top_organizers = [
+        {
+            "user_id": r.id,
+            "user_name": f"{r.first_name or ''} {r.last_name or ''}".strip() or r.username or f"user-{r.id}",
+            "count": r.cnt,
+        }
+        for r in top_res.all()
+    ]
+
+    return {
+        "period_days": period_days,
+        "total_members": total_members,
+        "total_meetings": total_meetings,
+        "new_members": new_members,
+        "meetings_by_day": meetings_by_day,
+        "top_organizers": top_organizers,
+    }
