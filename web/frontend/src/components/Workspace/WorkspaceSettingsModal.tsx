@@ -77,7 +77,7 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
         ))}
       </div>
 
-      <div className="overflow-y-auto px-6 py-5" style={{ maxHeight: "calc(80vh - 130px)" }}>
+      <div className="overflow-y-auto px-6 py-5" style={{ maxHeight: "calc(80vh - 130px)", minHeight: "380px" }}>
         {tab === "general" && (
           <GeneralTab
             workspaceId={activeWorkspace.id}
@@ -260,7 +260,7 @@ function GeneralTab({
           disabled={!isAdmin || savingTz}
           value={tz} onChange={e => saveTz(e.target.value)}
           className="w-full rounded-xl px-3 py-2 text-sm outline-none"
-          style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
+          style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)", appearance: "none", WebkitAppearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center", paddingRight: "32px" }}
         >
           {TIMEZONES.includes(tz) ? null : <option value={tz}>{tz}</option>}
           {TIMEZONES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -293,7 +293,7 @@ function GeneralTab({
 
       {isOwner && (
         <div className="pt-4 mt-2" style={{ borderTop: "1px dashed var(--border)" }}>
-          <Label>Удалить пространство</Label>
+          <Label>Архивирование</Label>
           {!confirmArchive ? (
             <button onClick={() => setConfirmArch(true)}
               className="px-4 py-2 rounded-xl text-xs font-bold"
@@ -303,7 +303,7 @@ function GeneralTab({
           ) : (
             <div className="rounded-xl p-3 space-y-2" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.35)" }}>
               <p className="text-xs font-semibold" style={{ color: "#dc2626" }}>
-                Точно архивировать? Это действие нельзя отменить.
+                Архивировать пространство? Оно будет скрыто для всех участников.
               </p>
               <div className="flex gap-2">
                 <button onClick={() => setConfirmArch(false)}
@@ -523,7 +523,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner }: { workspaceId: 
                         {isOwner && m.role !== "owner" && (
                           <select value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}
                             className="w-full rounded-lg px-2.5 py-1.5 text-xs outline-none"
-                            style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }}>
+                            style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)", appearance: "none", WebkitAppearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center", paddingRight: "24px" }}>
                             <option value="member">Участник</option>
                             <option value="admin">Администратор</option>
                           </select>
@@ -1096,33 +1096,51 @@ function AnalyticsTab({ workspaceId }: { workspaceId: number }) {
   );
 }
 
+function fmtChartDate(iso: string): string {
+  const p = iso.split("-");
+  return p.length === 3 ? `${p[2]}.${p[1]}` : iso;
+}
+
 function BarChart({ data, color }: { data: Array<{ date: string; count: number }>; color: string }) {
+  const [hovered, setHovered] = useState<number | null>(null);
   if (data.length === 0) return (
     <p className="text-xs py-3 text-center" style={{ color: "var(--text-muted)" }}>Нет данных за период</p>
   );
-  const H = 72;
+  const H = 88;
+  const TOP = 16;
+  const barAreaH = H - TOP - 4;
   const max = Math.max(...data.map(d => d.count), 1);
   const n = data.length;
   return (
     <div>
-      <svg width="100%" height={H} style={{ display: "block" }}>
+      <svg width="100%" height={H} style={{ display: "block", overflow: "visible" }}>
         {data.map((d, i) => {
-          const barH = Math.max(3, (d.count / max) * (H - 4));
+          const bH = Math.max(3, (d.count / max) * barAreaH);
           const xPct = (i / n) * 100;
           const wPct = (1 / n) * 100;
+          const barY = TOP + barAreaH - bH;
           return (
-            <rect key={i}
-              x={`${xPct + wPct * 0.1}%`} y={H - barH}
-              width={`${wPct * 0.8}%`} height={barH}
-              rx={2} fill={color} opacity={0.8}>
-              <title>{d.date}: {d.count}</title>
-            </rect>
+            <g key={i} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}>
+              <rect
+                x={`${xPct + wPct * 0.1}%`} y={barY}
+                width={`${wPct * 0.8}%`} height={bH}
+                rx={2} fill={color} opacity={hovered === i ? 1 : 0.75}
+              />
+              {d.count > 0 && (
+                <text
+                  x={`${xPct + wPct * 0.5}%`} y={barY - 3}
+                  textAnchor="middle" fontSize={9} fontWeight="600" fill={color}>
+                  {d.count}
+                </text>
+              )}
+            </g>
           );
         })}
       </svg>
       <div className="flex justify-between mt-1" style={{ fontSize: 10, color: "var(--text-muted)" }}>
-        <span>{data[0]?.date?.slice(5)}</span>
-        <span>{data[data.length - 1]?.date?.slice(5)}</span>
+        <span>{fmtChartDate(data[0]?.date ?? "")}</span>
+        {data.length > 2 && <span>{fmtChartDate(data[Math.floor(data.length / 2)]?.date ?? "")}</span>}
+        <span>{fmtChartDate(data[data.length - 1]?.date ?? "")}</span>
       </div>
     </div>
   );

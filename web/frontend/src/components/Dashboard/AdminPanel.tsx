@@ -460,7 +460,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                     {(analyticsData?.workspaces?.length ?? 0) > 0 && (
                       <select value={analyticsWorkspaceId ?? ""} onChange={e => setAnalyticsWorkspaceId(e.target.value ? Number(e.target.value) : undefined)}
                         className="w-full rounded-lg px-2.5 py-1.5 text-xs outline-none"
-                        style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }}>
+                        style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)", appearance: "none", WebkitAppearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center", paddingRight: "24px" }}>
                         <option value="">Все пространства</option>
                         {analyticsData!.workspaces.map(ws => (
                           <option key={ws.id} value={ws.id}>{ws.name}</option>
@@ -605,33 +605,51 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
   );
 }
 
+function fmtChartDate(iso: string): string {
+  const p = iso.split("-");
+  return p.length === 3 ? `${p[2]}.${p[1]}` : iso;
+}
+
 function AdminBarChart({ data, color }: { data: Array<{ date: string; count: number }>; color: string }) {
+  const [hovered, setHovered] = useState<number | null>(null);
   if (data.length === 0) return (
     <p className="text-xs py-2 text-center" style={{ color: "var(--text-muted)" }}>Нет данных</p>
   );
-  const H = 60;
+  const H = 76;
+  const TOP = 14;
+  const barAreaH = H - TOP - 4;
   const max = Math.max(...data.map(d => d.count), 1);
   const n = data.length;
   return (
     <div>
-      <svg width="100%" height={H}>
+      <svg width="100%" height={H} style={{ display: "block", overflow: "visible" }}>
         {data.map((d, i) => {
-          const barH = Math.max(3, (d.count / max) * (H - 4));
+          const bH = Math.max(3, (d.count / max) * barAreaH);
           const xPct = (i / n) * 100;
           const wPct = (1 / n) * 100;
+          const barY = TOP + barAreaH - bH;
           return (
-            <rect key={i}
-              x={`${xPct + wPct * 0.1}%`} y={H - barH}
-              width={`${wPct * 0.8}%`} height={barH}
-              rx={2} fill={color} opacity={0.8}>
-              <title>{d.date}: {d.count}</title>
-            </rect>
+            <g key={i} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}>
+              <rect
+                x={`${xPct + wPct * 0.1}%`} y={barY}
+                width={`${wPct * 0.8}%`} height={bH}
+                rx={2} fill={color} opacity={hovered === i ? 1 : 0.75}
+              />
+              {d.count > 0 && (
+                <text
+                  x={`${xPct + wPct * 0.5}%`} y={barY - 3}
+                  textAnchor="middle" fontSize={9} fontWeight="600" fill={color}>
+                  {d.count}
+                </text>
+              )}
+            </g>
           );
         })}
       </svg>
       <div className="flex justify-between mt-0.5" style={{ fontSize: 10, color: "var(--text-muted)" }}>
-        <span>{data[0]?.date?.slice(5)}</span>
-        <span>{data[data.length - 1]?.date?.slice(5)}</span>
+        <span>{fmtChartDate(data[0]?.date ?? "")}</span>
+        {data.length > 2 && <span>{fmtChartDate(data[Math.floor(data.length / 2)]?.date ?? "")}</span>}
+        <span>{fmtChartDate(data[data.length - 1]?.date ?? "")}</span>
       </div>
     </div>
   );
