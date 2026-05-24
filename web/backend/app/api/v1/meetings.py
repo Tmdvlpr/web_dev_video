@@ -77,6 +77,12 @@ manager = _ConnectionManager()
 # booking_id → set of user_ids who received a join token (pre-authorizes chat access)
 _join_authorized: dict[int, set[int]] = {}
 
+# guest_session_token → {booking_id, guest_name, expires_at} — for guest WS chat auth
+_guest_sessions: dict[str, dict] = {}
+
+# invite_token → guest_session_token — so status endpoint can return it to the guest
+_invite_to_session: dict[str, str] = {}
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -650,11 +656,14 @@ async def get_invite_status(
 
     if invite.status == "approved" and invite.livekit_token:
         booking = await db.get(Booking, invite.booking_id)
+        gst = _invite_to_session.get(invite_token)
         return InviteStatusResponse(
             status="approved",
             livekit_token=invite.livekit_token,
             livekit_url=settings.LIVEKIT_PUBLIC_URL,
             room_name=booking.video_room_name if booking else None,
+            booking_id=invite.booking_id,
+            guest_session_token=gst,
         )
     return InviteStatusResponse(status=invite.status)
 
@@ -686,6 +695,7 @@ async def admit_guest(
     if invite.status != "requesting":
         raise HTTPException(409, f"Invite is in '{invite.status}' state, expected 'requesting'")
 
+    guest_session_token: str | None = None
     if body.action == "approve":
         lk_token = create_access_token(
             room_name=booking.video_room_name,
@@ -695,6 +705,19 @@ async def admit_guest(
         )
         invite.status = "approved"
         invite.livekit_token = lk_token
+        # Create guest chat session for WS auth
+        guest_session_token = secrets.token_urlsafe(32)
+        _guest_sessions[guest_session_token] = {
+            "booking_id": booking_id,
+            "guest_name": invite.guest_name or "Гость",
+            "expires_at": datetime.now(timezone.utc) + timedelta(hours=24),
+        }
+        # Evict oldest entries to prevent unbounded growth
+        if len(_guest_sessions) > 1000:
+            oldest = next(iter(_guest_sessions))
+            del _guest_sessions[oldest]
+        # Map invite token → session token so the guest can retrieve it via /status
+        _invite_to_session[body.invite_token] = guest_session_token
     elif body.action == "reject":
         invite.status = "rejected"
     else:
@@ -708,7 +731,10 @@ async def admit_guest(
         "action": body.action,
         "guest_name": invite.guest_name,
     })
-    return {"ok": True, "action": body.action}
+    resp: dict = {"ok": True, "action": body.action, "booking_id": booking_id}
+    if guest_session_token:
+        resp["guest_session_token"] = guest_session_token
+    return resp
 
 
 @router.get("/{booking_id}/pending-admissions")
@@ -740,48 +766,82 @@ async def chat_websocket(
     websocket: WebSocket,
     booking_id: int,
     token: str = Query(default=""),
+    guest_token: str = Query(default=""),
 ) -> None:
     # Accept FIRST so browser sees WS as OPEN; then auth
     await websocket.accept()
 
+    user_id: int
+    user_display: str
+    is_guest = False
+
     effective_token = token or websocket.cookies.get("access_token", "")
-    # Short-lived session for auth + access check only — released before entering the loop
-    async with AsyncSessionLocal() as init_db:
-        try:
-            user = await _ws_auth(effective_token, init_db)
-        except HTTPException:
+
+    if effective_token:
+        # Regular user auth via PASETO
+        async with AsyncSessionLocal() as init_db:
+            try:
+                user = await _ws_auth(effective_token, init_db)
+            except HTTPException:
+                await websocket.send_json({"error": "unauthorized"})
+                await websocket.close(code=4401)
+                return
+
+            booking_res = await init_db.execute(
+                select(Booking).where(Booking.id == booking_id, Booking.deleted_at.is_(None))
+            )
+            booking_obj = booking_res.scalar_one_or_none()
+            if not booking_obj:
+                await websocket.send_json({"error": "not_found"})
+                await websocket.close(code=4404)
+                return
+
+            try:
+                await _check_meeting_access(booking_obj, user, init_db)
+            except HTTPException:
+                await websocket.send_json({"error": "forbidden"})
+                await websocket.close(code=4403)
+                return
+
+        user_id = user.id
+        user_display = user.display_name or f"user-{user.id}"
+
+    elif guest_token:
+        # Guest auth via session token from /admit
+        session = _guest_sessions.get(guest_token)
+        if not session:
             await websocket.send_json({"error": "unauthorized"})
             await websocket.close(code=4401)
             return
-
-        booking_res = await init_db.execute(
-            select(Booking).where(Booking.id == booking_id, Booking.deleted_at.is_(None))
-        )
-        booking_obj = booking_res.scalar_one_or_none()
-        if not booking_obj:
-            await websocket.send_json({"error": "not_found"})
-            await websocket.close(code=4404)
+        expires = session["expires_at"]
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        if expires < datetime.now(timezone.utc):
+            del _guest_sessions[guest_token]
+            await websocket.send_json({"error": "session_expired"})
+            await websocket.close(code=4401)
             return
+        booking_id = session["booking_id"]
+        user_id = 0
+        user_display = session["guest_name"]
+        is_guest = True
 
-        try:
-            await _check_meeting_access(booking_obj, user, init_db)
-        except HTTPException:
-            await websocket.send_json({"error": "forbidden"})
-            await websocket.close(code=4403)
-            return
-
-    # Capture scalars before session closes
-    user_id = user.id
-    user_display = user.display_name or f"user-{user.id}"
+    else:
+        await websocket.send_json({"error": "unauthorized"})
+        await websocket.close(code=4401)
+        return
 
     manager._rooms.setdefault(booking_id, set()).add(websocket)
-    logger.info(f"[chat_ws] user={user_id} joined booking={booking_id}, total_ws={len(manager._rooms.get(booking_id, set()))}")
+    logger.info(f"[chat_ws] {'guest' if is_guest else 'user'}={user_display!r} joined booking={booking_id}, total_ws={len(manager._rooms.get(booking_id, set()))}")
     try:
         while True:
             data = await websocket.receive_json()
 
+            if not isinstance(data, dict):
+                continue
+
             # Reaction — broadcast only, no DB
-            if isinstance(data, dict) and data.get("type") == "reaction":
+            if data.get("type") == "reaction":
                 emoji = str(data.get("emoji", ""))[:10]
                 await manager.broadcast(booking_id, {
                     "type": "reaction", "emoji": emoji,
@@ -789,10 +849,46 @@ async def chat_websocket(
                 })
                 continue
 
+            # Hand raise — broadcast only, no DB
+            if data.get("type") == "hand_raise":
+                await manager.broadcast(booking_id, {
+                    "type": "hand_raise",
+                    "user_id": user_id,
+                    "user_name": user_display,
+                    "raised": bool(data.get("raised", False)),
+                })
+                continue
+
+            # Record permission — organizer only, broadcast to grantee
+            if data.get("type") == "record_permission":
+                if not is_guest and user_id != 0:
+                    async with AsyncSessionLocal() as perm_db:
+                        b = await perm_db.get(Booking, booking_id)
+                        if b and b.user_id == user_id:
+                            await manager.broadcast(booking_id, {
+                                "type": "record_permission",
+                                "grantee_identity": str(data.get("grantee_identity", "")),
+                            })
+                continue
+
             try:
                 payload = ChatMessageCreate.model_validate(data)
             except Exception:
                 await websocket.send_json({"error": "Invalid message"})
+                continue
+
+            if is_guest:
+                # Guests have no DB user — broadcast only (ephemeral message)
+                import time
+                broadcast_data = {
+                    "id": int(time.time() * 1000),
+                    "user_id": 0,
+                    "user_name": user_display,
+                    "body": payload.body,
+                    "file": None,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+                await manager.broadcast(booking_id, broadcast_data)
                 continue
 
             # Fresh session per message — prevents stale connection after long idle

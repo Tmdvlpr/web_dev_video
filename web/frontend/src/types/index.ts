@@ -111,6 +111,8 @@ export interface InviteStatus {
   livekit_token?: string | null;
   livekit_url?: string | null;
   room_name?: string | null;
+  booking_id?: number | null;
+  guest_session_token?: string | null;
 }
 
 export interface TokenResponse {

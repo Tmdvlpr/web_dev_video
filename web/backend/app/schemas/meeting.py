@@ -32,6 +32,8 @@ class InviteStatusResponse(BaseModel):
     livekit_token: str | None = None
     livekit_url: str | None = None
     room_name: str | None = None
+    booking_id: int | None = None
+    guest_session_token: str | None = None
 
 
 class MeetingJoinResponse(BaseModel):

@@ -117,6 +117,9 @@ function useMeetingChat(
   chatVisible: boolean,
   onReaction?: (emoji: string, userName: string) => void,
   onAdmissionRequest?: (req: AdmissionRequest) => void,
+  guestSessionToken?: string,
+  onHandRaise?: (userId: number, userName: string, raised: boolean) => void,
+  onRecordPermission?: (granteeIdentity: string) => void,
 ) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unread, setUnread] = useState(0);
@@ -128,20 +131,32 @@ function useMeetingChat(
   useEffect(() => { onReactionRef.current = onReaction; }, [onReaction]);
   const onAdmissionRef = useRef(onAdmissionRequest);
   useEffect(() => { onAdmissionRef.current = onAdmissionRequest; }, [onAdmissionRequest]);
+  const onHandRaiseRef = useRef(onHandRaise);
+  useEffect(() => { onHandRaiseRef.current = onHandRaise; }, [onHandRaise]);
+  const onRecordPermRef = useRef(onRecordPermission);
+  useEffect(() => { onRecordPermRef.current = onRecordPermission; }, [onRecordPermission]);
 
   useEffect(() => {
     let mounted = true;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let retryDelay = 2000;
 
-    meetingsApi.getChatHistory(bookingId)
-      .then((msgs) => { if (mounted) setMessages(msgs); })
-      .catch((err) => console.warn("Chat history fetch failed:", err));
+    if (!guestSessionToken) {
+      meetingsApi.getChatHistory(bookingId)
+        .then((msgs) => { if (mounted) setMessages(msgs); })
+        .catch((err) => console.warn("Chat history fetch failed:", err));
+    }
 
     function connect() {
       if (!mounted) return;
-      const token = localStorage.getItem("access_token") ?? "";
-      const ws = new WebSocket(`${wsBase()}/api/v1/meetings/${bookingId}/chat/ws?token=${encodeURIComponent(token)}`);
+      let authParam: string;
+      if (guestSessionToken) {
+        authParam = `guest_token=${encodeURIComponent(guestSessionToken)}`;
+      } else {
+        const token = localStorage.getItem("access_token") ?? "";
+        authParam = `token=${encodeURIComponent(token)}`;
+      }
+      const ws = new WebSocket(`${wsBase()}/api/v1/meetings/${bookingId}/chat/ws?${authParam}`);
       wsRef.current = ws;
 
       ws.onopen = () => { retryDelay = 2000; };
@@ -149,7 +164,7 @@ function useMeetingChat(
       ws.onmessage = (e) => {
         if (!mounted) return;
         try {
-          const msg = JSON.parse(e.data) as (ChatMessage & { type?: string; emoji?: string; user_name?: string; invite_token?: string; guest_name?: string; error?: string });
+          const msg = JSON.parse(e.data) as (ChatMessage & { type?: string; emoji?: string; user_name?: string; user_id?: number; invite_token?: string; guest_name?: string; raised?: boolean; grantee_identity?: string; error?: string });
           if (msg.error) { console.warn("Chat WS auth error:", msg.error); return; }
           if (msg.type === "reaction") {
             onReactionRef.current?.(msg.emoji ?? "", msg.user_name ?? "");
@@ -160,6 +175,14 @@ function useMeetingChat(
             return;
           }
           if (msg.type === "admission_response") return;
+          if (msg.type === "hand_raise") {
+            onHandRaiseRef.current?.(msg.user_id ?? 0, msg.user_name ?? "", msg.raised ?? false);
+            return;
+          }
+          if (msg.type === "record_permission") {
+            onRecordPermRef.current?.(msg.grantee_identity ?? "");
+            return;
+          }
           setMessages((prev) => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
           if (!chatVisibleRef.current) setUnread((n) => n + 1);
         } catch (err) { console.warn("Chat WS parse error:", err, e.data); }
@@ -194,7 +217,7 @@ function useMeetingChat(
       wsRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookingId]);
+  }, [bookingId, guestSessionToken]);
 
   useEffect(() => {
     if (chatVisible) setUnread(0);
@@ -214,6 +237,18 @@ function useMeetingChat(
     }
   }, []);
 
+  const sendHandRaise = useCallback((raised: boolean) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "hand_raise", raised }));
+    }
+  }, []);
+
+  const sendGrantRecord = useCallback((granteeIdentity: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "record_permission", grantee_identity: granteeIdentity }));
+    }
+  }, []);
+
   const uploadAndSend = useCallback(async (file: File) => {
     if (file.size > 50 * 1024 * 1024) { alert("Файл слишком большой (макс. 50 МБ)"); return; }
     setUploading(true);
@@ -230,7 +265,7 @@ function useMeetingChat(
     }
   }, [bookingId]);
 
-  return { messages, unread, send, sendReaction, uploadAndSend, uploading };
+  return { messages, unread, send, sendReaction, sendHandRaise, sendGrantRecord, uploadAndSend, uploading };
 }
 
 // ─── Video tile ───────────────────────────────────────────────────────────────
@@ -240,12 +275,14 @@ const LiveVideoTile = React.memo(function LiveVideoTile({
   localIdentity,
   size = "sm",
   onClick,
+  handRaised = false,
 }: {
   trackRef: TrackReferenceOrPlaceholder;
   isActive: boolean;
   localIdentity: string;
   size?: "sm" | "md" | "lg" | "cinema" | "csm";
   onClick?: () => void;
+  handRaised?: boolean;
 }) {
   const participant = trackRef.participant as Participant | undefined;
   const isSpeaking = useIsSpeaking(participant);
@@ -278,6 +315,7 @@ const LiveVideoTile = React.memo(function LiveVideoTile({
       <div className="vtile__footer">
         <div className="vtile__namewrap">
           <span className="vtile__name">{shortName}</span>
+          {handRaised && <span style={{ marginLeft: 4, fontSize: 11, lineHeight: 1 }}>✋</span>}
         </div>
         {!participant.isMicrophoneEnabled && (
           <div className="vtile__mutebadge"><Ic.MicOff sz={10} /></div>
@@ -290,13 +328,14 @@ const LiveVideoTile = React.memo(function LiveVideoTile({
 
 // ─── Layouts ──────────────────────────────────────────────────────────────────
 function FocusLayout({
-  camTracks, screenTrack, pinnedId, localIdentity, onPin,
+  camTracks, screenTrack, pinnedId, localIdentity, onPin, raisedHands,
 }: {
   camTracks: TrackReferenceOrPlaceholder[];
   screenTrack: TrackReferenceOrPlaceholder | null;
   pinnedId: string | null;
   localIdentity: string;
   onPin: (id: string | null) => void;
+  raisedHands?: Map<number, string>;
 }) {
   const mainTrack = screenTrack
     ?? (pinnedId ? camTracks.find((t) => t.participant.identity === pinnedId) : null)
@@ -316,6 +355,7 @@ function FocusLayout({
               localIdentity={localIdentity}
               size="sm"
               onClick={() => onPin(pinnedId === t.participant.identity ? null : t.participant.identity)}
+              handRaised={raisedHands?.has(parseInt(t.participant.identity.replace(/^user-/, ""), 10))}
             />
           ))}
         </div>
@@ -327,6 +367,7 @@ function FocusLayout({
             isActive
             localIdentity={localIdentity}
             size="lg"
+            handRaised={raisedHands?.has(parseInt(mainTrack.participant.identity.replace(/^user-/, ""), 10))}
           />
         )}
       </div>
@@ -334,24 +375,26 @@ function FocusLayout({
   );
 }
 
-function GalleryLayout({ camTracks, localIdentity }: { camTracks: TrackReferenceOrPlaceholder[]; localIdentity: string }) {
+function GalleryLayout({ camTracks, localIdentity, raisedHands }: { camTracks: TrackReferenceOrPlaceholder[]; localIdentity: string; raisedHands?: Map<number, string> }) {
   return (
     <div className="gallerygrid">
       {camTracks.slice(0, 6).map((t) => (
-        <LiveVideoTile key={t.participant.identity} trackRef={t} isActive={false} localIdentity={localIdentity} size="md" />
+        <LiveVideoTile key={t.participant.identity} trackRef={t} isActive={false} localIdentity={localIdentity} size="md"
+          handRaised={raisedHands?.has(parseInt(t.participant.identity.replace(/^user-/, ""), 10))} />
       ))}
     </div>
   );
 }
 
 function CinemaLayout({
-  camTracks, screenTrack, pinnedId, localIdentity, onPin,
+  camTracks, screenTrack, pinnedId, localIdentity, onPin, raisedHands,
 }: {
   camTracks: TrackReferenceOrPlaceholder[];
   screenTrack: TrackReferenceOrPlaceholder | null;
   pinnedId: string | null;
   localIdentity: string;
   onPin: (id: string | null) => void;
+  raisedHands?: Map<number, string>;
 }) {
   const mainTrack = screenTrack
     ?? (pinnedId ? camTracks.find((t) => t.participant.identity === pinnedId) : null)
@@ -362,7 +405,8 @@ function CinemaLayout({
   return (
     <>
       <div className="cinemaspeaker">
-        {mainTrack && <LiveVideoTile trackRef={mainTrack} isActive localIdentity={localIdentity} size="cinema" />}
+        {mainTrack && <LiveVideoTile trackRef={mainTrack} isActive localIdentity={localIdentity} size="cinema"
+          handRaised={raisedHands?.has(parseInt(mainTrack.participant.identity.replace(/^user-/, ""), 10))} />}
       </div>
       <div className="cinemastrip">
         {strip.map((t) => (
@@ -373,6 +417,7 @@ function CinemaLayout({
             localIdentity={localIdentity}
             size="csm"
             onClick={() => onPin(pinnedId === t.participant.identity ? null : t.participant.identity)}
+            handRaised={raisedHands?.has(parseInt(t.participant.identity.replace(/^user-/, ""), 10))}
           />
         ))}
       </div>
@@ -414,11 +459,11 @@ function ReactionsPopup({ onReact, onClose }: { onReact: (e: string) => void; on
 }
 
 function ControlBar({
-  micOn, camOn, screenOn, handUp, isRecording, showReactions, activePanel, participantCount, unread,
+  micOn, camOn, screenOn, handUp, isRecording, canRecord, showReactions, activePanel, participantCount, unread,
   onMic, onCam, onScreen, onHand, onRecord, onReact, setShowReactions,
   onParticipants, onChat, onSettings, onLeave,
 }: {
-  micOn: boolean; camOn: boolean; screenOn: boolean; handUp: boolean; isRecording: boolean;
+  micOn: boolean; camOn: boolean; screenOn: boolean; handUp: boolean; isRecording: boolean; canRecord: boolean;
   showReactions: boolean; activePanel: string | null; participantCount: number; unread: number;
   onMic: () => void; onCam: () => void; onScreen: () => void; onHand: () => void; onRecord: () => void;
   onReact: (e: string) => void; setShowReactions: (v: boolean | ((p: boolean) => boolean)) => void;
@@ -443,9 +488,11 @@ function ControlBar({
             )}
           </div>
           <CtrlBtn icon={<Ic.Hand sz={20} />} label={handUp ? "Опустить" : "Рука"} active={handUp} onClick={onHand} />
-          <div className="ctrlbar__sep" />
-          <CtrlBtn icon={<Ic.Record sz={20} />} label={isRecording ? "REC" : "Запись"}
-            active={isRecording} danger={isRecording} onClick={onRecord} />
+          {canRecord && <>
+            <div className="ctrlbar__sep" />
+            <CtrlBtn icon={<Ic.Record sz={20} />} label={isRecording ? "REC" : "Запись"}
+              active={isRecording} danger={isRecording} onClick={onRecord} />
+          </>}
         </div>
 
         <div className="ctrlbar__group ctrlbar__group--center">
@@ -555,12 +602,14 @@ function ChatPanelInner({
 
 // ─── Participants panel ───────────────────────────────────────────────────────
 function ParticipantsPanel({
-  participants, localIdentity, bookingId, isOrganizer,
+  participants, localIdentity, bookingId, isOrganizer, raisedHands, onGrantRecord,
 }: {
   participants: Participant[];
   localIdentity: string;
   bookingId: number;
   isOrganizer: boolean;
+  raisedHands?: Map<number, string>;
+  onGrantRecord?: (identity: string) => void;
 }) {
   const [search, setSearch] = useState("");
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
@@ -617,6 +666,16 @@ function ParticipantsPanel({
                 <div className="prow__name"><span>{isLocal ? "Вы" : name}</span></div>
               </div>
               <div className="prow__icons">
+                {raisedHands?.has(parseInt(p.identity.replace(/^user-/, ""), 10)) && (
+                  <span style={{ fontSize: 13, marginRight: 2 }}>✋</span>
+                )}
+                {isOrganizer && !isLocal && (
+                  <button
+                    onClick={() => onGrantRecord?.(p.identity)}
+                    title="Передать право записи"
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: "0 2px", lineHeight: 1 }}
+                  >🎬</button>
+                )}
                 <span className={`prow__ico${!p.isMicrophoneEnabled ? " prow__ico--muted" : ""}`}>
                   {p.isMicrophoneEnabled ? <Ic.Mic sz={13} /> : <Ic.MicOff sz={13} />}
                 </span>
@@ -695,7 +754,7 @@ function ParticipantsPanel({
 function Sidebar({
   activePanel, onClose, messages, participants, localIdentity,
   localUserId, bookingId, isOrganizer, onSend, onFile, uploading,
-  noiseOn, blurOn, onNoise, onBlur,
+  noiseOn, blurOn, onNoise, onBlur, raisedHands, onGrantRecord,
 }: {
   activePanel: "chat" | "participants" | "settings";
   onClose: () => void;
@@ -712,6 +771,8 @@ function Sidebar({
   blurOn: boolean;
   onNoise: () => void;
   onBlur: () => void;
+  raisedHands?: Map<number, string>;
+  onGrantRecord?: (identity: string) => void;
 }) {
   const panelTitle = activePanel === "chat" ? "Чат"
     : activePanel === "participants" ? `Участники (${participants.length})`
@@ -736,6 +797,8 @@ function Sidebar({
             localIdentity={localIdentity}
             bookingId={bookingId}
             isOrganizer={isOrganizer}
+            raisedHands={raisedHands}
+            onGrantRecord={onGrantRecord}
           />
         )}
         {activePanel === "settings" && (
@@ -1196,12 +1259,13 @@ function SettingsPanel({ bookingId, noiseOn, blurOn, onNoise, onBlur }: {
 
 // ─── Conference UI (inner, uses LiveKit hooks) ────────────────────────────────
 function ConferenceUI({
-  bookingId, onLeave, joinData, isOrganizer,
+  bookingId, onLeave, joinData, isOrganizer, guestSessionToken,
 }: {
   bookingId: number;
   onLeave: () => void;
   joinData: { start_time: string; end_time: string; room_name: string; user_identity: string };
   isOrganizer: boolean;
+  guestSessionToken?: string;
 }) {
   const { localParticipant, isMicrophoneEnabled, isCameraEnabled, isScreenShareEnabled } =
     useLocalParticipant();
@@ -1322,6 +1386,10 @@ function ConferenceUI({
   const [showReactions, setShowReactions] = useState(false);
   const [handUp, setHandUp] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [canRecord, setCanRecord] = useState(isOrganizer);
+  const [raisedHands, setRaisedHands] = useState<Map<number, string>>(new Map());
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = useRef<BlobPart[]>([]);
   const [floatReactions, setFloatReactions] = useState<{ id: number; emoji: string }[]>([]);
   const [modal, setModal] = useState<"info" | "leave" | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -1330,7 +1398,7 @@ function ConferenceUI({
   const dismissedAdmissions = useRef<Set<string>>(new Set());
 
   const chatVisible = activePanel === "chat";
-  const { messages, unread, send, sendReaction, uploadAndSend, uploading } = useMeetingChat(
+  const { messages, unread, send, sendReaction, sendHandRaise, sendGrantRecord, uploadAndSend, uploading } = useMeetingChat(
     bookingId,
     chatVisible,
     (emoji) => {
@@ -1342,6 +1410,18 @@ function ConferenceUI({
           return [...prev, req];
         })
       : undefined,
+    guestSessionToken,
+    (userId, userName, raised) => {
+      setRaisedHands((prev) => {
+        const next = new Map(prev);
+        if (raised) next.set(userId, userName);
+        else next.delete(userId);
+        return next;
+      });
+    },
+    (granteeIdentity) => {
+      if (granteeIdentity === localParticipant.identity) setCanRecord(true);
+    },
   );
 
   const handleAdmit = useCallback(async (inviteToken: string, action: "approve" | "reject") => {
@@ -1390,27 +1470,35 @@ function ConferenceUI({
   };
 
   const [recordingError, setRecordingError] = useState<string | null>(null);
-  const recordingPending = useRef(false);
   const handleRecord = async () => {
-    if (recordingPending.current) return;
-    recordingPending.current = true;
-    setRecordingError(null);
+    if (!canRecord) return;
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
     try {
-      if (isRecording) {
-        await meetingsApi.stopRecording(bookingId);
-        setIsRecording(false);
-      } else {
-        await meetingsApi.startRecording(bookingId);
-        setIsRecording(true);
-      }
-    } catch (err) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      const msg = detail ?? (isRecording ? "Не удалось остановить запись" : "Не удалось начать запись");
-      setRecordingError(msg);
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 } as MediaTrackConstraints, audio: true });
+      recordingChunksRef.current = [];
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+        ? "video/webm;codecs=vp8,opus" : "video/webm";
+      const recorder = new MediaRecorder(stream, { mimeType });
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) recordingChunksRef.current.push(e.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(recordingChunksRef.current, { type: "video/webm" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = `meeting-${Date.now()}.webm`; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        stream.getTracks().forEach((t) => t.stop());
+      };
+      stream.getTracks().forEach((t) => { t.onended = () => { setIsRecording(false); }; });
+      mediaRecorderRef.current = recorder;
+      recorder.start(1000);
+      setIsRecording(true);
+    } catch {
+      setRecordingError("Не удалось начать запись");
       setTimeout(() => setRecordingError(null), 4000);
-      console.warn("Recording toggle failed:", err);
-    } finally {
-      recordingPending.current = false;
     }
   };
 
@@ -1443,17 +1531,17 @@ function ConferenceUI({
             <FocusLayout
               camTracks={camTracks} screenTrack={screenTrack}
               pinnedId={pinnedId} localIdentity={localParticipant.identity}
-              onPin={setPinnedId}
+              onPin={setPinnedId} raisedHands={raisedHands}
             />
           )}
           {layoutMode === "gallery" && (
-            <GalleryLayout camTracks={camTracks} localIdentity={localParticipant.identity} />
+            <GalleryLayout camTracks={camTracks} localIdentity={localParticipant.identity} raisedHands={raisedHands} />
           )}
           {layoutMode === "cinema" && (
             <CinemaLayout
               camTracks={camTracks} screenTrack={screenTrack}
               pinnedId={pinnedId} localIdentity={localParticipant.identity}
-              onPin={setPinnedId}
+              onPin={setPinnedId} raisedHands={raisedHands}
             />
           )}
         </div>
@@ -1475,6 +1563,8 @@ function ConferenceUI({
             blurOn={blurOn}
             onNoise={toggleNoise}
             onBlur={toggleBlur}
+            raisedHands={raisedHands}
+            onGrantRecord={isOrganizer ? sendGrantRecord : undefined}
           />
         )}
       </div>
@@ -1485,6 +1575,7 @@ function ConferenceUI({
         screenOn={isScreenShareEnabled}
         handUp={handUp}
         isRecording={isRecording}
+        canRecord={canRecord}
         showReactions={showReactions}
         activePanel={activePanel}
         participantCount={allParticipants.length}
@@ -1492,7 +1583,7 @@ function ConferenceUI({
         onMic={() => localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled).catch(console.warn)}
         onCam={() => localParticipant.setCameraEnabled(!isCameraEnabled).catch(console.warn)}
         onScreen={() => localParticipant.setScreenShareEnabled(!isScreenShareEnabled).catch(console.warn)}
-        onHand={() => setHandUp((v) => !v)}
+        onHand={() => { const next = !handUp; setHandUp(next); sendHandRaise(next); }}
         onRecord={handleRecord}
         onReact={addReaction}
         setShowReactions={setShowReactions}
@@ -1697,6 +1788,7 @@ export function MeetingRoom({
   guestToken,
   guestServerUrl,
   guestName,
+  guestSessionToken,
   initialVideo = true,
   initialAudio = true,
 }: {
@@ -1705,6 +1797,7 @@ export function MeetingRoom({
   guestToken?: string;
   guestServerUrl?: string;
   guestName?: string;
+  guestSessionToken?: string;
   initialVideo?: boolean;
   initialAudio?: boolean;
 }) {
@@ -1841,6 +1934,7 @@ export function MeetingRoom({
         onLeave={handleLeave}
         joinData={data}
         isOrganizer={data.is_organizer}
+        guestSessionToken={guestSessionToken}
       />
     </LiveKitRoom>
   );

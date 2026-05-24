@@ -99,6 +99,8 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
   const [phase, setPhase] = useState<"preview" | "requesting" | "waiting" | "approved" | "rejected" | "left">("preview");
   const [livekitToken, setLivekitToken] = useState<string | null>(null);
   const [livekitUrl, setLivekitUrl] = useState<string | null>(null);
+  const [guestBookingId, setGuestBookingId] = useState(0);
+  const [guestSessionToken, setGuestSessionToken] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Load meeting info
@@ -121,6 +123,8 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
         if (s.status === "approved" && s.livekit_token) {
           setLivekitToken(s.livekit_token);
           setLivekitUrl(s.livekit_url ?? "");
+          setGuestBookingId(s.booking_id ?? 0);
+          setGuestSessionToken(s.guest_session_token ?? "");
           setPhase("approved");
         } else if (s.status === "rejected") {
           setPhase("rejected");
@@ -171,10 +175,11 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
   if (phase === "approved" && livekitToken && livekitUrl) {
     return (
       <MeetingRoom
-        bookingId={0}
+        bookingId={guestBookingId}
         guestToken={livekitToken}
         guestServerUrl={livekitUrl}
         guestName={name}
+        guestSessionToken={guestSessionToken}
         initialVideo={camOn}
         initialAudio={micOn}
         onLeave={() => setPhase("left")}
