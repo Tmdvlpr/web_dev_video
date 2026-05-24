@@ -1471,26 +1471,101 @@ function ConferenceUI({
     setFloatReactions((prev) => [...prev, { id: Date.now(), emoji }]);
   };
 
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingRafRef = useRef<number | null>(null);
+
   const [recordingError, setRecordingError] = useState<string | null>(null);
-  const handleRecord = async () => {
+  const handleRecord = useCallback(() => {
     if (!canRecord) return;
+
     if (isRecording) {
-      try {
-        await meetingsApi.stopRecording(bookingId);
-      } catch (e) {
-        console.warn("stop recording failed:", e);
-      }
-      setIsRecording(false);
+      mediaRecorderRef.current?.stop();
       return;
     }
+
     try {
-      await meetingsApi.startRecording(bookingId);
+      // ── Video: draw all participant camera/screen tracks on canvas ──
+      const W = 1280, H = 720;
+      const canvas = document.createElement("canvas");
+      canvas.width = W;
+      canvas.height = H;
+      const ctx2d = canvas.getContext("2d")!;
+
+      const videoEls: HTMLVideoElement[] = [];
+      for (const ref of allTracks) {
+        const pub = (ref as TrackReference).publication;
+        const mst = pub?.track?.mediaStreamTrack;
+        if (!mst || mst.kind !== "video" || mst.readyState !== "live") continue;
+        const v = document.createElement("video");
+        v.autoplay = true;
+        v.muted = true;
+        v.playsInline = true;
+        v.srcObject = new MediaStream([mst]);
+        videoEls.push(v);
+      }
+
+      const draw = () => {
+        ctx2d.fillStyle = "#1a1a2e";
+        ctx2d.fillRect(0, 0, W, H);
+        const n = videoEls.length;
+        if (n > 0) {
+          const cols = Math.ceil(Math.sqrt(n));
+          const rows = Math.ceil(n / cols);
+          const tw = W / cols;
+          const th = H / rows;
+          videoEls.forEach((v, i) => {
+            ctx2d.drawImage(v, (i % cols) * tw, Math.floor(i / cols) * th, tw, th);
+          });
+        }
+        recordingRafRef.current = requestAnimationFrame(draw);
+      };
+      draw();
+
+      // ── Audio: mix all participant microphone tracks ──
+      const audioCtx = new AudioContext();
+      const audioDest = audioCtx.createMediaStreamDestination();
+      for (const p of allParticipants) {
+        const mst = p.getTrackPublication(Track.Source.Microphone)?.track?.mediaStreamTrack;
+        if (!mst || mst.readyState !== "live") continue;
+        audioCtx.createMediaStreamSource(new MediaStream([mst])).connect(audioDest);
+      }
+
+      // ── Combine + record ──
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+        ? "video/webm;codecs=vp8,opus"
+        : "video/webm";
+      const stream = new MediaStream([
+        ...canvas.captureStream(25).getVideoTracks(),
+        ...audioDest.stream.getAudioTracks(),
+      ]);
+
+      recordingChunksRef.current = [];
+      const mr = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = mr;
+
+      mr.ondataavailable = (e) => { if (e.data.size > 0) recordingChunksRef.current.push(e.data); };
+      mr.onstop = () => {
+        if (recordingRafRef.current) cancelAnimationFrame(recordingRafRef.current);
+        audioCtx.close();
+        videoEls.forEach((v) => { v.srcObject = null; });
+        const blob = new Blob(recordingChunksRef.current, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `meeting-${bookingId}-${Date.now()}.webm`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setIsRecording(false);
+      };
+
+      mr.start(1000);
       setIsRecording(true);
     } catch {
       setRecordingError("Не удалось начать запись");
       setTimeout(() => setRecordingError(null), 4000);
     }
-  };
+  }, [canRecord, isRecording, allTracks, allParticipants, bookingId]);
 
   const handleLeave = () => { setModal(null); onLeave(); };
 
