@@ -60,6 +60,7 @@ class UserBotInfo(BaseModel):
 class GuestInfo(BaseModel):
     name: str
     telegram_id: int | None = None
+    display_name: str | None = None
 
 
 class BookingBotInfo(BaseModel):
@@ -82,6 +83,7 @@ class BookingBotInfo(BaseModel):
     has_attachments: bool = False
     video_enabled: bool = False
     booking_type: str = "physical"
+    workspace_id: int | None = None
     workspace_telegram_chat_id: int | None = None
 
     class Config:
@@ -121,11 +123,11 @@ class ConsumeSessionRequest(BaseModel):
 
 # ── Хелперы ──────────────────────────────────────────────────────────────────
 
-async def _resolve_guests(db: AsyncSession, names: list[str]) -> dict[str, int | None]:
-    """Batch-resolve guest name strings → telegram_id.
+async def _resolve_guests(db: AsyncSession, names: list[str]) -> dict[str, tuple[int | None, str | None]]:
+    """Batch-resolve guest name strings → (telegram_id, display_name).
 
     Matches against User.name, User.username, and first_name+last_name
-    (all case-insensitive). Returns {original_name: telegram_id | None}.
+    (all case-insensitive). Returns {original_name: (telegram_id, display_name)}.
     """
     if not names:
         return {}
@@ -143,7 +145,7 @@ async def _resolve_guests(db: AsyncSession, names: list[str]) -> dict[str, int |
         )
     )
     users = result.scalars().all()
-    lookup: dict[str, int | None] = {}
+    lookup: dict[str, tuple[int | None, str | None]] = {}
     for u in users:
         candidates = [
             u.name,
@@ -151,12 +153,15 @@ async def _resolve_guests(db: AsyncSession, names: list[str]) -> dict[str, int |
             f"{u.first_name or ''} {u.last_name or ''}".strip() or None,
         ]
         for val in filter(None, candidates):
-            lookup[val.lower()] = u.telegram_id
-    return {n: lookup.get(n.lstrip("@").lower()) for n in names}
+            lookup[val.lower()] = (u.telegram_id, u.display_name)
+    return {n: lookup.get(n.lstrip("@").lower(), (None, None)) for n in names}
 
 
-def _make_guests(raw: list[str], lookup: dict[str, int | None]) -> list[GuestInfo]:
-    return [GuestInfo(name=n, telegram_id=lookup.get(n)) for n in raw]
+def _make_guests(raw: list[str], lookup: dict[str, tuple[int | None, str | None]]) -> list[GuestInfo]:
+    return [
+        GuestInfo(name=n, telegram_id=lookup.get(n, (None, None))[0], display_name=lookup.get(n, (None, None))[1] or n)
+        for n in raw
+    ]
 
 
 async def _bookings_with_attachments(db: AsyncSession, booking_ids: list[int]) -> set[int]:
@@ -246,6 +251,7 @@ async def bookings_since(
             has_attachments=b.id in with_atts,
             video_enabled=b.video_enabled,
             booking_type=b.booking_type if b.booking_type else "physical",
+            workspace_id=b.workspace_id,
             workspace_telegram_chat_id=ws_tg_map.get(b.workspace_id) if b.workspace_id else None,
         )
         for b in bookings
@@ -327,6 +333,7 @@ async def bookings_for_reminder(
             has_attachments=b.id in with_atts,
             video_enabled=b.video_enabled,
             booking_type=b.booking_type if b.booking_type else "physical",
+            workspace_id=b.workspace_id,
             workspace_telegram_chat_id=ws_tg_map.get(b.workspace_id) if b.workspace_id else None,
         )
         for b in due
@@ -399,6 +406,7 @@ async def bookings_deleted_since(
             has_attachments=b.id in with_atts,
             video_enabled=b.video_enabled,
             booking_type=b.booking_type if b.booking_type else "physical",
+            workspace_id=b.workspace_id,
             workspace_telegram_chat_id=ws_tg_map.get(b.workspace_id) if b.workspace_id else None,
         )
         for b in bookings
