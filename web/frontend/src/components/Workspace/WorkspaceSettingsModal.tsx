@@ -1,7 +1,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { roomsApi } from "../../api/rooms";
 import { workspacesApi } from "../../api/workspaces";
+import type { WorkspaceAnalytics } from "../../api/workspaces";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
@@ -12,7 +14,7 @@ interface WorkspaceSettingsModalProps {
   onClose: () => void;
 }
 
-type Tab = "general" | "members" | "rooms";
+type Tab = "general" | "members" | "rooms" | "analytics";
 
 const TIMEZONES = [
   "UTC",
@@ -62,7 +64,7 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
       </div>
 
       <div className="flex gap-1 px-6 pt-3" style={{ borderBottom: "1px solid var(--border)" }}>
-        {([["general", "Общее"], ["members", "Участники"], ["rooms", "Переговорные"]] as const).map(([k, label]) => (
+        {([["general", "Общее"], ["members", "Участники"], ["rooms", "Переговорные"], ["analytics", "Аналитика"]] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className="px-3 py-2 text-xs font-semibold transition-all"
             style={{
@@ -93,6 +95,7 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
             workspaceId={activeWorkspace.id}
             myUserId={user?.id ?? null}
             isAdmin={isAdmin}
+            isOwner={isOwner}
           />
         )}
         {tab === "rooms" && (
@@ -102,6 +105,9 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
             isAdmin={isAdmin}
             onRefetch={refetchRooms}
           />
+        )}
+        {tab === "analytics" && isAdmin && (
+          <AnalyticsTab workspaceId={activeWorkspace.id} />
         )}
       </div>
     </Overlay>
@@ -319,13 +325,16 @@ function GeneralTab({
   );
 }
 
-function MembersTab({ workspaceId, myUserId, isAdmin }: { workspaceId: number; myUserId: number | null; isAdmin: boolean }) {
+function MembersTab({ workspaceId, myUserId, isAdmin, isOwner }: { workspaceId: number; myUserId: number | null; isAdmin: boolean; isOwner: boolean }) {
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteName, setInviteName] = useState("");
   const [inviting, setInviting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [editMemberId, setEditMemberId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ first_name: "", last_name: "", position: "", role: "member" });
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -445,33 +454,108 @@ function MembersTab({ workspaceId, myUserId, isAdmin }: { workspaceId: number; m
               {active.map(m => {
                 const canRemove = isAdmin && m.user_id !== myUserId && m.role !== "owner";
                 return (
-                  <div key={m.id} className="flex items-center gap-3 px-3 py-2 rounded-xl"
-                    style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
-                    <MemberAvatar member={m} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
-                        {memberName(m)}
-                      </p>
-                      <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
-                        {[
-                          m.user?.position,
-                          m.user?.role && m.user.role !== "user" ? (m.user.role === "superadmin" ? "Суперадмин" : "Администратор") : null,
-                          roleLabel(m.role),
-                        ].filter(Boolean).join(" · ")}
-                      </p>
+                  <div key={m.id}>
+                    <div className="flex items-center gap-3 px-3 py-2 rounded-xl"
+                      style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+                      <MemberAvatar member={m} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
+                          {memberName(m)}
+                        </p>
+                        <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
+                          {[
+                            m.user?.position,
+                            m.user?.role && m.user.role !== "user" ? (m.user.role === "superadmin" ? "Суперадмин" : "Администратор") : null,
+                            roleLabel(m.role),
+                          ].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
+                      <RoleBadge role={m.role} />
+                      {isAdmin && m.user && (
+                        <button onClick={() => {
+                          setEditMemberId(editMemberId === m.id ? null : m.id);
+                          setEditForm({
+                            first_name: m.user?.first_name ?? "",
+                            last_name: m.user?.last_name ?? "",
+                            position: m.user?.position ?? "",
+                            role: m.role,
+                          });
+                        }}
+                          title="Редактировать профиль"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
+                          style={editMemberId === m.id
+                            ? { background: "var(--primary)", color: "#fff", border: "1px solid var(--primary)" }
+                            : { background: "var(--elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                        </button>
+                      )}
+                      {canRemove && (
+                        <button onClick={() => handleRemove(m.id)}
+                          title="Удалить"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg"
+                          style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#dc2626" }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
-                    <RoleBadge role={m.role} />
-                    {canRemove && (
-                      <button onClick={() => handleRemove(m.id)}
-                        title="Удалить"
-                        className="w-7 h-7 flex items-center justify-center rounded-lg"
-                        style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#dc2626" }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 6h18" />
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                        </svg>
-                      </button>
+                    {editMemberId === m.id && (
+                      <div className="mt-1 px-3 py-3 rounded-xl space-y-2" style={{ background: "var(--input-bg)", border: "1px solid var(--primary-border)" }}>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input value={editForm.first_name} onChange={e => setEditForm(f => ({ ...f, first_name: e.target.value }))}
+                            placeholder="Имя"
+                            className="rounded-lg px-2.5 py-1.5 text-xs outline-none"
+                            style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
+                          <input value={editForm.last_name} onChange={e => setEditForm(f => ({ ...f, last_name: e.target.value }))}
+                            placeholder="Фамилия"
+                            className="rounded-lg px-2.5 py-1.5 text-xs outline-none"
+                            style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
+                        </div>
+                        <input value={editForm.position} onChange={e => setEditForm(f => ({ ...f, position: e.target.value }))}
+                          placeholder="Должность"
+                          className="w-full rounded-lg px-2.5 py-1.5 text-xs outline-none"
+                          style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
+                        {isOwner && m.role !== "owner" && (
+                          <select value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}
+                            className="w-full rounded-lg px-2.5 py-1.5 text-xs outline-none"
+                            style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }}>
+                            <option value="member">Участник</option>
+                            <option value="admin">Администратор</option>
+                          </select>
+                        )}
+                        <div className="flex gap-2 justify-end">
+                          <button onClick={() => setEditMemberId(null)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                            style={{ background: "var(--elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+                            Отмена
+                          </button>
+                          <button disabled={saving} onClick={async () => {
+                            setSaving(true);
+                            try {
+                              await workspacesApi.updateMemberProfile(workspaceId, m.id, {
+                                first_name: editForm.first_name || undefined,
+                                last_name: editForm.last_name || undefined,
+                                position: editForm.position || undefined,
+                              });
+                              if (isOwner && m.role !== "owner" && editForm.role !== m.role) {
+                                await workspacesApi.updateMember(workspaceId, m.id, { role: editForm.role });
+                              }
+                              setEditMemberId(null);
+                              await load();
+                            } catch { setErr("Не удалось сохранить"); }
+                            finally { setSaving(false); }
+                          }}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50"
+                            style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
+                            {saving ? "…" : "Сохранить"}
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 );
@@ -944,4 +1028,121 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
 
 function Label({ children }: { children: React.ReactNode }) {
   return <p className="text-xs font-semibold mb-1.5" style={{ color: "var(--text-sec)" }}>{children}</p>;
+}
+
+function AnalyticsTab({ workspaceId }: { workspaceId: number }) {
+  const [period, setPeriod] = useState(30);
+
+  const { data, isLoading } = useQuery<WorkspaceAnalytics>({
+    queryKey: ["workspace-analytics", workspaceId, period],
+    queryFn: () => workspacesApi.getAnalytics(workspaceId, period),
+  });
+
+  if (isLoading) return (
+    <div className="space-y-3">
+      {[1,2,3].map(i => <div key={i} className="h-24 rounded-xl animate-pulse" style={{ background: "var(--elevated)" }} />)}
+    </div>
+  );
+
+  return (
+    <div className="space-y-5 pb-4">
+      {/* Period selector */}
+      <div className="flex gap-1.5">
+        {[7, 30, 90].map(d => (
+          <button key={d} onClick={() => setPeriod(d)}
+            className="px-3 py-1 rounded-lg text-xs font-semibold transition-all"
+            style={{
+              background: period === d ? "var(--primary)" : "var(--elevated)",
+              color: period === d ? "#fff" : "var(--text-muted)",
+              border: `1px solid ${period === d ? "var(--primary)" : "var(--border)"}`,
+            }}>
+            {d} дн.
+          </button>
+        ))}
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-xl p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+          <div className="text-2xl font-black" style={{ color: "#7c3aed" }}>{data?.total_members ?? 0}</div>
+          <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Участников</div>
+        </div>
+        <div className="rounded-xl p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+          <div className="text-2xl font-black" style={{ color: "#0891b2" }}>{data?.total_meetings ?? 0}</div>
+          <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Встреч за период</div>
+        </div>
+      </div>
+
+      {/* New members chart */}
+      <div>
+        <p className="text-xs font-bold mb-2" style={{ color: "var(--text-sec)" }}>Новые участники</p>
+        <BarChart data={data?.new_members ?? []} color="#7c3aed" />
+      </div>
+
+      {/* Meetings chart */}
+      <div>
+        <p className="text-xs font-bold mb-2" style={{ color: "var(--text-sec)" }}>Частота встреч</p>
+        <BarChart data={data?.meetings_by_day ?? []} color="#0891b2" />
+      </div>
+
+      {/* Top organizers */}
+      {(data?.top_organizers?.length ?? 0) > 0 && (
+        <div>
+          <p className="text-xs font-bold mb-2" style={{ color: "var(--text-sec)" }}>Топ организаторов</p>
+          <TopOrgList items={data!.top_organizers} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BarChart({ data, color }: { data: Array<{ date: string; count: number }>; color: string }) {
+  if (data.length === 0) return (
+    <p className="text-xs py-3 text-center" style={{ color: "var(--text-muted)" }}>Нет данных за период</p>
+  );
+  const H = 72;
+  const max = Math.max(...data.map(d => d.count), 1);
+  const n = data.length;
+  return (
+    <div>
+      <svg width="100%" height={H} style={{ display: "block" }}>
+        {data.map((d, i) => {
+          const barH = Math.max(3, (d.count / max) * (H - 4));
+          const xPct = (i / n) * 100;
+          const wPct = (1 / n) * 100;
+          return (
+            <rect key={i}
+              x={`${xPct + wPct * 0.1}%`} y={H - barH}
+              width={`${wPct * 0.8}%`} height={barH}
+              rx={2} fill={color} opacity={0.8}>
+              <title>{d.date}: {d.count}</title>
+            </rect>
+          );
+        })}
+      </svg>
+      <div className="flex justify-between mt-1" style={{ fontSize: 10, color: "var(--text-muted)" }}>
+        <span>{data[0]?.date?.slice(5)}</span>
+        <span>{data[data.length - 1]?.date?.slice(5)}</span>
+      </div>
+    </div>
+  );
+}
+
+function TopOrgList({ items }: { items: Array<{ user_name: string; count: number }> }) {
+  const max = Math.max(...items.map(i => i.count), 1);
+  return (
+    <div className="space-y-2">
+      {items.map((item, i) => (
+        <div key={i}>
+          <div className="flex justify-between mb-1" style={{ fontSize: 11 }}>
+            <span className="font-semibold truncate" style={{ color: "var(--text)" }}>{item.user_name}</span>
+            <span style={{ color: "var(--text-muted)", flexShrink: 0, marginLeft: 8 }}>{item.count}</span>
+          </div>
+          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--elevated)" }}>
+            <div className="h-full rounded-full" style={{ width: `${(item.count / max) * 100}%`, background: "linear-gradient(90deg,#7c3aed,#a855f7)" }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
