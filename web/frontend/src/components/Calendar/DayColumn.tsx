@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { activeDragRef, useCalendarDrag } from "../../contexts/CalendarDragContext";
+import { activeDragRef, suppressCardClickRef, useCalendarDrag } from "../../contexts/CalendarDragContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
 import type { Booking, SlotResponse, User } from "../../types";
@@ -15,6 +15,7 @@ interface DayColumnProps {
   onSlotClick: (start: Date, end: Date) => void;
   onCardClick: (booking: Booking) => void;
   onBookingDrop?: (booking: Booking, newStart: Date) => void;
+  onBookingResize?: (booking: Booking, newEnd: Date) => void;
   isToday: boolean;
 }
 
@@ -36,7 +37,7 @@ const DOW_LONG_KEYS = [
   "cal.dow.thu.long", "cal.dow.fri.long", "cal.dow.sat.long",
 ] as const;
 
-export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotClick, onCardClick, onBookingDrop, isToday }: DayColumnProps) {
+export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotClick, onCardClick, onBookingDrop, onBookingResize, isToday }: DayColumnProps) {
   const { isDark } = useTheme();
   const { t } = useLocale();
   const { drag, setDrag } = useCalendarDrag();
@@ -49,6 +50,67 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
   const isPast  = date < new Date(new Date().setHours(0, 0, 0, 0));
   const [nowPct, setNowPct] = useState(() => nowPercent());
   const [hoverSlot, setHoverSlot] = useState<{ startPct: number; heightPct: number; label: string } | null>(null);
+  const resizingRef = useRef<{ booking: Booking } | null>(null);
+  const [resizingBooking, setResizingBooking] = useState<Booking | null>(null);
+  const [resizePreview, setResizePreview] = useState<{ topPct: number; heightPct: number; endLabel: string } | null>(null);
+
+  const computeResize = (clientY: number): { finalEnd: number } | null => {
+    if (!resizingRef.current || !gridRef.current) return null;
+    const booking = resizingRef.current.booking;
+    const rect = gridRef.current.getBoundingClientRect();
+    const fraction = (clientY - rect.top) / rect.height;
+    const totalMinutes = TOTAL_HOURS * 60;
+    const rawEndMinute = DAY_START_HOUR * 60 + fraction * totalMinutes;
+    const snappedEnd = Math.round(rawEndMinute / 15) * 15;
+    const startDate = new Date(booking.start_time);
+    const bookingStartMinute = startDate.getHours() * 60 + startDate.getMinutes();
+    const minEndMinute = bookingStartMinute + 15;
+    const maxEndMinute = (() => {
+      const next = bookings
+        .filter(b => b.id !== booking.id)
+        .filter(b => {
+          const s = new Date(b.start_time);
+          return (s.getHours() * 60 + s.getMinutes()) > bookingStartMinute;
+        })
+        .sort((a, b2) => new Date(a.start_time).getTime() - new Date(b2.start_time).getTime())[0];
+      if (!next) return DAY_END_HOUR * 60;
+      const ns = new Date(next.start_time);
+      return ns.getHours() * 60 + ns.getMinutes();
+    })();
+    const finalEnd = Math.max(minEndMinute, Math.min(maxEndMinute, snappedEnd));
+    const topPct = ((bookingStartMinute - DAY_START_HOUR * 60) / totalMinutes) * 100;
+    const endTopPct = ((finalEnd - DAY_START_HOUR * 60) / totalMinutes) * 100;
+    const heightPct = endTopPct - topPct;
+    const eh = Math.floor(finalEnd / 60), em = finalEnd % 60;
+    setResizePreview({ topPct, heightPct, endLabel: `${String(eh).padStart(2,"0")}:${String(em).padStart(2,"0")}` });
+    return { finalEnd };
+  };
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => { computeResize(e.clientY); };
+    const onUp = (e: MouseEvent) => {
+      if (!resizingRef.current) return;
+      suppressCardClickRef.current = true;
+      setTimeout(() => { suppressCardClickRef.current = false; }, 300);
+      const result = computeResize(e.clientY);
+      console.log("[resize] onUp: bookingId=", resizingRef.current.booking.id, "result=", result, "hasHandler=", !!onBookingResize);
+      if (result && onBookingResize) {
+        const newEnd = new Date(date);
+        newEnd.setHours(Math.floor(result.finalEnd / 60), result.finalEnd % 60, 0, 0);
+        onBookingResize(resizingRef.current.booking, newEnd);
+      }
+      resizingRef.current = null;
+      setResizingBooking(null);
+      setResizePreview(null);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, bookings, onBookingResize]);
 
   function calcDrop(clientY: number): { topPct: number; heightPct: number; startMinute: number } | null {
     const d = drag ?? activeDragRef.current;
@@ -101,6 +163,8 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
     hideGhost();
     const activeDrop = drag ?? activeDragRef.current;
     if (!activeDrop || isPast) return;
+    suppressCardClickRef.current = true;
+    setTimeout(() => { suppressCardClickRef.current = false; }, 300);
     const calc = calcDrop(e.clientY);
     if (!calc) return;
     const newStart = new Date(date);
@@ -116,6 +180,7 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
   }, [isToday]);
 
   const handleColumnClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (suppressCardClickRef.current) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const fraction = (e.clientY - rect.top) / rect.height;
     const totalMinutes = TOTAL_HOURS * 60;
@@ -177,7 +242,7 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
           style={isToday ? todayNumStyle : { color: isPast ? pastNumColor : normalNumColor }}>
           {dayNum}
         </div>
-        <div className="text-[11px] font-semibold truncate"
+        <div className="text-xs font-semibold truncate"
           style={{ color: isToday ? todayNameColor : normalNameColor }}>
           {dayName}
         </div>
@@ -278,10 +343,36 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
             if (height <= 0) return null;
             return (
               <BookingCard key={b.id} booking={b} topPercent={top} heightPercent={height}
-                currentUser={currentUser} onClick={() => onCardClick(b)} />
+                currentUser={currentUser} onClick={() => onCardClick(b)}
+                isResizing={resizingBooking?.id === b.id}
+                onResizeStart={(e) => { e.preventDefault(); resizingRef.current = { booking: b }; setResizingBooking(b); }} />
             );
           })}
         </AnimatePresence>
+
+        {/* Resize preview */}
+        {resizePreview && resizingBooking && (
+          <div className="absolute pointer-events-none z-40"
+            style={{
+              top: `${resizePreview.topPct}%`,
+              height: `${resizePreview.heightPct}%`,
+              left: 4, right: 4,
+              border: "2px solid var(--primary)",
+              borderRadius: 10,
+              background: isDark ? "rgba(21,101,168,0.18)" : "rgba(21,101,168,0.10)",
+              padding: "4px 8px",
+              overflow: "hidden",
+            }}>
+            <p className="text-xs font-bold truncate m-0" style={{ color: "var(--primary)" }}>
+              {resizingBooking.title}
+            </p>
+            <p className="text-xs m-0" style={{ color: "var(--primary)", opacity: 0.75 }}>
+              {new Date(resizingBooking.start_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+              {" – "}
+              {resizePreview.endLabel}
+            </p>
+          </div>
+        )}
       </div>
       {/* Filler to eliminate whitespace below the time grid */}
       <div className="flex-1" style={{ background: gridBg }} />

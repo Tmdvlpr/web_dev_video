@@ -35,9 +35,15 @@ function DayContainer({ date, dateStr, currentUser, onSlotClick, onCardClick, is
   const { mutate: updateBooking } = useUpdateBooking();
 
   const handleBookingDrop = (booking: Booking, newStart: Date) => {
+    console.log("[dnd] handleBookingDrop: bookingId=", booking.id, "newStart=", newStart.toISOString());
     const durationMs = new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime();
     const newEnd = new Date(newStart.getTime() + durationMs);
     updateBooking({ id: booking.id, payload: { start_time: newStart.toISOString(), end_time: newEnd.toISOString() } });
+  };
+
+  const handleBookingResize = (booking: Booking, newEnd: Date) => {
+    console.log("[resize] handleBookingResize: bookingId=", booking.id, "newEnd=", newEnd.toISOString());
+    updateBooking({ id: booking.id, payload: { end_time: newEnd.toISOString() } });
   };
 
   const byRoom = roomId ? (bookings as Booking[]).filter((b) => b.room_id === roomId) : bookings as Booking[];
@@ -50,7 +56,8 @@ function DayContainer({ date, dateStr, currentUser, onSlotClick, onCardClick, is
     : byRoom;
   return (
     <DayColumn date={date} bookings={filtered} freeSlots={slots as SlotResponse[]} currentUser={currentUser}
-      onSlotClick={onSlotClick} onCardClick={onCardClick} onBookingDrop={handleBookingDrop} isToday={isToday} />
+      onSlotClick={onSlotClick} onCardClick={onCardClick} onBookingDrop={handleBookingDrop}
+      onBookingResize={handleBookingResize} isToday={isToday} />
   );
 }
 
@@ -180,7 +187,7 @@ function MonthDayCell({ date, isCurrentMonth, isToday, onNavigate, onCardClick, 
             onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = hashColor(b.id) + "30"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = hashColor(b.id) + "18"; }}
           >
-            <span style={{ fontSize: 10, fontWeight: 700, color: hashColor(b.id), flexShrink: 0, letterSpacing: "-0.01em" }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: hashColor(b.id), flexShrink: 0, letterSpacing: "-0.01em" }}>
               {new Date(b.start_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
             </span>
             <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -189,7 +196,7 @@ function MonthDayCell({ date, isCurrentMonth, isToday, onNavigate, onCardClick, 
           </div>
         ))}
         {overflow > 0 && (
-          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--primary)", paddingLeft: 7 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)", paddingLeft: 7 }}>
             {t("cal.moreEvents", { n: overflow })}
           </div>
         )}
@@ -363,7 +370,7 @@ function RoomPicker({ activeRoomId, onRoomChange }: { activeRoomId: number | nul
           }}
         >
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{wr.room.name}</span>
-          {wr.role === "shared" && <span style={{ fontSize: 9, opacity: 0.5, flexShrink: 0 }}>↗</span>}
+          {wr.role === "shared" && <span style={{ fontSize: 11, opacity: 0.5, flexShrink: 0 }}>↗</span>}
         </button>
       ))}
 
@@ -462,17 +469,17 @@ function RoomStatus({ roomId, workspaceId }: { roomId?: number | null; workspace
         <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: isNow ? "#dc2626" : "#d97706", marginBottom: 6 }}>
           {isNow ? "Идёт сейчас" : "Скоро начнётся"}
         </div>
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{booking.title}</div>
-        <div style={{ fontSize: 12, color: isDark ? "#7882a8" : "#546080", marginBottom: 2 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{booking.title}</div>
+        <div style={{ fontSize: 13, color: isDark ? "#7882a8" : "#546080", marginBottom: 2 }}>
           {fmtTime(booking.start_time)} — {fmtTime(booking.end_time)}
         </div>
         {booking.user?.display_name && (
-          <div style={{ fontSize: 12, color: isDark ? "#7882a8" : "#546080" }}>
+          <div style={{ fontSize: 13, color: isDark ? "#7882a8" : "#546080" }}>
             Организатор: {booking.user.display_name}
           </div>
         )}
         {booking.description && (
-          <div style={{ fontSize: 12, color: isDark ? "#9aa3c0" : "#546080", marginTop: 6, borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"}`, paddingTop: 6 }}>
+          <div style={{ fontSize: 13, color: isDark ? "#9aa3c0" : "#546080", marginTop: 6, borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"}`, paddingTop: 6 }}>
             {booking.description}
           </div>
         )}

@@ -13,6 +13,7 @@ import { meetingsApi } from "../../api/meetings";
 import type { Booking } from "../../types";
 import { GuestInput } from "./GuestInput";
 import { AttachmentsSection } from "./AttachmentsSection";
+import { MeetingChatPanel } from "../Video/MeetingChatPanel";
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -88,6 +89,7 @@ export function BookingModal({
   const isEdit     = !!editBooking;
   const isReadOnly = isEdit && !canEdit;
   const now = new Date();
+  const isPast     = isEdit && editBooking ? new Date(editBooking.end_time) < now : false;
   // Default start: now + 5min, rounded up to next 30-min boundary
   const defaultStart = (() => {
     const t = new Date(now.getTime() + 5 * 60_000);
@@ -317,6 +319,7 @@ export function BookingModal({
   const [formReady,   setFormReady] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [easterMsg, setEasterMsg] = useState<string | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
   const longMeetingShown = useRef(false);
   const weekendShown = useRef(false);
   const importantShown = useRef(false);
@@ -325,9 +328,12 @@ export function BookingModal({
   const dateStr = startTime ? startTime.split("T")[0] : undefined;
   const { data: dayBookings = [] } = useBookings(dateStr);
   // Skip optimistic placeholders (negative ID) — those are the booking being saved right now
-  const conflicts = !isEdit && formReady
+  const conflicts = !isEdit && formReady && bookingType !== "virtual"
     ? dayBookings.filter((b) => {
         if (b.id < 0) return false;
+        if ((b.booking_type ?? "physical") === "virtual") return false;
+        // Room-level conflict: only flag if same room selected (or no room info)
+        if (selectedRoomId !== "" && b.room_id !== undefined && b.room_id !== null && b.room_id !== selectedRoomId) return false;
         const bStart = new Date(b.start_time).getTime();
         const bEnd   = new Date(b.end_time).getTime();
         const sStart = new Date(startTime).getTime();
@@ -627,33 +633,47 @@ export function BookingModal({
                       </a>
                     )}
                     {editBooking.video_enabled && (
-                      <div className="space-y-2">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={handleJoinVideo}
-                            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all"
-                            style={{ background: "linear-gradient(135deg,#1565a8,#114e85)", boxShadow: "0 4px 16px rgba(21,101,168,0.3)" }}
-                          >
-                            🎥 Присоединиться к конференции
-                          </button>
-                          <button
-                            onClick={handleCopyMeetingLink}
-                            disabled={!guestInviteUrl}
-                            title="Скопировать ссылку для гостей"
-                            className="px-3 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center disabled:opacity-40"
-                            style={{ background: copiedLink ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copiedLink ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copiedLink ? "#22c55e" : "var(--text-sec)", minWidth: 42 }}
-                          >
-                            {copiedLink ? "✓" : "🔗"}
-                          </button>
-                        </div>
-                        {guestInviteLoading ? (
-                          <p className="text-xs" style={{ color: "var(--text-muted)" }}>Создание ссылки…</p>
-                        ) : guestInviteUrl ? (
-                          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
-                            <span className="flex-1 text-xs truncate" style={{ color: "var(--text-muted)" }}>{guestInviteUrl}</span>
+                      isPast ? (
+                        <button
+                          type="button"
+                          onClick={() => setChatOpen(true)}
+                          className="w-full py-2.5 px-4 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+                          style={{ background: "var(--elevated)", border: "1.5px solid var(--border)", color: "var(--text)" }}
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                          </svg>
+                          {t("booking.chatHistory")}
+                        </button>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleJoinVideo}
+                              className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all"
+                              style={{ background: "linear-gradient(135deg,#1565a8,#114e85)", boxShadow: "0 4px 16px rgba(21,101,168,0.3)" }}
+                            >
+                              {t("booking.joinConference")}
+                            </button>
+                            <button
+                              onClick={handleCopyMeetingLink}
+                              disabled={!guestInviteUrl}
+                              title={t("booking.copyGuestLink")}
+                              className="px-3 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center disabled:opacity-40"
+                              style={{ background: copiedLink ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copiedLink ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copiedLink ? "#22c55e" : "var(--text-sec)", minWidth: 42 }}
+                            >
+                              {copiedLink ? "✓" : "🔗"}
+                            </button>
                           </div>
-                        ) : null}
-                      </div>
+                          {guestInviteLoading ? (
+                            <p className="text-xs" style={{ color: "var(--text-muted)" }}>{t("booking.creatingLink")}</p>
+                          ) : guestInviteUrl ? (
+                            <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+                              <span className="flex-1 text-xs truncate" style={{ color: "var(--text-muted)" }}>{guestInviteUrl}</span>
+                            </div>
+                          ) : null}
+                        </div>
+                      )
                     )}
                     <button onClick={onClose}
                       className="w-full py-2.5 rounded-xl text-sm font-medium transition-all"
@@ -728,9 +748,9 @@ export function BookingModal({
                   {!isEdit && (
                     <div className="flex gap-1.5 mb-1">
                       {([
-                        { value: "physical", label: "🏢 В офисе" },
-                        { value: "virtual",  label: "🌐 Онлайн"  },
-                        { value: "hybrid",   label: "🏢🎥 Гибрид" },
+                        { value: "physical", label: t("booking.typePhysical") },
+                        { value: "virtual",  label: t("booking.typeVirtual")  },
+                        { value: "hybrid",   label: t("booking.typeHybrid")   },
                       ] as const).map(opt => (
                         <button
                           key={opt.value}
@@ -954,7 +974,7 @@ export function BookingModal({
                         style={{ accentColor: "var(--primary)" }}
                       />
                       <span className="text-sm font-medium" style={{ color: "var(--text-sec)" }}>
-                        Нужна видеоконференция
+                        {t("booking.needVideo")}
                       </span>
                       {videoEnabled && editBooking?.video_room_name && (
                         <span className="text-xs font-semibold" style={{ color: isDark ? "#4ade80" : "#16a34a" }}>
@@ -965,9 +985,8 @@ export function BookingModal({
                   ) : (
                     <div className="flex items-center gap-2 py-1 px-3 rounded-xl text-sm"
                       style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
-                      <span>{bookingType === "virtual" ? "🌐" : "🎥"}</span>
                       <span className="font-medium">
-                        {bookingType === "virtual" ? "Онлайн-встреча — видеоконференция включена" : "Гибридная встреча — видеоконференция включена"}
+                        {bookingType === "virtual" ? t("booking.videoOnlineInfo") : t("booking.videoHybridInfo")}
                       </span>
                     </div>
                   )}
@@ -1020,35 +1039,49 @@ export function BookingModal({
                   )}
 
                   {isEdit && editBooking?.video_enabled && (
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={handleJoinVideo}
-                          className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all"
-                          style={{ background: "linear-gradient(135deg,#1565a8,#114e85)", boxShadow: "0 4px 16px rgba(21,101,168,0.3)" }}
-                        >
-                          🎥 Присоединиться к конференции
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleCopyMeetingLink}
-                          disabled={!guestInviteUrl}
-                          title="Скопировать ссылку для гостей"
-                          className="px-3 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center disabled:opacity-40"
-                          style={{ background: copiedLink ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copiedLink ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copiedLink ? "#22c55e" : "var(--text-sec)", minWidth: 42 }}
-                        >
-                          {copiedLink ? "✓" : "🔗"}
-                        </button>
-                      </div>
-                      {guestInviteLoading ? (
-                        <p className="text-xs" style={{ color: "var(--text-muted)" }}>Создание ссылки…</p>
-                      ) : guestInviteUrl ? (
-                        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
-                          <span className="flex-1 text-xs truncate" style={{ color: "var(--text-muted)" }}>{guestInviteUrl}</span>
+                    isPast ? (
+                      <button
+                        type="button"
+                        onClick={() => setChatOpen(true)}
+                        className="w-full py-2.5 px-4 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+                        style={{ background: "var(--elevated)", border: "1.5px solid var(--border)", color: "var(--text)" }}
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        {t("booking.chatHistory")}
+                      </button>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleJoinVideo}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all"
+                            style={{ background: "linear-gradient(135deg,#1565a8,#114e85)", boxShadow: "0 4px 16px rgba(21,101,168,0.3)" }}
+                          >
+                            {t("booking.joinConference")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleCopyMeetingLink}
+                            disabled={!guestInviteUrl}
+                            title={t("booking.copyGuestLink")}
+                            className="px-3 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center disabled:opacity-40"
+                            style={{ background: copiedLink ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copiedLink ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copiedLink ? "#22c55e" : "var(--text-sec)", minWidth: 42 }}
+                          >
+                            {copiedLink ? "✓" : "🔗"}
+                          </button>
                         </div>
-                      ) : null}
-                    </div>
+                        {guestInviteLoading ? (
+                          <p className="text-xs" style={{ color: "var(--text-muted)" }}>{t("booking.creatingLink")}</p>
+                        ) : guestInviteUrl ? (
+                          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+                            <span className="flex-1 text-xs truncate" style={{ color: "var(--text-muted)" }}>{guestInviteUrl}</span>
+                          </div>
+                        ) : null}
+                      </div>
+                    )
                   )}
                   <div className="flex gap-2" style={{
                     position: "sticky",
@@ -1088,6 +1121,38 @@ export function BookingModal({
 
           {/* canvas confetti is injected directly into document.body via useEffect */}
         </>
+      )}
+
+      {/* Chat history modal */}
+      {chatOpen && editBooking && (
+        <div
+          className="fixed inset-0 flex items-center justify-center"
+          style={{ zIndex: 10000, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+          onClick={() => setChatOpen(false)}
+        >
+          <div
+            style={{ width: 440, height: 580, borderRadius: 16, overflow: "hidden", position: "relative", display: "flex", flexDirection: "column" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setChatOpen(false)}
+              style={{
+                position: "absolute", top: 10, right: 10, zIndex: 20,
+                width: 28, height: 28, borderRadius: "50%",
+                background: "rgba(0,0,0,0.5)", color: "#fff",
+                border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              ✕
+            </button>
+            <MeetingChatPanel
+              bookingId={editBooking.id}
+              readOnly
+              style={{ flex: 1, minHeight: 0, borderRadius: 16 }}
+            />
+          </div>
+        </div>
       )}
     </AnimatePresence>
   );

@@ -48,7 +48,7 @@ export function useCreateBooking() {
     onMutate: async (payload) => {
       const dateStr = payload.start_time.split("T")[0];
       await queryClient.cancelQueries({ queryKey: ["bookings", dateStr] });
-      const previous = queryClient.getQueryData<Booking[]>(["bookings", dateStr]);
+      const allEntries = queryClient.getQueriesData<Booking[]>({ queryKey: ["bookings", dateStr] });
       const optimistic: Booking = {
         id: -Date.now(),
         title: payload.title,
@@ -69,11 +69,15 @@ export function useCreateBooking() {
         video_room_name: null,
         booking_type: payload.booking_type ?? "physical",
       };
-      queryClient.setQueryData<Booking[]>(["bookings", dateStr], (old = []) => [...old, optimistic]);
-      return { previous, dateStr };
+      queryClient.setQueriesData<Booking[]>({ queryKey: ["bookings", dateStr] }, (old = []) => [...old, optimistic]);
+      return { allEntries, dateStr };
     },
     onError: (_err, _payload, ctx) => {
-      if (ctx) queryClient.setQueryData(["bookings", ctx.dateStr], ctx.previous);
+      if (ctx) {
+        for (const [key, data] of ctx.allEntries ?? []) {
+          queryClient.setQueryData(key, data);
+        }
+      }
     },
     onSettled: (_data, _err, payload) => {
       const dateStr = payload.start_time.split("T")[0];
@@ -87,22 +91,26 @@ export function useCreateBooking() {
 export function useUpdateBooking() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: BookingUpdate }) =>
-      bookingsApi.update(id, payload),
+    mutationFn: ({ id, payload }: { id: number; payload: BookingUpdate }) => {
+      console.log("[update] mutationFn PATCH /bookings/", id, payload);
+      return bookingsApi.update(id, payload);
+    },
     onMutate: async ({ id, payload }) => {
+      console.log("[update] onMutate id=", id, payload);
       const newDateStr = payload.start_time?.split("T")[0];
 
       // Find booking in date-keyed caches only (skip "active" and other non-date keys)
       const allEntries = queryClient.getQueriesData<Booking[]>({ queryKey: ["bookings"] });
       let oldDateStr: string | undefined;
       let oldBooking: Booking | undefined;
+      let oldQueryKey: readonly unknown[] | undefined;
       const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
       for (const [key, data] of allEntries) {
         const k = key[1] as string;
         if (!ISO_DATE.test(k)) continue;
         if (Array.isArray(data)) {
           const found = data.find((b) => b.id === id);
-          if (found) { oldBooking = found; oldDateStr = k; break; }
+          if (found) { oldBooking = found; oldDateStr = k; oldQueryKey = key; break; }
         }
       }
       if (!oldBooking) return {};
@@ -111,27 +119,28 @@ export function useUpdateBooking() {
       if (newDateStr && newDateStr !== oldDateStr)
         await queryClient.cancelQueries({ queryKey: ["bookings", newDateStr] });
 
-      const previousOld = queryClient.getQueryData<Booking[]>(["bookings", oldDateStr]);
+      const previousOld = queryClient.getQueryData<Booking[]>(oldQueryKey as any);
       const previousNew = newDateStr && newDateStr !== oldDateStr
         ? queryClient.getQueryData<Booking[]>(["bookings", newDateStr]) : undefined;
 
       const optimistic: Booking = { ...oldBooking, ...payload } as Booking;
 
       if (newDateStr && newDateStr !== oldDateStr) {
-        queryClient.setQueryData<Booking[]>(["bookings", oldDateStr], (old = []) =>
+        queryClient.setQueriesData<Booking[]>({ queryKey: ["bookings", oldDateStr] }, (old = []) =>
           old.filter((b) => b.id !== id));
-        queryClient.setQueryData<Booking[]>(["bookings", newDateStr], (old = []) =>
+        queryClient.setQueriesData<Booking[]>({ queryKey: ["bookings", newDateStr] }, (old = []) =>
           [...(old ?? []), optimistic]);
       } else {
-        queryClient.setQueryData<Booking[]>(["bookings", oldDateStr], (old = []) =>
+        queryClient.setQueriesData<Booking[]>({ queryKey: ["bookings", oldDateStr] }, (old = []) =>
           old.map((b) => b.id === id ? optimistic : b));
       }
 
-      return { previousOld, previousNew, oldDateStr, newDateStr };
+      return { previousOld, previousNew, oldDateStr, newDateStr, oldQueryKey };
     },
-    onError: (_err, _vars, ctx: any) => {
-      if (ctx?.previousOld && ctx?.oldDateStr)
-        queryClient.setQueryData(["bookings", ctx.oldDateStr], ctx.previousOld);
+    onError: (err, vars, ctx: any) => {
+      console.error("[update] onError: id=", vars.id, "err=", err);
+      if (ctx?.previousOld && ctx?.oldQueryKey)
+        queryClient.setQueryData(ctx.oldQueryKey, ctx.previousOld);
       if (ctx?.previousNew && ctx?.newDateStr)
         queryClient.setQueryData(["bookings", ctx.newDateStr], ctx.previousNew);
     },
