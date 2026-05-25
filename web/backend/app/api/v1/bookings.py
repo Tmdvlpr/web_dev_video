@@ -520,16 +520,31 @@ async def update_booking(
     if new_start >= new_end:
         raise HTTPException(400, "start_time must be before end_time")
 
-    ov = await db.execute(
-        select(Booking).where(and_(
+    effective_type = getattr(payload, "booking_type", None) or booking.booking_type or "physical"
+    # Virtual meetings don't occupy a room — no conflict check needed
+    if effective_type != "virtual":
+        effective_room_id = booking.room_id
+        conditions = [
             Booking.id != booking_id,
+            Booking.room_id == effective_room_id,
+            Booking.booking_type != "virtual",
             Booking.start_time < new_end,
             Booking.end_time > new_start,
             Booking.deleted_at.is_(None),
-        )).with_for_update()
-    )
-    if ov.scalar_one_or_none():
-        raise HTTPException(status.HTTP_409_CONFLICT, "Время пересекается с существующим бронированием")
+        ]
+        if effective_room_id is None:
+            # No room set — fall back to workspace-level check
+            conditions = [
+                Booking.id != booking_id,
+                Booking.workspace_id == booking.workspace_id,
+                Booking.booking_type != "virtual",
+                Booking.start_time < new_end,
+                Booking.end_time > new_start,
+                Booking.deleted_at.is_(None),
+            ]
+        ov = await db.execute(select(Booking).where(and_(*conditions)).with_for_update())
+        if ov.scalar_one_or_none():
+            raise HTTPException(status.HTTP_409_CONFLICT, "Время пересекается с существующим бронированием")
 
     if payload.title is not None:
         booking.title = payload.title

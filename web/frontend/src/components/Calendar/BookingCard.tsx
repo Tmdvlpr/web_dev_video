@@ -1,10 +1,7 @@
 import { motion } from "framer-motion";
-import { memo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useCalendarDrag } from "../../contexts/CalendarDragContext";
+import { memo, useEffect, useRef, useState } from "react";
+import { suppressCardClickRef, useCalendarDrag } from "../../contexts/CalendarDragContext";
 import { useTheme } from "../../contexts/ThemeContext";
-import { useTelegram } from "../../hooks/useTelegram";
-import { meetingsApi } from "../../api/meetings";
 import type { Booking, User } from "../../types";
 
 interface BookingCardProps {
@@ -13,6 +10,8 @@ interface BookingCardProps {
   heightPercent: number;
   currentUser: User | null;
   onClick: () => void;
+  isResizing?: boolean;
+  onResizeStart?: (e: React.MouseEvent) => void;
 }
 
 // Light — saturated tinted cards that pop against white background
@@ -39,37 +38,13 @@ const DARK_PALETTES = [
   { bg: "rgba(251,146,60,0.14)", border: "#fb923c", text: "#ffedd5", accent: "#fdba74", tint: "rgba(251,146,60,0.07)" },
 ];
 
-export const BookingCard = memo(function BookingCard({ booking, topPercent, heightPercent, currentUser, onClick }: BookingCardProps) {
+export const BookingCard = memo(function BookingCard({ booking, topPercent, heightPercent, currentUser, onClick, isResizing, onResizeStart }: BookingCardProps) {
   const { isDark } = useTheme();
   const { setDrag } = useCalendarDrag();
-  const navigate = useNavigate();
-  const { isMiniApp } = useTelegram();
   const [isDragging, setIsDragging] = useState(false);
+  const suppressClickRef = useRef(false);
+  const wasResizingRef   = useRef(false);
 
-  const isInMeetingWindow = (() => {
-    const now = new Date();
-    const start = new Date(booking.start_time);
-    const end = new Date(booking.end_time);
-    // Allow joining from start of the booking's day through 2h after meeting ends
-    const startOfDay = new Date(start);
-    startOfDay.setHours(0, 0, 0, 0);
-    return now >= startOfDay && now.getTime() <= end.getTime() + 2 * 3_600_000;
-  })();
-
-  const handleJoinVideo = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (isMiniApp) {
-      try {
-        const { invite_url } = await meetingsApi.createInvite(booking.id);
-        (window as unknown as { Telegram?: { WebApp?: { openLink?: (u: string, opts?: object) => void } } })
-          .Telegram?.WebApp?.openLink?.(invite_url, { try_instant_view: false });
-      } catch {
-        navigate(`/meeting/${booking.id}`);
-      }
-    } else {
-      navigate(`/meeting/${booking.id}`);
-    }
-  };
   const isRedacted = booking.user_id === 0;
   const palettes = isDark ? DARK_PALETTES : LIGHT_PALETTES;
   const p = palettes[booking.user_id % palettes.length];
@@ -97,7 +72,19 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
   const handleDragEnd = () => {
     setIsDragging(false);
     setDrag(null);
+    suppressClickRef.current = true;
+    setTimeout(() => { suppressClickRef.current = false; }, 300);
   };
+
+  useEffect(() => {
+    if (isResizing) {
+      wasResizingRef.current = true;
+    } else if (wasResizingRef.current) {
+      wasResizingRef.current = false;
+      suppressClickRef.current = true;
+      setTimeout(() => { suppressClickRef.current = false; }, 300);
+    }
+  }, [isResizing]);
 
   if (isRedacted) {
     const greyBg = isDark ? "rgba(128,128,128,0.15)" : "rgba(0,0,0,0.05)";
@@ -160,7 +147,7 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -6, scale: 0.97 }}
       transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      onClick={(e) => { e.stopPropagation(); if (!suppressClickRef.current && !suppressCardClickRef.current) onClick(); }}
       whileHover={{ scale: canDrag ? 1.015 : 1.02, zIndex: 10 }}
       draggable={canDrag}
       onDragStartCapture={canDrag ? handleDragStart : undefined}
@@ -178,7 +165,7 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
         borderRadius: 10,
         cursor: canDrag ? "grab" : "pointer",
         overflow: "hidden",
-        opacity: isDragging ? 0.3 : 1,
+        opacity: isDragging ? 0.3 : isResizing ? 0 : 1,
         boxShadow: shadow,
         backdropFilter: isDark ? "blur(8px)" : "none",
       }}
@@ -188,58 +175,28 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
 
       {isShort ? (
         <p className="text-xs font-bold truncate leading-none relative z-10 w-full" style={{ color: p.text }}>
-          {isVirtual && "🌐 "}{isHybrid && "🏢🎥 "}{booking.title}
+          {booking.title}
         </p>
       ) : (
         <div className="h-full flex flex-col gap-0.5 relative z-10">
-          <div className="flex items-center gap-1">
-            <p className="text-xs font-bold truncate flex-1" style={{ color: p.text }}>{booking.title}</p>
-            <div className="flex items-center gap-0.5 shrink-0">
-              {booking.recurrence !== "none" && (
-                <span className="text-xs font-semibold px-1 rounded" style={{ background: `${p.border}20`, color: p.accent }}>🔄</span>
-              )}
-              {booking.guests?.length ? (
-                <span className="text-xs font-semibold px-1 rounded" style={{ background: `${p.border}20`, color: p.accent }}>
-                  👥{booking.guests.length}
-                </span>
-              ) : null}
-              {isVirtual && (
-                <button
-                  onClick={handleJoinVideo}
-                  disabled={!isInMeetingWindow}
-                  title={isInMeetingWindow ? "Подключиться к онлайн-встрече" : "Доступно за 10 мин до начала"}
-                  className="text-xs px-1 rounded transition-opacity disabled:opacity-30"
-                  style={{ background: `${leftBorderColor}25`, color: leftBorderColor }}
-                >
-                  🌐
-                </button>
-              )}
-              {isHybrid && (
-                <button
-                  onClick={handleJoinVideo}
-                  disabled={!isInMeetingWindow}
-                  title={isInMeetingWindow ? "Подключиться к встрече" : "Доступно за 10 мин до начала"}
-                  className="text-xs px-1 rounded transition-opacity disabled:opacity-30"
-                  style={{ background: `${leftBorderColor}25`, color: leftBorderColor }}
-                >
-                  🏢🎥
-                </button>
-              )}
-              {!isVirtual && !isHybrid && booking.video_enabled && (
-                <button
-                  onClick={handleJoinVideo}
-                  disabled={!isInMeetingWindow}
-                  title={isInMeetingWindow ? "Подключиться к встрече" : "Доступно за 10 мин до начала"}
-                  className="text-xs px-1 rounded transition-opacity disabled:opacity-30"
-                  style={{ background: `${p.border}25`, color: p.accent }}
-                >
-                  🎥
-                </button>
-              )}
-            </div>
-          </div>
+          <p className="text-xs font-bold truncate flex-1" style={{ color: p.text }}>{booking.title}</p>
           <p className="text-xs truncate" style={{ color: `${p.text}99` }}>{booking.user.display_name}</p>
         </div>
+      )}
+      {canDrag && !isShort && onResizeStart && (
+        <div
+          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onResizeStart(e); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          style={{
+            position: "absolute",
+            bottom: 0, left: 0, right: 0,
+            height: 7,
+            cursor: "ns-resize",
+            borderRadius: "0 0 10px 10px",
+            background: `linear-gradient(to bottom, transparent, ${p.border}50)`,
+            zIndex: 20,
+          }}
+        />
       )}
     </motion.div>
   );

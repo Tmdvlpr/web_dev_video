@@ -11,6 +11,10 @@ export interface DragPayload {
 // so dragover handlers in the same column can read it immediately.
 export const activeDragRef = { current: null as DragPayload | null };
 
+// Set synchronously on resize/drag end to suppress the spurious click that
+// fires after mouseup/dragend before React can re-render.
+export const suppressCardClickRef = { current: false };
+
 interface CalendarDragContextValue {
   drag: DragPayload | null;
   setDrag: (d: DragPayload | null) => void;
