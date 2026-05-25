@@ -506,6 +506,23 @@ async def update_booking(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> BookingResponse:
+    try:
+        return await _update_booking_impl(booking_id, payload, db, current_user)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import traceback
+        tb = traceback.format_exc()
+        logger.error("PATCH /bookings/%s unhandled: %s\n%s", booking_id, exc, tb)
+        raise HTTPException(500, f"{type(exc).__name__}: {exc}")
+
+
+async def _update_booking_impl(
+    booking_id: int,
+    payload: BookingUpdate,
+    db: AsyncSession,
+    current_user: User,
+) -> BookingResponse:
     result = await db.execute(
         select(Booking).options(selectinload(Booking.user)).where(Booking.id == booking_id)
     )
