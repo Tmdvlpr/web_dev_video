@@ -326,7 +326,7 @@ export function SplashScreen({ onFinish, userName }: SplashScreenProps) {
           <div
             style={{
               marginTop: 36,
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "Gilroy, sans-serif",
               fontWeight: 800,
               fontSize: 38,
               letterSpacing: "0.18em",
@@ -358,7 +358,7 @@ export function SplashScreen({ onFinish, userName }: SplashScreenProps) {
               transition={{ duration: 0.45, delay: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
               style={{
                 marginTop: 24,
-                fontFamily: "Manrope, sans-serif",
+                fontFamily: "Gilroy, sans-serif",
                 fontWeight: 500,
                 fontSize: 16,
                 letterSpacing: "0.02em",

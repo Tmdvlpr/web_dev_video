@@ -18,6 +18,7 @@ import { KrispNoiseFilter, isKrispNoiseFilterSupported } from "@livekit/krisp-no
 import { meetingsApi } from "../../api/meetings";
 import type { ChatMessage } from "../../types";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useLocale } from "../../contexts/LocaleContext";
 import "./conference.css";
 
 // ─── SVG system ───────────────────────────────────────────────────────────────
@@ -288,6 +289,7 @@ const LiveVideoTile = React.memo(function LiveVideoTile({
   onClick?: () => void;
   handRaised?: boolean;
 }) {
+  const { t } = useLocale();
   const participant = trackRef.participant as Participant | undefined;
   const isSpeaking = useIsSpeaking(participant);
   if (!participant) return null;
@@ -296,7 +298,7 @@ const LiveVideoTile = React.memo(function LiveVideoTile({
   const color = colorFromIdentity(participant.identity);
   const displayName = participant.name ?? participant.identity;
   const initials = initialsFromName(displayName);
-  const shortName = isLocal ? "Вы" : displayName.split(" ").slice(0, 2).join(" ");
+  const shortName = isLocal ? t("conf.you") : displayName.split(" ").slice(0, 2).join(" ");
 
   return (
     <div
@@ -332,7 +334,7 @@ const LiveVideoTile = React.memo(function LiveVideoTile({
 
 // ─── Layouts ──────────────────────────────────────────────────────────────────
 function FocusLayout({
-  camTracks, screenTrack, pinnedId, localIdentity, onPin, raisedHands,
+  camTracks, screenTrack, pinnedId, localIdentity, onPin, raisedHands, activeSpeakerId,
 }: {
   camTracks: TrackReferenceOrPlaceholder[];
   screenTrack: TrackReferenceOrPlaceholder | null;
@@ -340,9 +342,11 @@ function FocusLayout({
   localIdentity: string;
   onPin: (id: string | null) => void;
   raisedHands?: Map<number, string>;
+  activeSpeakerId?: string | null;
 }) {
   const mainTrack = screenTrack
     ?? (pinnedId ? camTracks.find((t) => t.participant.identity === pinnedId) : null)
+    ?? (activeSpeakerId ? camTracks.find((t) => t.participant.identity === activeSpeakerId) : null)
     ?? camTracks.find((t) => (t.participant as Participant).isSpeaking)
     ?? camTracks[0];
   const thumbs = camTracks.filter((t) => t !== mainTrack);
@@ -391,7 +395,7 @@ function GalleryLayout({ camTracks, localIdentity, raisedHands }: { camTracks: T
 }
 
 function CinemaLayout({
-  camTracks, screenTrack, pinnedId, localIdentity, onPin, raisedHands,
+  camTracks, screenTrack, pinnedId, localIdentity, onPin, raisedHands, activeSpeakerId,
 }: {
   camTracks: TrackReferenceOrPlaceholder[];
   screenTrack: TrackReferenceOrPlaceholder | null;
@@ -399,9 +403,11 @@ function CinemaLayout({
   localIdentity: string;
   onPin: (id: string | null) => void;
   raisedHands?: Map<number, string>;
+  activeSpeakerId?: string | null;
 }) {
   const mainTrack = screenTrack
     ?? (pinnedId ? camTracks.find((t) => t.participant.identity === pinnedId) : null)
+    ?? (activeSpeakerId ? camTracks.find((t) => t.participant.identity === activeSpeakerId) : null)
     ?? camTracks.find((t) => (t.participant as Participant).isSpeaking)
     ?? camTracks[0];
   const strip = camTracks.filter((t) => t !== mainTrack);
@@ -473,44 +479,45 @@ function ControlBar({
   onReact: (e: string) => void; setShowReactions: (v: boolean | ((p: boolean) => boolean)) => void;
   onParticipants: () => void; onChat: () => void; onSettings: () => void; onLeave: () => void;
 }) {
+  const { t } = useLocale();
   return (
     <div className="ctrlbar">
       <div className="ctrlbar__inner">
         <div className="ctrlbar__group">
           <CtrlBtn icon={micOn ? <Ic.Mic sz={20} /> : <Ic.MicOff sz={20} />}
-            label={micOn ? "Мут" : "Анмут"} active={!micOn} onClick={onMic} />
+            label={micOn ? t("conf.mute") : t("conf.unmute")} active={!micOn} onClick={onMic} />
           <CtrlBtn icon={camOn ? <Ic.Cam sz={20} /> : <Ic.CamOff sz={20} />}
-            label={camOn ? "Камера" : "Камера вкл"} active={!camOn} onClick={onCam} />
+            label={camOn ? t("conf.camera") : t("conf.cameraOn")} active={!camOn} onClick={onCam} />
           <CtrlBtn icon={<Ic.Monitor sz={20} />}
-            label={screenOn ? "Стоп" : "Экран"} active={screenOn} onClick={onScreen} />
+            label={screenOn ? t("conf.screenStop") : t("conf.screen")} active={screenOn} onClick={onScreen} />
           <div className="ctrlbar__sep" />
           <div style={{ position: "relative" }}>
-            <CtrlBtn icon={<Ic.Emoji sz={20} />} label="Реакции"
+            <CtrlBtn icon={<Ic.Emoji sz={20} />} label={t("conf.reactions")}
               active={showReactions} onClick={() => setShowReactions((v) => !v)} />
             {showReactions && (
               <ReactionsPopup onReact={onReact} onClose={() => setShowReactions(false)} />
             )}
           </div>
-          <CtrlBtn icon={<Ic.Hand sz={20} />} label={handUp ? "Опустить" : "Рука"} active={handUp} onClick={onHand} />
+          <CtrlBtn icon={<Ic.Hand sz={20} />} label={handUp ? t("conf.lowerHand") : t("conf.raiseHand")} active={handUp} onClick={onHand} />
           {canRecord && <>
             <div className="ctrlbar__sep" />
-            <CtrlBtn icon={<Ic.Record sz={20} />} label={isRecording ? "REC" : "Запись"}
+            <CtrlBtn icon={<Ic.Record sz={20} />} label={isRecording ? t("conf.recStop") : t("conf.recStart")}
               active={isRecording} danger={isRecording} onClick={onRecord} />
           </>}
         </div>
 
         <div className="ctrlbar__group ctrlbar__group--center">
-          <CtrlBtn icon={<Ic.Users sz={20} />} label="Участники"
+          <CtrlBtn icon={<Ic.Users sz={20} />} label={t("conf.participants")}
             active={activePanel === "participants"} badge={participantCount} onClick={onParticipants} />
-          <CtrlBtn icon={<Ic.Chat sz={20} />} label="Чат"
+          <CtrlBtn icon={<Ic.Chat sz={20} />} label={t("conf.chat")}
             active={activePanel === "chat"} badge={unread > 0 ? unread : null} onClick={onChat} />
-          <CtrlBtn icon={<Ic.Settings sz={20} />} label="Настройки" onClick={onSettings} />
+          <CtrlBtn icon={<Ic.Settings sz={20} />} label={t("conf.settings")} onClick={onSettings} />
         </div>
 
         <div className="ctrlbar__group ctrlbar__group--right">
           <button className="ctrlbtn ctrlbtn--leave" onClick={onLeave}>
             <div className="ctrlbtn__icon"><Ic.Leave sz={20} /></div>
-            <span className="ctrlbtn__label">Покинуть</span>
+            <span className="ctrlbtn__label">{t("conf.leave")}</span>
           </button>
         </div>
       </div>
@@ -529,6 +536,7 @@ function ChatPanelInner({
   onFile: (file: File) => void;
   uploading: boolean;
 }) {
+  const { t } = useLocale();
   const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -547,7 +555,7 @@ function ChatPanelInner({
   return (
     <div className="chatpanel">
       <div className="chatpanel__msgs" ref={listRef}>
-        {messages.length === 0 && <div className="chatpanel__empty">Сообщений пока нет</div>}
+        {messages.length === 0 && <div className="chatpanel__empty">{t("conf.chatEmpty")}</div>}
         {messages.map((m) => {
           const color = colorFromIdentity(String(m.user_id));
           const initials = initialsFromName(m.user_name);
@@ -575,14 +583,14 @@ function ChatPanelInner({
           );
         })}
       </div>
-      {uploading && <div className="chatpanel__uploading">Загрузка файла…</div>}
+      {uploading && <div className="chatpanel__uploading">{t("conf.fileUploading")}</div>}
       <div className="chatpanel__input">
-        <button className="chatpanel__attach" onClick={() => fileRef.current?.click()} title="Прикрепить файл">
+        <button className="chatpanel__attach" onClick={() => fileRef.current?.click()} title={t("conf.attachFile")}>
           <Ic.Attach sz={16} />
         </button>
         <input
           className="chatpanel__field"
-          placeholder="Написать сообщение…"
+          placeholder={t("conf.chatPlaceholder")}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
@@ -606,7 +614,7 @@ function ChatPanelInner({
 
 // ─── Participants panel ───────────────────────────────────────────────────────
 function ParticipantsPanel({
-  participants, localIdentity, bookingId, isOrganizer, raisedHands, onGrantRecord,
+  participants, localIdentity, bookingId, isOrganizer, raisedHands, onGrantRecord, onMuteParticipant,
 }: {
   participants: Participant[];
   localIdentity: string;
@@ -614,7 +622,9 @@ function ParticipantsPanel({
   isOrganizer: boolean;
   raisedHands?: Map<number, string>;
   onGrantRecord?: (identity: string) => void;
+  onMuteParticipant?: (identity: string, currentlyMuted: boolean) => void;
 }) {
+  const { t } = useLocale();
   const [search, setSearch] = useState("");
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -638,7 +648,7 @@ function ParticipantsPanel({
       const res = await meetingsApi.createInvite(bookingId);
       setInviteUrl(res.invite_url);
     } catch (e) {
-      alert("Не удалось создать ссылку-приглашение");
+      alert(t("conf.inviteError"));
     } finally {
       setInviteLoading(false);
     }
@@ -654,7 +664,7 @@ function ParticipantsPanel({
   return (
     <div className="ppanel">
       <div className="ppanel__top">
-        <input className="ppanel__search" placeholder="Поиск…" value={search}
+        <input className="ppanel__search" placeholder={t("conf.searchParticipants")} value={search}
           onChange={(e) => setSearch(e.target.value)} />
       </div>
       <div className="ppanel__list">
@@ -667,7 +677,7 @@ function ParticipantsPanel({
             <div key={p.identity} className="prow">
               <div className="prow__av" style={{ background: `${color}22`, color }}>{initials}</div>
               <div className="prow__info">
-                <div className="prow__name"><span>{isLocal ? "Вы" : name}</span></div>
+                <div className="prow__name"><span>{isLocal ? t("conf.you") : name}</span></div>
               </div>
               <div className="prow__icons">
                 {raisedHands?.has(parseInt(p.identity.replace(/^user-/, ""), 10)) && (
@@ -680,9 +690,20 @@ function ParticipantsPanel({
                     style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: "0 2px", lineHeight: 1 }}
                   >🎬</button>
                 )}
-                <span className={`prow__ico${!p.isMicrophoneEnabled ? " prow__ico--muted" : ""}`}>
-                  {p.isMicrophoneEnabled ? <Ic.Mic sz={13} /> : <Ic.MicOff sz={13} />}
-                </span>
+                {isOrganizer && !isLocal ? (
+                  <button
+                    onClick={() => onMuteParticipant?.(p.identity, !p.isMicrophoneEnabled)}
+                    title={p.isMicrophoneEnabled ? "Отключить микрофон" : "Включить микрофон"}
+                    className={`prow__ico prow__ico--btn${!p.isMicrophoneEnabled ? " prow__ico--muted" : ""}`}
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}
+                  >
+                    {p.isMicrophoneEnabled ? <Ic.Mic sz={13} /> : <Ic.MicOff sz={13} />}
+                  </button>
+                ) : (
+                  <span className={`prow__ico${!p.isMicrophoneEnabled ? " prow__ico--muted" : ""}`}>
+                    {p.isMicrophoneEnabled ? <Ic.Mic sz={13} /> : <Ic.MicOff sz={13} />}
+                  </span>
+                )}
                 <span className={`prow__ico${!p.isCameraEnabled ? " prow__ico--muted" : ""}`}>
                   {p.isCameraEnabled ? <Ic.Cam sz={13} /> : <Ic.CamOff sz={13} />}
                 </span>
@@ -703,15 +724,15 @@ function ParticipantsPanel({
               style={{
                 width: "100%", padding: "8px 12px", borderRadius: 8,
                 background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)",
-                color: "#60a5fa", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                color: "#60a5fa", fontSize: 13, fontWeight: 600, cursor: "pointer",
               }}
             >
-              {inviteLoading ? "Создание…" : "🔗 Пригласить внешнего гостя"}
+              {inviteLoading ? t("conf.inviteCreating") : t("conf.inviteGuest")}
             </button>
           ) : (
             <div>
               <p style={{ fontSize: 11, color: "var(--tx3)", marginBottom: 6 }}>
-                Ссылка действительна 24 часа:
+                {t("conf.inviteLinkValid")}
               </p>
               <div style={{
                 display: "flex", gap: 6, alignItems: "center",
@@ -719,7 +740,7 @@ function ParticipantsPanel({
                 border: "1px solid var(--brd)",
               }}>
                 <span style={{
-                  flex: 1, fontSize: 10, color: "var(--tx2)", overflow: "hidden",
+                  flex: 1, fontSize: 11, color: "var(--tx2)", overflow: "hidden",
                   textOverflow: "ellipsis", whiteSpace: "nowrap",
                 }}>
                   {inviteUrl}
@@ -744,7 +765,7 @@ function ParticipantsPanel({
                   color: "var(--tx3)", fontSize: 11, cursor: "pointer",
                 }}
               >
-                Создать новую ссылку
+                {t("conf.inviteNewLink")}
               </button>
             </div>
           )}
@@ -758,7 +779,7 @@ function ParticipantsPanel({
 function Sidebar({
   activePanel, onClose, messages, participants, localIdentity,
   localUserId, bookingId, isOrganizer, onSend, onFile, uploading,
-  noiseOn, blurOn, onNoise, onBlur, raisedHands, onGrantRecord,
+  noiseOn, blurOn, onNoise, onBlur, raisedHands, onGrantRecord, onMuteParticipant,
 }: {
   activePanel: "chat" | "participants" | "settings";
   onClose: () => void;
@@ -777,10 +798,12 @@ function Sidebar({
   onBlur: () => void;
   raisedHands?: Map<number, string>;
   onGrantRecord?: (identity: string) => void;
+  onMuteParticipant?: (identity: string, currentlyMuted: boolean) => void;
 }) {
-  const panelTitle = activePanel === "chat" ? "Чат"
-    : activePanel === "participants" ? `Участники (${participants.length})`
-    : "Настройки";
+  const { t } = useLocale();
+  const panelTitle = activePanel === "chat" ? t("conf.tabChat")
+    : activePanel === "participants" ? `${t("conf.tabParticipants")} (${participants.length})`
+    : t("conf.tabSettings");
 
   return (
     <div className="sidebar">
@@ -803,6 +826,7 @@ function Sidebar({
             isOrganizer={isOrganizer}
             raisedHands={raisedHands}
             onGrantRecord={onGrantRecord}
+            onMuteParticipant={onMuteParticipant}
           />
         )}
         {activePanel === "settings" && (
@@ -822,6 +846,7 @@ function MeetingHeader({
   layoutMode: string; participantCount: number;
   onLayoutChange: (m: string) => void; onInfoClick: () => void;
 }) {
+  const { t } = useLocale();
   return (
     <div className="mhdr">
       <div className="mhdr__left">
@@ -836,7 +861,7 @@ function MeetingHeader({
           )}
           {isSharingScreen && (
             <span className="mhdr__badge mhdr__badge--share">
-              <Ic.Monitor sz={11} />Демонстрация
+              <Ic.Monitor sz={11} />{t("conf.shareDemo")}
             </span>
           )}
         </div>
@@ -854,7 +879,7 @@ function MeetingHeader({
       </div>
       <div className="mhdr__right">
         <button className="mhdr__infobtn" onClick={onInfoClick}>
-          <Ic.Info sz={15} /><span>Инфо</span>
+          <Ic.Info sz={15} /><span>{t("conf.info")}</span>
         </button>
       </div>
     </div>
@@ -1201,7 +1226,7 @@ function SettingsPanel({ bookingId, noiseOn, blurOn, onNoise, onBlur }: {
   return (
     <div className="chatpanel">
       <div className="chatpanel__msgs" style={{ padding: "12px 10px" }}>
-        <p style={{ fontSize: 12, fontWeight: 700, color: "var(--tx2)", marginBottom: 10 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: "var(--tx2)", marginBottom: 10 }}>
           Настройки
         </p>
         <div style={rowStyle}>
@@ -1222,12 +1247,12 @@ function SettingsPanel({ bookingId, noiseOn, blurOn, onNoise, onBlur }: {
             <span style={knobStyle(blurOn)} />
           </button>
         </div>
-        <p style={{ fontSize: 12, fontWeight: 700, color: "var(--tx2)", margin: "16px 0 10px" }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: "var(--tx2)", margin: "16px 0 10px" }}>
           Записи встречи
         </p>
-        {isLoading && <p style={{ fontSize: 12, color: "var(--tx3)" }}>Загрузка…</p>}
+        {isLoading && <p style={{ fontSize: 13, color: "var(--tx3)" }}>Загрузка…</p>}
         {!isLoading && recordings.length === 0 && (
-          <p style={{ fontSize: 12, color: "var(--tx3)" }}>
+          <p style={{ fontSize: 13, color: "var(--tx3)" }}>
             Записей пока нет. Нажмите «Запись» чтобы начать.
           </p>
         )}
@@ -1243,12 +1268,12 @@ function SettingsPanel({ bookingId, noiseOn, blurOn, onNoise, onBlur }: {
               <a
                 href={meetingsApi.downloadRecordingUrl(bookingId, r.session_id)}
                 download={`recording-${r.session_id}.mp4`}
-                style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}
+                style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}
               >
                 ⬇ Скачать запись
               </a>
             ) : (
-              <p style={{ fontSize: 12, color: "var(--tx3)" }}>Обрабатывается…</p>
+              <p style={{ fontSize: 13, color: "var(--tx3)" }}>Обрабатывается…</p>
             )}
           </div>
         ))}
@@ -1297,6 +1322,20 @@ function ConferenceUI({
     }
     return result;
   }, [localParticipant, remoteParticipants]);
+
+  // ── Debounced active speaker ──────────────────────────────────────────────
+  useEffect(() => {
+    const allParts: Participant[] = [localParticipant as Participant, ...(remoteParticipants as Participant[])];
+    const speaking = allParts.find(p => p.isSpeaking);
+    if (!speaking) return;
+    if (speakerTimerRef.current) clearTimeout(speakerTimerRef.current);
+    speakerTimerRef.current = setTimeout(() => {
+      setActiveSpeakerId(speaking.identity);
+    }, 400);
+    return () => {
+      if (speakerTimerRef.current) clearTimeout(speakerTimerRef.current);
+    };
+  }, [remoteParticipants, localParticipant]);
 
   // ── Krisp noise cancellation (auto-apply from profile settings) ────────────
   const noiseApplied = useRef(false);
@@ -1385,6 +1424,8 @@ function ConferenceUI({
   const localUserId = parseInt(joinData.user_identity.replace("user-", ""), 10) || 0;
 
   const [layoutMode, setLayoutMode] = useState<"focus" | "gallery" | "cinema">("focus");
+  const [activeSpeakerId, setActiveSpeakerId] = useState<string | null>(null);
+  const speakerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<"chat" | "participants" | "settings" | null>(null);
   const [showReactions, setShowReactions] = useState(false);
@@ -1567,6 +1608,14 @@ function ConferenceUI({
     }
   }, [canRecord, isRecording, allTracks, allParticipants, bookingId]);
 
+  const handleMuteParticipant = useCallback(async (identity: string, muted: boolean) => {
+    try {
+      await meetingsApi.muteParticipant(bookingId, identity, muted);
+    } catch (err) {
+      console.warn("mute failed:", err);
+    }
+  }, [bookingId]);
+
   const handleLeave = () => { setModal(null); onLeave(); };
 
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
@@ -1597,6 +1646,7 @@ function ConferenceUI({
               camTracks={camTracks} screenTrack={screenTrack}
               pinnedId={pinnedId} localIdentity={localParticipant.identity}
               onPin={setPinnedId} raisedHands={raisedHands}
+              activeSpeakerId={activeSpeakerId}
             />
           )}
           {layoutMode === "gallery" && (
@@ -1607,6 +1657,7 @@ function ConferenceUI({
               camTracks={camTracks} screenTrack={screenTrack}
               pinnedId={pinnedId} localIdentity={localParticipant.identity}
               onPin={setPinnedId} raisedHands={raisedHands}
+              activeSpeakerId={activeSpeakerId}
             />
           )}
         </div>
@@ -1630,6 +1681,7 @@ function ConferenceUI({
             onBlur={toggleBlur}
             raisedHands={raisedHands}
             onGrantRecord={isOrganizer ? sendGrantRecord : undefined}
+            onMuteParticipant={isOrganizer ? handleMuteParticipant : undefined}
           />
         )}
       </div>
@@ -1737,7 +1789,7 @@ function ConferenceUI({
                   style={{
                     flex: 1, padding: "8px", borderRadius: 8, border: "none",
                     background: "linear-gradient(135deg,#16a34a,#22c55e)",
-                    color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
                   }}
                 >
                   ✓ Разрешить
@@ -1747,7 +1799,7 @@ function ConferenceUI({
                   style={{
                     flex: 1, padding: "8px", borderRadius: 8,
                     background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)",
-                    color: "#f87171", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    color: "#f87171", fontSize: 13, fontWeight: 700, cursor: "pointer",
                   } as React.CSSProperties}
                 >
                   ✕ Отклонить

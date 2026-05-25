@@ -99,7 +99,7 @@ export function GuestInput({
               @{g}
               <button type="button"
                 onClick={e => { e.stopPropagation(); setGuests(gs => gs.filter(x => x !== g)); }}
-                className="opacity-60 hover:opacity-100 leading-none" style={{ fontSize: 14 }}>×</button>
+                className="opacity-60 hover:opacity-100 leading-none" style={{ fontSize: 13 }}>×</button>
             </motion.span>
           ))}
           {guests.length === 0 && (
@@ -174,7 +174,7 @@ export function GuestInput({
                                 border: `1.5px solid ${allChecked || someChecked ? "var(--primary)" : "var(--input-border)"}`,
                                 background: allChecked ? "var(--primary)" : "transparent",
                                 color: "#fff",
-                                fontSize: 9,
+                                fontSize: 11,
                                 opacity: members.length === 0 ? 0.3 : 1,
                               }}>
                               {allChecked && "✓"}
@@ -188,7 +188,7 @@ export function GuestInput({
                             style={{ color: "var(--text)" }}
                             onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; }}
                             onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-                            <span style={{ width: 12, display: "inline-block", opacity: 0.5, fontSize: 9 }}>
+                            <span style={{ width: 12, display: "inline-block", opacity: 0.5, fontSize: 11 }}>
                               {open ? "▼" : "▶"}
                             </span>
                             <span className="flex-1 text-left">{t(POSITION_T_KEYS[pos] as Parameters<typeof t>[0])}</span>
@@ -209,7 +209,7 @@ export function GuestInput({
                                   border: `1.5px solid ${checked ? "var(--primary)" : "var(--input-border)"}`,
                                   background: checked ? "var(--primary)" : "transparent",
                                   color: "#fff",
-                                  fontSize: 9,
+                                  fontSize: 11,
                                 }}>
                                 {checked && "✓"}
                               </div>
@@ -283,7 +283,7 @@ export function GuestInput({
                             border: `1.5px solid ${checked ? "var(--primary)" : "var(--input-border)"}`,
                             background: checked ? "var(--primary)" : "transparent",
                             color: "#fff",
-                            fontSize: 9,
+                            fontSize: 11,
                           }}>
                           {checked && "✓"}
                         </div>

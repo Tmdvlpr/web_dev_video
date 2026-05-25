@@ -1,16 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { meetingsApi } from "../../api/meetings";
+import { useLocale } from "../../contexts/LocaleContext";
 import type { GuestJoinInfo } from "../../types";
 import { MeetingRoom } from "./MeetingRoom";
 import "./conference.css";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function fmtTime(d: Date): string {
-  return d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+function fmtTime(d: Date, locale: string): string {
+  return d.toLocaleTimeString(locale === "uz" ? "uz-UZ" : "ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
 // ─── Camera preview ───────────────────────────────────────────────────────────
-function CameraPreview({ micOn, camOn }: { micOn: boolean; camOn: boolean }) {
+function CameraPreview({ micOn, camOn, camOffLabel, micOffLabel }: { micOn: boolean; camOn: boolean; camOffLabel: string; micOffLabel: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -55,8 +56,8 @@ function CameraPreview({ micOn, camOn }: { micOn: boolean; camOn: boolean }) {
         />
       ) : (
         <div style={{ color: "#64748b", fontSize: 13, textAlign: "center" }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>📷</div>
-          Камера выключена
+          <div style={{ fontSize: 30, marginBottom: 8 }}>📷</div>
+          {camOffLabel}
         </div>
       )}
       {!micOn && camOn && (
@@ -65,7 +66,7 @@ function CameraPreview({ micOn, camOn }: { micOn: boolean; camOn: boolean }) {
           background: "rgba(239,68,68,0.85)", borderRadius: 6, padding: "2px 6px",
           fontSize: 11, color: "#fff",
         }}>
-          🔇 Микрофон выкл.
+          {micOffLabel}
         </div>
       )}
     </div>
@@ -77,7 +78,7 @@ function Spinner({ text }: { text: string }) {
   return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
-      color: "#94a3b8", fontSize: 14,
+      color: "#94a3b8", fontSize: 13,
     }}>
       <div style={{
         width: 36, height: 36, borderRadius: "50%",
@@ -91,6 +92,7 @@ function Spinner({ text }: { text: string }) {
 
 // ─── Main guest page ──────────────────────────────────────────────────────────
 export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
+  const { t, locale } = useLocale();
   const [info, setInfo] = useState<GuestJoinInfo | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -106,7 +108,7 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
   // Load meeting info
   useEffect(() => {
     meetingsApi.getGuestInfo(inviteToken).then(setInfo).catch((err) => {
-      const detail = err?.response?.data?.detail ?? "Ссылка недействительна или устарела.";
+      const detail = err?.response?.data?.detail ?? t("guest.invalidLink");
       setLoadErr(detail);
     });
   }, [inviteToken]);
@@ -141,7 +143,7 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
       await meetingsApi.requestAdmission(inviteToken, name.trim());
       setPhase("waiting");
     } catch (err) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? "Ошибка отправки запроса.";
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? t("guest.sendError");
       alert(detail);
       setPhase("preview");
     }
@@ -154,7 +156,7 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🔗</div>
           <p style={{ fontSize: 16, fontWeight: 700, color: "#f87171", marginBottom: 8 }}>
-            Ссылка недействительна
+            {t("guest.invalidLinkTitle")}
           </p>
           <p style={{ fontSize: 13, color: "#94a3b8" }}>{loadErr}</p>
         </div>
@@ -166,7 +168,7 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
   if (!info) {
     return (
       <PageShell>
-        <Spinner text="Загрузка информации о встрече…" />
+        <Spinner text={t("guest.loadingMeeting")} />
       </PageShell>
     );
   }
@@ -193,8 +195,8 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
       <PageShell>
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>👋</div>
-          <p style={{ fontSize: 16, fontWeight: 700, color: "#e2e8f0" }}>Вы покинули встречу</p>
-          <p style={{ fontSize: 13, color: "#94a3b8", marginTop: 8 }}>Можно закрыть это окно.</p>
+          <p style={{ fontSize: 16, fontWeight: 700, color: "#e2e8f0" }}>{t("guest.leftMeeting")}</p>
+          <p style={{ fontSize: 13, color: "#94a3b8", marginTop: 8 }}>{t("guest.closeWindow")}</p>
         </div>
       </PageShell>
     );
@@ -207,10 +209,10 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🚫</div>
           <p style={{ fontSize: 16, fontWeight: 700, color: "#f87171", marginBottom: 8 }}>
-            В доступе отказано
+            {t("guest.accessDenied")}
           </p>
           <p style={{ fontSize: 13, color: "#94a3b8" }}>
-            Организатор отклонил ваш запрос на подключение.
+            {t("guest.accessDeniedMsg")}
           </p>
         </div>
       </PageShell>
@@ -224,12 +226,12 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
           <p style={{ fontSize: 16, fontWeight: 700, color: "#e2e8f0", marginBottom: 8 }}>
-            Ожидание разрешения
+            {t("guest.waitingTitle")}
           </p>
           <p style={{ fontSize: 13, color: "#94a3b8", marginBottom: 24 }}>
-            Организатор уведомлён о вашем запросе. Пожалуйста, подождите.
+            {t("guest.waitingMsg")}
           </p>
-          <Spinner text="Ожидаем ответ организатора…" />
+          <Spinner text={t("guest.waitingStatus")} />
         </div>
       </PageShell>
     );
@@ -238,23 +240,28 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
   // ── Preview + form ────────────────────────────────────────────────────────────
   const startDate = new Date(info.start_time);
   const endDate = new Date(info.end_time);
-  const dateStr = startDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
-  const timeStr = `${fmtTime(startDate)}–${fmtTime(endDate)}`;
+  const dateStr = startDate.toLocaleDateString(locale === "uz" ? "uz-UZ" : "ru-RU", { day: "numeric", month: "long", year: "numeric" });
+  const timeStr = `${fmtTime(startDate, locale)}–${fmtTime(endDate, locale)}`;
 
   return (
     <PageShell>
       {/* Meeting info */}
       <div style={{ marginBottom: 20, textAlign: "center" }}>
         <p style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
-          Приглашение на встречу
+          {t("guest.meetingInvite")}
         </p>
         <p style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>{info.title}</p>
-        <p style={{ fontSize: 12, color: "#94a3b8" }}>{dateStr}, {timeStr}</p>
+        <p style={{ fontSize: 13, color: "#94a3b8" }}>{dateStr}, {timeStr}</p>
       </div>
 
       {/* Camera preview */}
       <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-        <CameraPreview micOn={micOn} camOn={camOn} />
+        <CameraPreview
+          micOn={micOn}
+          camOn={camOn}
+          camOffLabel={t("guest.camOff")}
+          micOffLabel={t("guest.micOff")}
+        />
       </div>
 
       {/* Device toggles */}
@@ -268,7 +275,7 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
             fontSize: 13, fontWeight: 600, cursor: "pointer",
           }}
         >
-          {micOn ? "🎤 Микрофон вкл." : "🔇 Микрофон выкл."}
+          {micOn ? t("guest.micOn") : t("guest.micOffBtn")}
         </button>
         <button
           onClick={() => setCamOn((v) => !v)}
@@ -279,27 +286,27 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
             fontSize: 13, fontWeight: 600, cursor: "pointer",
           }}
         >
-          {camOn ? "📹 Камера вкл." : "📷 Камера выкл."}
+          {camOn ? t("guest.camOn") : t("guest.camOffBtn")}
         </button>
       </div>
 
       {/* Name input */}
       <div style={{ marginBottom: 16 }}>
-        <label style={{ fontSize: 12, color: "#94a3b8", display: "block", marginBottom: 6 }}>
-          Ваше имя *
+        <label style={{ fontSize: 13, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+          {t("guest.nameLabel")}
         </label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) handleRequest(); }}
-          placeholder="Введите имя и фамилию"
+          placeholder={t("guest.namePlaceholder")}
           maxLength={128}
           style={{
             width: "100%", padding: "10px 14px", borderRadius: 10,
             border: "1px solid rgba(255,255,255,0.12)",
             background: "rgba(255,255,255,0.06)", color: "#e2e8f0",
-            fontSize: 14, outline: "none", boxSizing: "border-box",
+            fontSize: 13, outline: "none", boxSizing: "border-box",
           }}
         />
       </div>
@@ -312,15 +319,15 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
           width: "100%", padding: "12px", borderRadius: 10,
           background: name.trim() ? "linear-gradient(135deg,#1565a8,#3b82f6)" : "rgba(255,255,255,0.08)",
           color: name.trim() ? "#fff" : "#64748b",
-          fontSize: 14, fontWeight: 700, cursor: name.trim() ? "pointer" : "not-allowed",
+          fontSize: 13, fontWeight: 700, cursor: name.trim() ? "pointer" : "not-allowed",
           border: "none", transition: "all 0.2s",
         }}
       >
-        {phase === "requesting" ? "Отправка…" : "Запросить доступ"}
+        {phase === "requesting" ? t("guest.requesting") : t("guest.requestAccess")}
       </button>
 
       <p style={{ fontSize: 11, color: "#475569", textAlign: "center", marginTop: 12 }}>
-        Организатор получит уведомление и должен будет разрешить ваш вход
+        {t("guest.requestHint")}
       </p>
     </PageShell>
   );
@@ -332,7 +339,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
     <div style={{
       minHeight: "100dvh", background: "#0f1117",
       display: "flex", alignItems: "center", justifyContent: "center",
-      padding: 20, fontFamily: "Manrope, sans-serif",
+      padding: 20, fontFamily: "Gilroy, sans-serif",
     }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <div style={{
@@ -344,7 +351,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
       }}>
         <div style={{ textAlign: "center", marginBottom: 20 }}>
           <span style={{
-            fontFamily: "Manrope, sans-serif", fontWeight: 800, fontSize: 22,
+            fontFamily: "Gilroy, sans-serif", fontWeight: 800, fontSize: 22,
             letterSpacing: "0.06em", textTransform: "uppercase",
           }}>
             <span style={{ color: "#f8fafc" }}>Corp</span>

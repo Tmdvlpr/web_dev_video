@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 import pyseto
+from pydantic import BaseModel as _BaseModel
 from fastapi import (
     APIRouter, Depends, File, HTTPException, Query,
     UploadFile, WebSocket, WebSocketDisconnect, status,
@@ -29,7 +30,7 @@ from app.schemas.meeting import (
     GuestJoinInfo, GuestRequestBody, InviteLinkResponse, InviteStatusResponse,
     MeetingJoinResponse, RecordingResponse,
 )
-from app.services.video import create_access_token, derive_e2ee_key, ensure_room_exists, is_participant_in_room, kick_participant, start_recording, stop_recording
+from app.services.video import create_access_token, derive_e2ee_key, ensure_room_exists, is_participant_in_room, kick_participant, mute_participant, start_recording, stop_recording
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/meetings", tags=["meetings"])
@@ -752,6 +753,32 @@ async def get_pending_admissions(
         {"invite_token": inv.token, "guest_name": inv.guest_name or "Гость"}
         for inv in invitations
     ]
+
+
+class _MuteBody(_BaseModel):
+    muted: bool = True
+
+
+@router.post("/{booking_id}/participants/{identity}/mute", status_code=204)
+async def mute_participant_endpoint(
+    booking_id: int,
+    identity: str,
+    body: _MuteBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Organizer can server-side mute or unmute any participant's microphone."""
+    booking = await _get_active_booking(booking_id, db)
+    is_privileged = current_user.role in (Role.admin, Role.superadmin)
+    if booking.user_id != current_user.id and not is_privileged:
+        raise HTTPException(403, "Only organizer can mute participants")
+    if not booking.video_room_name:
+        raise HTTPException(400, "No active video room")
+    try:
+        await mute_participant(booking.video_room_name, identity, body.muted)
+    except Exception as exc:
+        logger.warning("mute_participant failed: %s", exc)
+        raise HTTPException(500, "LiveKit mute failed")
 
 
 @router.websocket("/{booking_id}/chat/ws")

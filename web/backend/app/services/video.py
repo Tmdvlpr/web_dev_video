@@ -166,6 +166,33 @@ async def stop_recording(egress_id: str) -> None:
             pass  # Egress may have already finished
 
 
+async def mute_participant(room_name: str, identity: str, muted: bool) -> None:
+    """Server-side mute or unmute a participant's microphone track."""
+    from livekit.api import LiveKitAPI
+    from livekit.protocol.room import ListParticipantsRequest, MuteRoomTrackRequest
+    from livekit.protocol.models import TrackType
+
+    async with LiveKitAPI(
+        url=_lk_http_url(),
+        api_key=settings.LIVEKIT_API_KEY,
+        api_secret=settings.LIVEKIT_API_SECRET,
+    ) as lkapi:
+        resp = await lkapi.room.list_participants(ListParticipantsRequest(room=room_name))
+        participant = next((p for p in resp.participants if p.identity == identity), None)
+        if not participant:
+            return
+        for track in participant.tracks:
+            if track.type == TrackType.AUDIO:
+                await lkapi.room.mute_published_track(
+                    MuteRoomTrackRequest(
+                        room=room_name,
+                        identity=identity,
+                        track_sid=track.sid,
+                        muted=muted,
+                    )
+                )
+
+
 def verify_webhook(body: bytes, auth_header: str) -> object:
     """Verify LiveKit webhook signature and return the WebhookEvent proto object."""
     from livekit.api import TokenVerifier, WebhookReceiver

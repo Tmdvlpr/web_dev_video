@@ -23,7 +23,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Manrope", "system-ui", "sans-serif"],
+        sans: ["Gilroy", "system-ui", "sans-serif"],
       },
       animation: {
         levitate: "levitate 3s ease-in-out infinite",

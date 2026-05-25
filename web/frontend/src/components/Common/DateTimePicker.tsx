@@ -252,7 +252,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 30px)", marginBottom: 4 }}>
                     {DOW_SHORT_KEYS.map((key, i) => (
                       <div key={key} style={{
-                        textAlign: "center", fontSize: 10, fontWeight: 700, letterSpacing: "0.03em",
+                        textAlign: "center", fontSize: 11, fontWeight: 700, letterSpacing: "0.03em",
                         color: isWeekend(i) ? (isDark ? "rgba(168,85,247,0.7)" : "#114e85") : "var(--text-muted)",
                         paddingBottom: 2,
                       }}>{t(key)}</div>
@@ -272,7 +272,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                         <button key={i} type="button" onClick={() => applyDate(viewYear, viewMonth, day)}
                           style={{
                             width: 30, height: 30, borderRadius: "50%",
-                            fontSize: 12, fontWeight: isSelected ? 800 : isToday ? 700 : 400,
+                            fontSize: 13, fontWeight: isSelected ? 800 : isToday ? 700 : 400,
                             background: isSelected
                               ? "linear-gradient(135deg,#1565a8,#114e85)"
                               : isToday
@@ -333,7 +333,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                           onClick={() => applyHour(h)}
                           style={{
                             display: "block", width: "calc(100% - 8px)", margin: "1px 4px",
-                            padding: "6px 0", fontSize: 12, fontWeight: h === sh ? 800 : 400,
+                            padding: "6px 0", fontSize: 13, fontWeight: h === sh ? 800 : 400,
                             background: h === sh
                               ? "linear-gradient(135deg,#1565a8,#114e85)"
                               : "transparent",
@@ -362,7 +362,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                           onClick={() => applyMin(m)}
                           style={{
                             display: "block", width: "calc(100% - 8px)", margin: "1px 4px",
-                            padding: "6px 0", fontSize: 12, fontWeight: m === smin ? 800 : 400,
+                            padding: "6px 0", fontSize: 13, fontWeight: m === smin ? 800 : 400,
                             background: m === smin
                               ? "linear-gradient(135deg,#1565a8,#114e85)"
                               : "transparent",
@@ -395,7 +395,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                   style={{
                     background: "linear-gradient(135deg,#1565a8,#114e85)",
                     color: "#fff", border: "none", borderRadius: 8,
-                    padding: "5px 14px", fontSize: 12, fontWeight: 800,
+                    padding: "5px 14px", fontSize: 13, fontWeight: 800,
                     cursor: "pointer", boxShadow: "0 2px 10px rgba(21,101,168,0.45)",
                     letterSpacing: "0.02em",
                   }}>

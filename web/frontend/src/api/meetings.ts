@@ -91,4 +91,8 @@ export const meetingsApi = {
     );
     return res.data;
   },
+
+  muteParticipant: async (bookingId: number, identity: string, muted: boolean): Promise<void> => {
+    await apiClient.post(`/api/v1/meetings/${bookingId}/participants/${encodeURIComponent(identity)}/mute`, { muted });
+  },
 };

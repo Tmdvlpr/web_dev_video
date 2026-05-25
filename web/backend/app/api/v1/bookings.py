@@ -593,8 +593,8 @@ async def _update_booking_impl(
                 Booking.end_time > new_start,
                 Booking.deleted_at.is_(None),
             ]
-        ov = await db.execute(select(Booking).where(and_(*conditions)))
-        if ov.scalar_one_or_none():
+        ov = await db.execute(select(Booking).where(and_(*conditions)).limit(1))
+        if ov.scalars().first():
             raise HTTPException(status.HTTP_409_CONFLICT, "Время пересекается с существующим бронированием")
 
     if payload.title is not None:

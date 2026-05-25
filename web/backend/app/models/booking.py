@@ -1,7 +1,7 @@
 import enum
 from datetime import date, datetime
 
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, Enum, ForeignKey, Integer, String, func, text
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, ForeignKey, Integer, String, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -44,7 +44,7 @@ class Booking(Base):
     video_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     video_room_name: Mapped[str | None] = mapped_column(String(128), nullable=True, unique=True, index=True)
     booking_type: Mapped[BookingType] = mapped_column(
-        Enum(BookingType), nullable=False, default=BookingType.physical, server_default="physical"
+        String(10), nullable=False, default=BookingType.physical, server_default="physical"
     )
 
     user: Mapped["User"] = relationship("User", back_populates="bookings")  # noqa: F821
