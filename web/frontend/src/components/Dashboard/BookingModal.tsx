@@ -1,4 +1,5 @@
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DateTimePicker } from "../Common/DateTimePicker";
@@ -1123,11 +1124,14 @@ export function BookingModal({
         </>
       )}
 
-      {/* Chat history modal */}
-      {chatOpen && editBooking && (
+      {/* Chat history modal — rendered in portal to escape parent transforms */}
+      {chatOpen && editBooking && createPortal(
         <div
-          className="fixed inset-0 flex items-center justify-center"
-          style={{ zIndex: 10000, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+          style={{
+            position: "fixed", inset: 0, zIndex: 10000,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)",
+          }}
           onClick={() => setChatOpen(false)}
         >
           <div
@@ -1141,7 +1145,8 @@ export function BookingModal({
               style={{ flex: 1, minHeight: 0, borderRadius: 16 }}
             />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </AnimatePresence>
   );

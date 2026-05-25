@@ -299,10 +299,18 @@ function MonthView({ anchorDate, today, onNavigate, onCardClick, searchQuery, on
   );
 }
 
-/* ── Room picker ── */
-function RoomPicker({ activeRoomId, onRoomChange }: { activeRoomId: number | null; onRoomChange: (id: number | null) => void }) {
+/* ── Filter dropdown (rooms + meeting type) ── */
+function FilterDropdown({
+  activeRoomId, onRoomChange,
+  typeFilter, onTypeFilter,
+}: {
+  activeRoomId: number | null; onRoomChange: (id: number | null) => void;
+  typeFilter: "all" | "physical" | "virtual" | "hybrid"; onTypeFilter: (v: "all" | "physical" | "virtual" | "hybrid") => void;
+}) {
+  const { t } = useLocale();
   const { myRooms, activeWorkspace, refetchRooms } = useWorkspace();
-  const [joinOpen, setJoinOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<"rooms" | "type">("rooms");
   const [joinCode, setJoinCode] = useState("");
   const [joinErr, setJoinErr] = useState<string | null>(null);
   const [joinInfo, setJoinInfo] = useState<string | null>(null);
@@ -310,110 +318,157 @@ function RoomPicker({ activeRoomId, onRoomChange }: { activeRoomId: number | nul
   const ref = useRef<HTMLDivElement>(null);
 
   const rooms = myRooms.filter(r => r.workspace_id === activeWorkspace?.id);
+  const hasFilter = activeRoomId !== null || typeFilter !== "all";
 
   useEffect(() => {
-    if (!joinOpen) return;
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setJoinOpen(false); };
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [joinOpen]);
+  }, [open]);
 
   const handleJoin = async () => {
     if (!activeWorkspace || !joinCode.trim()) return;
     setJoinErr(null); setJoinInfo(null); setJoinBusy(true);
     try {
       const result = await roomsApi.join(joinCode.trim(), activeWorkspace.id);
-      if (result.status === 201) {
-        refetchRooms();
-        setJoinCode(""); setJoinOpen(false);
-      } else if (result.status === 202) {
-        setJoinCode("");
-        setJoinInfo("⏳ Заявка отправлена. Ждём подтверждения от владельца комнаты.");
-      }
+      if (result.status === 201) { refetchRooms(); setJoinCode(""); }
+      else if (result.status === 202) { setJoinCode(""); setJoinInfo("⏳ Заявка отправлена. Ждём подтверждения."); }
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number; data?: { detail?: string } } })?.response?.status;
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      if (status === 403) {
-        setJoinErr("❌ Подключение по коду отключено для этой комнаты.");
-      } else {
-        setJoinErr(msg ?? "Комната не найдена");
-      }
+      setJoinErr(status === 403 ? "❌ Подключение по коду отключено." : msg ?? "Комната не найдена");
     } finally { setJoinBusy(false); }
   };
 
-  if (rooms.length === 0) return null;
+  const TYPE_OPTS = [
+    { key: "all" as const,      label: t("cal.filterAll") },
+    { key: "physical" as const, label: t("cal.filterPhysical") },
+    { key: "virtual" as const,  label: t("cal.filterVirtual") },
+    { key: "hybrid" as const,   label: t("cal.filterHybrid") },
+  ];
 
   return (
-    <div className="relative flex items-center gap-0.5" ref={ref}>
-      {/* All rooms tab */}
+    <div className="relative" ref={ref}>
+      {/* Trigger button */}
       <button
-        onClick={() => onRoomChange(null)}
-        className="px-2.5 h-6 text-xs font-medium rounded-md transition-all"
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1.5 px-2.5 h-7 text-xs font-semibold rounded-lg transition-all"
         style={{
-          background: !activeRoomId ? "var(--primary)" : "transparent",
-          color: !activeRoomId ? "#fff" : "var(--text-muted)",
+          border: open || hasFilter ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
+          background: open || hasFilter ? "var(--primary-light)" : "transparent",
+          color: open || hasFilter ? "var(--primary)" : "var(--text-muted)",
         }}
       >
-        Все
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+        </svg>
+        Фильтры
+        {hasFilter && (
+          <span style={{
+            width: 6, height: 6, borderRadius: "50%",
+            background: "var(--primary)", flexShrink: 0,
+          }} />
+        )}
       </button>
 
-      {/* Individual room tabs */}
-      {rooms.map(wr => (
-        <button
-          key={wr.room.id}
-          onClick={() => onRoomChange(wr.room.id)}
-          className="px-2.5 h-6 text-xs font-medium rounded-md transition-all flex items-center gap-1"
-          style={{
-            background: wr.room.id === activeRoomId ? "var(--primary)" : "transparent",
-            color: wr.room.id === activeRoomId ? "#fff" : "var(--text-muted)",
-            maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}
+      {/* Dropdown panel */}
+      {open && (
+        <div
+          className="absolute right-0 top-full mt-1 z-50 rounded-xl shadow-xl"
+          style={{ width: 240, background: "var(--card)", border: "1px solid var(--border)" }}
         >
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{wr.room.name}</span>
-          {wr.role === "shared" && <span style={{ fontSize: 11, opacity: 0.5, flexShrink: 0 }}>↗</span>}
-        </button>
-      ))}
-
-      {/* Join by code */}
-      <div className="relative ml-0.5">
-        <button
-          onClick={() => setJoinOpen(v => !v)}
-          className="w-6 h-6 flex items-center justify-center rounded-md transition-all text-sm font-bold leading-none"
-          style={{
-            color: joinOpen ? "var(--primary)" : "var(--text-muted)",
-            border: `1px dashed ${joinOpen ? "var(--primary)" : "var(--border)"}`,
-          }}
-          title="Добавить комнату по коду"
-        >
-          +
-        </button>
-        {joinOpen && (
-          <div className="absolute left-0 top-full mt-1 z-50 rounded-xl shadow-xl p-2 space-y-1.5"
-            style={{ minWidth: 200, background: "var(--card)", border: "1px solid var(--border)" }}>
-            <input
-              autoFocus value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())}
-              placeholder="Код комнаты"
-              className="w-full rounded-lg px-2 py-1 text-xs outline-none font-mono"
-              style={{ background: "var(--input-bg)", border: "1px solid var(--primary)", color: "var(--text)", letterSpacing: "0.08em" }}
-              onKeyDown={e => { if (e.key === "Enter") handleJoin(); if (e.key === "Escape") { setJoinOpen(false); setJoinCode(""); setJoinErr(null); setJoinInfo(null); } }}
-            />
-            {joinErr && <p className="text-xs px-1" style={{ color: "#dc2626" }}>{joinErr}</p>}
-            {joinInfo && <p className="text-xs px-1" style={{ color: "var(--text-muted)" }}>{joinInfo}</p>}
-            <div className="flex gap-1.5">
-              <button onClick={() => { setJoinOpen(false); setJoinCode(""); setJoinErr(null); setJoinInfo(null); }}
-                className="flex-1 py-1 rounded-lg text-xs font-medium"
-                style={{ background: "var(--elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-                Отмена
+          {/* Tabs */}
+          <div className="flex" style={{ borderBottom: "1px solid var(--border)" }}>
+            {(["rooms", "type"] as const).map(k => (
+              <button
+                key={k}
+                onClick={() => setTab(k)}
+                className="flex-1 py-2 text-xs font-semibold transition-all"
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  color: tab === k ? "var(--primary)" : "var(--text-muted)",
+                  borderBottom: tab === k ? "2px solid var(--primary)" : "2px solid transparent",
+                  marginBottom: -1,
+                }}
+              >
+                {k === "rooms" ? "Комнаты" : "Тип встречи"}
               </button>
-              <button onClick={handleJoin} disabled={joinBusy}
-                className="flex-1 py-1 rounded-lg text-xs font-bold text-white disabled:opacity-50"
-                style={{ background: "var(--primary)" }}>
-                {joinBusy ? "…" : "Добавить"}
-              </button>
-            </div>
+            ))}
           </div>
-        )}
-      </div>
+
+          {/* Rooms tab */}
+          {tab === "rooms" && (
+            <div className="p-2 flex flex-col gap-1">
+              <div className="flex flex-wrap gap-1">
+                <button
+                  onClick={() => onRoomChange(null)}
+                  className="px-2.5 h-6 text-xs font-medium rounded-md transition-all"
+                  style={{
+                    background: !activeRoomId ? "var(--primary)" : "var(--elevated)",
+                    color: !activeRoomId ? "#fff" : "var(--text-muted)",
+                    border: "none",
+                  }}
+                >Все</button>
+                {rooms.map(wr => (
+                  <button
+                    key={wr.room.id}
+                    onClick={() => onRoomChange(wr.room.id)}
+                    className="px-2.5 h-6 text-xs font-medium rounded-md transition-all flex items-center gap-1"
+                    style={{
+                      background: wr.room.id === activeRoomId ? "var(--primary)" : "var(--elevated)",
+                      color: wr.room.id === activeRoomId ? "#fff" : "var(--text-muted)",
+                      border: "none", maxWidth: 110,
+                    }}
+                  >
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{wr.room.name}</span>
+                    {wr.role === "shared" && <span style={{ fontSize: 10, opacity: 0.5, flexShrink: 0 }}>↗</span>}
+                  </button>
+                ))}
+              </div>
+              {/* Join by code */}
+              <div className="mt-1 pt-1" style={{ borderTop: "1px solid var(--border)" }}>
+                <div className="flex gap-1">
+                  <input
+                    value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())}
+                    placeholder="Код комнаты"
+                    className="flex-1 rounded-lg px-2 py-1 text-xs outline-none font-mono"
+                    style={{ background: "var(--input-bg)", border: "1px solid var(--border)", color: "var(--text)" }}
+                    onKeyDown={e => { if (e.key === "Enter") handleJoin(); }}
+                  />
+                  <button onClick={handleJoin} disabled={joinBusy || !joinCode.trim()}
+                    className="px-2 py-1 rounded-lg text-xs font-bold text-white disabled:opacity-40"
+                    style={{ background: "var(--primary)", border: "none" }}>
+                    {joinBusy ? "…" : "+"}
+                  </button>
+                </div>
+                {joinErr  && <p className="text-xs mt-1 px-1" style={{ color: "#dc2626" }}>{joinErr}</p>}
+                {joinInfo && <p className="text-xs mt-1 px-1" style={{ color: "var(--text-muted)" }}>{joinInfo}</p>}
+              </div>
+            </div>
+          )}
+
+          {/* Type tab */}
+          {tab === "type" && (
+            <div className="p-2 flex flex-wrap gap-1">
+              {TYPE_OPTS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => onTypeFilter(key)}
+                  className="px-2.5 h-6 text-xs font-medium rounded-md transition-all"
+                  style={{
+                    background: typeFilter === key ? "var(--primary)" : "var(--elevated)",
+                    color: typeFilter === key ? "#fff" : "var(--text-muted)",
+                    border: "none",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -793,34 +848,11 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
           <span className="text-sm font-bold capitalize" style={{ color: "var(--text)", letterSpacing: "-0.01em" }}>{monthLabel}</span>
         )}
 
-        {/* Booking type filter chips */}
-        <div className="flex items-center gap-1 shrink-0">
-          {([
-            { key: "all",      label: t("cal.filterAll") },
-            { key: "physical", label: t("cal.filterPhysical") },
-            { key: "virtual",  label: t("cal.filterVirtual") },
-            { key: "hybrid",   label: t("cal.filterHybrid") },
-          ] as const).map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setTypeFilter(key)}
-              title={key === "all" ? t("cal.filterAll") : key === "physical" ? t("cal.filterPhysical") : key === "virtual" ? t("cal.filterVirtual") : t("cal.filterHybrid")}
-              className="h-7 px-2 text-xs font-semibold rounded-lg transition-all"
-              style={{
-                border: typeFilter === key ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
-                background: typeFilter === key ? "var(--primary-light)" : "transparent",
-                color: typeFilter === key ? "var(--primary)" : "var(--text-muted)",
-                cursor: "pointer",
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="w-px h-4" style={{ background: "var(--border)" }} />
-
         <div className="ml-auto flex items-center gap-2">
-          <RoomPicker activeRoomId={activeRoomId} onRoomChange={setActiveRoomId} />
+          <FilterDropdown
+            activeRoomId={activeRoomId} onRoomChange={setActiveRoomId}
+            typeFilter={typeFilter} onTypeFilter={setTypeFilter}
+          />
           <div className="w-px h-4 mx-0.5" style={{ background: "var(--border)" }} />
           <RoomStatus roomId={activeRoomId} workspaceId={activeWorkspace?.id} />
 

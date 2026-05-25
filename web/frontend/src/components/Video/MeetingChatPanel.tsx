@@ -149,7 +149,7 @@ export function MeetingChatPanel({ bookingId, readOnly, onClose, style }: Props)
               background: "none", border: "none", cursor: "pointer",
               color: "#6b7280", fontSize: 18, lineHeight: 1,
               padding: "4px 6px", borderRadius: 6,
-              display: "flex", alignItems: "center",
+              display: "flex", alignItems: "center", justifyContent: "center",
             }}
             onMouseEnter={e => (e.currentTarget.style.color = "#f9fafb")}
             onMouseLeave={e => (e.currentTarget.style.color = "#6b7280")}
