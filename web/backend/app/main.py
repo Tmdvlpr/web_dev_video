@@ -379,6 +379,7 @@ _origins = [
     settings.FRONTEND_URL,
     "https://tg.corpmeet.uz",
     "https://corpmeet.uz",
+    "https://tg-dev.corpmeet.uz",
 ]
 if settings.CORPMEET_DEV:
     _origins += [
