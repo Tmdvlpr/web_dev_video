@@ -174,8 +174,8 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
             <div className="flex-1 text-sm font-bold leading-tight" style={{ color: open ? "var(--primary)" : "var(--text)" }}>{displayDate}</div>
           ) : (
             <>
-              <div className="flex-1 text-xs font-semibold leading-tight" style={{ color: "var(--text-sec)" }}>{displayDate}</div>
-              <div className="text-base font-black leading-tight shrink-0" style={{ color: open ? "var(--primary)" : "var(--text)" }}>{displayTime}</div>
+              <div className="flex-1 text-sm font-semibold leading-tight" style={{ color: "var(--text-sec)" }}>{displayDate}</div>
+              <div className="text-sm font-black leading-tight shrink-0" style={{ color: open ? "var(--primary)" : "var(--text)" }}>{displayTime}</div>
             </>
           )}
           <svg className="w-4 h-4 shrink-0" style={{ color: open ? "var(--primary)" : "var(--text-muted)" }}

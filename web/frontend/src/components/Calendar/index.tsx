@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
+import { createPortal } from "react-dom";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CalendarDragProvider } from "../../contexts/CalendarDragContext";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -316,6 +317,8 @@ function FilterDropdown({
   const [joinInfo, setJoinInfo] = useState<string | null>(null);
   const [joinBusy, setJoinBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [dropPos, setDropPos] = useState<{ top: number; right: number } | null>(null);
 
   const rooms = myRooms.filter(r => r.workspace_id === activeWorkspace?.id);
   const hasFilter = activeRoomId !== null || typeFilter !== "all";
@@ -349,10 +352,16 @@ function FilterDropdown({
   ];
 
   return (
-    <div className="relative" ref={ref}>
+    <div ref={ref}>
       {/* Trigger button */}
       <button
-        onClick={() => setOpen(v => !v)}
+        ref={btnRef}
+        onClick={() => {
+          if (open) { setOpen(false); return; }
+          const r = btnRef.current?.getBoundingClientRect();
+          if (r) setDropPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
+          setOpen(true);
+        }}
         className="flex items-center gap-1.5 px-2.5 h-7 text-xs font-semibold rounded-lg transition-all"
         style={{
           border: open || hasFilter ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
@@ -365,18 +374,19 @@ function FilterDropdown({
         </svg>
         Фильтры
         {hasFilter && (
-          <span style={{
-            width: 6, height: 6, borderRadius: "50%",
-            background: "var(--primary)", flexShrink: 0,
-          }} />
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--primary)", flexShrink: 0 }} />
         )}
       </button>
 
-      {/* Dropdown panel */}
-      {open && (
+      {/* Dropdown via portal — escapes toolbar stacking context */}
+      {open && dropPos && createPortal(
         <div
-          className="absolute right-0 top-full mt-1 z-50 rounded-xl shadow-xl"
-          style={{ width: 240, background: "var(--card)", border: "1px solid var(--border)" }}
+          style={{
+            position: "fixed", top: dropPos.top, right: dropPos.right,
+            zIndex: 9999, width: 240,
+            background: "var(--card)", border: "1px solid var(--border)",
+            borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
+          }}
         >
           {/* Tabs */}
           <div className="flex" style={{ borderBottom: "1px solid var(--border)" }}>
@@ -467,7 +477,8 @@ function FilterDropdown({
               ))}
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
