@@ -341,8 +341,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         ]
         for sql in migrations:
             try:
+                await conn.execute(text("SAVEPOINT _mig"))
                 await conn.execute(text(sql))
+                await conn.execute(text("RELEASE SAVEPOINT _mig"))
             except Exception as e:
+                try:
+                    await conn.execute(text("ROLLBACK TO SAVEPOINT _mig"))
+                except Exception:
+                    pass
                 msg = str(e).lower()
                 if not any(s in msg for s in ("already exists", "duplicate", "does not exist")):
                     logger.warning(f"Migration skipped: {sql[:80]!r} → {e}")

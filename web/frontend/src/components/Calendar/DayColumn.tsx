@@ -93,7 +93,6 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
       suppressCardClickRef.current = true;
       setTimeout(() => { suppressCardClickRef.current = false; }, 300);
       const result = computeResize(e.clientY);
-      console.log("[resize] onUp: bookingId=", resizingRef.current.booking.id, "result=", result, "hasHandler=", !!onBookingResize);
       if (result && onBookingResize) {
         const newEnd = new Date(date);
         newEnd.setHours(Math.floor(result.finalEnd / 60), result.finalEnd % 60, 0, 0);

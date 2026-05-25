@@ -92,11 +92,9 @@ export function useUpdateBooking() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: BookingUpdate }) => {
-      console.log("[update] mutationFn PATCH /bookings/", id, payload);
       return bookingsApi.update(id, payload);
     },
     onMutate: async ({ id, payload }) => {
-      console.log("[update] onMutate id=", id, payload);
       const newDateStr = payload.start_time?.split("T")[0];
 
       // Find booking in date-keyed caches only (skip "active" and other non-date keys)
@@ -137,8 +135,7 @@ export function useUpdateBooking() {
 
       return { previousOld, previousNew, oldDateStr, newDateStr, oldQueryKey };
     },
-    onError: (err, vars, ctx: any) => {
-      console.error("[update] onError: id=", vars.id, "err=", err);
+    onError: (_err, _vars, ctx: any) => {
       if (ctx?.previousOld && ctx?.oldQueryKey)
         queryClient.setQueryData(ctx.oldQueryKey, ctx.previousOld);
       if (ctx?.previousNew && ctx?.newDateStr)

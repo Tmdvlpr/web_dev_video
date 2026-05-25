@@ -35,14 +35,12 @@ function DayContainer({ date, dateStr, currentUser, onSlotClick, onCardClick, is
   const { mutate: updateBooking } = useUpdateBooking();
 
   const handleBookingDrop = (booking: Booking, newStart: Date) => {
-    console.log("[dnd] handleBookingDrop: bookingId=", booking.id, "newStart=", newStart.toISOString());
     const durationMs = new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime();
     const newEnd = new Date(newStart.getTime() + durationMs);
     updateBooking({ id: booking.id, payload: { start_time: newStart.toISOString(), end_time: newEnd.toISOString() } });
   };
 
   const handleBookingResize = (booking: Booking, newEnd: Date) => {
-    console.log("[resize] handleBookingResize: bookingId=", booking.id, "newEnd=", newEnd.toISOString());
     updateBooking({ id: booking.id, payload: { end_time: newEnd.toISOString() } });
   };
 

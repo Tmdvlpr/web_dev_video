@@ -19,9 +19,9 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.attachment import BookingAttachment
 from app.models.booking import Booking, BookingType
-from app.models.room import RoomVisibility, WorkspaceRoom
+from app.models.room import RoomVisibility, WorkspaceRoom, WorkspaceRoomRole
 from app.models.user import Role, User
-from app.models.workspace import WorkspaceMember, WorkspaceMemberStatus
+from app.models.workspace import WorkspaceMember, WorkspaceMemberRole, WorkspaceMemberStatus
 from pydantic import BaseModel
 from app.schemas.booking import BookingCreate, BookingResponse, BookingUpdate
 from app.schemas.user import UserPublicResponse
@@ -515,6 +515,40 @@ async def update_booking(
     if booking.user_id != current_user.id and current_user.role not in ADMIN_ROLES:
         raise HTTPException(403, "Not allowed")
 
+    # Extra permission check: only creator / workspace-admin / room-owner-workspace-admin / superadmin
+    # may change the time of a booking (drag-and-drop / resize).
+    if (payload.start_time is not None or payload.end_time is not None) and \
+            booking.user_id != current_user.id and current_user.role not in ADMIN_ROLES:
+        can_reschedule = False
+        if booking.workspace_id is not None:
+            ws_member = await db.scalar(
+                select(WorkspaceMember).where(
+                    WorkspaceMember.workspace_id == booking.workspace_id,
+                    WorkspaceMember.user_id == current_user.id,
+                    WorkspaceMember.role.in_([WorkspaceMemberRole.owner, WorkspaceMemberRole.admin]),
+                    WorkspaceMember.status == WorkspaceMemberStatus.active,
+                )
+            )
+            if ws_member:
+                can_reschedule = True
+        if not can_reschedule and booking.room_id is not None:
+            ws_room = await db.scalar(
+                select(WorkspaceRoom).join(
+                    WorkspaceMember,
+                    WorkspaceMember.workspace_id == WorkspaceRoom.workspace_id,
+                ).where(
+                    WorkspaceRoom.room_id == booking.room_id,
+                    WorkspaceRoom.role == WorkspaceRoomRole.owner,
+                    WorkspaceMember.user_id == current_user.id,
+                    WorkspaceMember.role.in_([WorkspaceMemberRole.owner, WorkspaceMemberRole.admin]),
+                    WorkspaceMember.status == WorkspaceMemberStatus.active,
+                )
+            )
+            if ws_room:
+                can_reschedule = True
+        if not can_reschedule:
+            raise HTTPException(403, "Только создатель встречи, администратор пространства или суперадмин может изменить время")
+
     new_start = payload.start_time or booking.start_time
     new_end = payload.end_time or booking.end_time
     if new_start >= new_end:
@@ -542,7 +576,7 @@ async def update_booking(
                 Booking.end_time > new_start,
                 Booking.deleted_at.is_(None),
             ]
-        ov = await db.execute(select(Booking).where(and_(*conditions)).with_for_update())
+        ov = await db.execute(select(Booking).where(and_(*conditions)))
         if ov.scalar_one_or_none():
             raise HTTPException(status.HTTP_409_CONFLICT, "Время пересекается с существующим бронированием")
 
@@ -572,7 +606,11 @@ async def update_booking(
         booking.video_enabled = False
         booking.video_room_name = None
 
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as exc:
+        logger.exception("PATCH /bookings/%s — db.commit() failed: %s", booking_id, exc)
+        raise HTTPException(500, f"DB commit error: {type(exc).__name__}: {exc}")
     await db.refresh(booking)
 
     if payload.video_enabled is True and booking.video_room_name:
