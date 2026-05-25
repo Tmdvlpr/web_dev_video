@@ -1131,24 +1131,13 @@ export function BookingModal({
           onClick={() => setChatOpen(false)}
         >
           <div
-            style={{ width: 440, height: 580, borderRadius: 16, overflow: "hidden", position: "relative", display: "flex", flexDirection: "column" }}
+            style={{ width: 440, height: 580, borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column" }}
             onClick={e => e.stopPropagation()}
           >
-            <button
-              onClick={() => setChatOpen(false)}
-              style={{
-                position: "absolute", top: 10, right: 10, zIndex: 20,
-                width: 28, height: 28, borderRadius: "50%",
-                background: "rgba(0,0,0,0.5)", color: "#fff",
-                border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1,
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}
-            >
-              ✕
-            </button>
             <MeetingChatPanel
               bookingId={editBooking.id}
               readOnly
+              onClose={() => setChatOpen(false)}
               style={{ flex: 1, minHeight: 0, borderRadius: 16 }}
             />
           </div>

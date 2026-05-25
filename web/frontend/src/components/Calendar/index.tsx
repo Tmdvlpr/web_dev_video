@@ -27,9 +27,10 @@ interface DayContainerProps {
   searchQuery: string;
   workspaceId?: number;
   roomId?: number | null;
+  typeFilter?: "all" | "physical" | "virtual" | "hybrid";
 }
 
-function DayContainer({ date, dateStr, currentUser, onSlotClick, onCardClick, isToday, searchQuery, workspaceId, roomId }: DayContainerProps) {
+function DayContainer({ date, dateStr, currentUser, onSlotClick, onCardClick, isToday, searchQuery, workspaceId, roomId, typeFilter = "all" }: DayContainerProps) {
   const { data: bookings = [] } = useBookings(dateStr, workspaceId);
   const { data: slots = [] } = useSlots(dateStr);
   const { mutate: updateBooking } = useUpdateBooking();
@@ -45,13 +46,14 @@ function DayContainer({ date, dateStr, currentUser, onSlotClick, onCardClick, is
   };
 
   const byRoom = roomId ? (bookings as Booking[]).filter((b) => b.room_id === roomId) : bookings as Booking[];
+  const byType = typeFilter && typeFilter !== "all" ? byRoom.filter((b) => (b.booking_type ?? "physical") === typeFilter) : byRoom;
   const filtered = searchQuery
-    ? byRoom.filter((b) =>
+    ? byType.filter((b) =>
         b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         b.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         b.user.display_name.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : byRoom;
+    : byType;
   return (
     <DayColumn date={date} bookings={filtered} freeSlots={slots as SlotResponse[]} currentUser={currentUser}
       onSlotClick={onSlotClick} onCardClick={onCardClick} onBookingDrop={handleBookingDrop}
@@ -539,6 +541,7 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen]   = useState(false);
   const [activeRoomId, setActiveRoomId] = useState<number | null>(null);
+  const [typeFilter, setTypeFilter] = useState<"all" | "physical" | "virtual" | "hybrid">("all");
 
   // Reset room filter when workspace changes
   useEffect(() => { setActiveRoomId(null); }, [activeWorkspace?.id]);
@@ -790,6 +793,32 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
           <span className="text-sm font-bold capitalize" style={{ color: "var(--text)", letterSpacing: "-0.01em" }}>{monthLabel}</span>
         )}
 
+        {/* Booking type filter chips */}
+        <div className="flex items-center gap-1 shrink-0">
+          {([
+            { key: "all",      label: t("cal.filterAll") },
+            { key: "physical", label: t("cal.filterPhysical") },
+            { key: "virtual",  label: t("cal.filterVirtual") },
+            { key: "hybrid",   label: t("cal.filterHybrid") },
+          ] as const).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setTypeFilter(key)}
+              title={key === "all" ? t("cal.filterAll") : key === "physical" ? t("cal.filterPhysical") : key === "virtual" ? t("cal.filterVirtual") : t("cal.filterHybrid")}
+              className="h-7 px-2 text-xs font-semibold rounded-lg transition-all"
+              style={{
+                border: typeFilter === key ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
+                background: typeFilter === key ? "var(--primary-light)" : "transparent",
+                color: typeFilter === key ? "var(--primary)" : "var(--text-muted)",
+                cursor: "pointer",
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="w-px h-4" style={{ background: "var(--border)" }} />
+
         <div className="ml-auto flex items-center gap-2">
           <RoomPicker activeRoomId={activeRoomId} onRoomChange={setActiveRoomId} />
           <div className="w-px h-4 mx-0.5" style={{ background: "var(--border)" }} />
@@ -869,7 +898,7 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
                 <DayContainer key={dateStr} date={date} dateStr={dateStr}
                   currentUser={currentUser} onSlotClick={onSlotClick}
                   onCardClick={onCardClick} isToday={isToday} searchQuery={searchQuery}
-                  workspaceId={activeWorkspace?.id} roomId={activeRoomId} />
+                  workspaceId={activeWorkspace?.id} roomId={activeRoomId} typeFilter={typeFilter} />
               );
             })}
           </div>

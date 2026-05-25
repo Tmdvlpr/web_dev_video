@@ -151,6 +151,10 @@ export const T: Dict = {
   "cal.dow.fri.long":          { ru: "Пятница",     uz: "Жума" },
   "cal.dow.sat.long":          { ru: "Суббота",     uz: "Шанба" },
 
+  "cal.filterAll":             { ru: "Все", uz: "Барча" },
+  "cal.filterPhysical":        { ru: "Офис", uz: "Офис" },
+  "cal.filterVirtual":         { ru: "Онлайн", uz: "Онлайн" },
+  "cal.filterHybrid":          { ru: "Гибрид", uz: "Гибрид" },
   "cal.searchPlaceholder":     { ru: "Поиск встреч...", uz: "Йиғилишларни қидириш..." },
   "cal.moreEvents":            { ru: "+{n} ещё",    uz: "+{n} яна" },
   "cal.delete":                { ru: "Удалить",     uz: "Ўчириш" },

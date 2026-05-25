@@ -28,10 +28,11 @@ function wsBase(): string {
 interface Props {
   bookingId: number;
   readOnly?: boolean;
+  onClose?: () => void;
   style?: React.CSSProperties;
 }
 
-export function MeetingChatPanel({ bookingId, readOnly, style }: Props) {
+export function MeetingChatPanel({ bookingId, readOnly, onClose, style }: Props) {
   const { t } = useLocale();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -133,10 +134,29 @@ export function MeetingChatPanel({ bookingId, readOnly, style }: Props) {
     >
       {/* Header */}
       <div
-        className="px-3 py-2.5 text-sm font-semibold"
-        style={{ borderBottom: "1px solid #1f2937", color: "#9ca3af" }}
+        className="px-3 text-sm font-semibold"
+        style={{
+          borderBottom: "1px solid #1f2937", color: "#9ca3af",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          minHeight: 44, flexShrink: 0,
+        }}
       >
-        {t("chatpanel.title")}
+        <span>{t("chatpanel.title")}</span>
+        {onClose && (
+          <button
+            onClick={onClose}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: "#6b7280", fontSize: 18, lineHeight: 1,
+              padding: "4px 6px", borderRadius: 6,
+              display: "flex", alignItems: "center",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = "#f9fafb")}
+            onMouseLeave={e => (e.currentTarget.style.color = "#6b7280")}
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* Messages */}
@@ -150,11 +170,12 @@ export function MeetingChatPanel({ bookingId, readOnly, style }: Props) {
           const prev = messages[i - 1];
           const isFirstInGroup = !prev || prev.user_id !== m.user_id;
           const color = colorFromId(m.user_id);
+          const timeStr = fmtTime(new Date(m.created_at));
           return (
             <div key={m.id} style={{ display: "flex", gap: 8, alignItems: "flex-end", marginTop: isFirstInGroup ? 10 : 2 }}>
-              {/* Avatar — show only on first message in group */}
-              <div style={{ width: 28, flexShrink: 0, display: "flex", alignItems: "flex-end" }}>
-                {isFirstInGroup && (
+              {/* Avatar placeholder — keeps alignment for non-first messages */}
+              <div style={{ width: 28, flexShrink: 0 }}>
+                {isFirstInGroup ? (
                   <div style={{
                     width: 28, height: 28, borderRadius: "50%",
                     background: color + "33", color,
@@ -163,48 +184,56 @@ export function MeetingChatPanel({ bookingId, readOnly, style }: Props) {
                   }}>
                     {initials(m.user_name)}
                   </div>
-                )}
+                ) : null}
               </div>
-              {/* Bubble */}
-              <div style={{ maxWidth: "78%", display: "flex", flexDirection: "column", gap: 2 }}>
+              {/* Bubble column */}
+              <div style={{ maxWidth: "calc(100% - 44px)", display: "flex", flexDirection: "column", gap: 1 }}>
                 {isFirstInGroup && (
-                  <span style={{ fontSize: 11, fontWeight: 600, color, paddingLeft: 2 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color, paddingLeft: 4 }}>
                     {m.user_name}
                   </span>
                 )}
                 <div style={{
                   background: "#1e2736",
-                  borderRadius: isFirstInGroup ? "4px 14px 14px 14px" : "4px 14px 14px 14px",
-                  padding: "7px 10px",
-                  display: "flex", flexDirection: "column", gap: 4,
+                  borderRadius: isFirstInGroup ? "4px 14px 14px 14px" : "6px 14px 14px 6px",
+                  padding: "6px 10px 6px 10px",
                 }}>
-                  {m.body && (
-                    <span style={{ fontSize: 13, color: "#e5e7eb", lineHeight: 1.45, wordBreak: "break-word" }}>
+                  {m.body && !m.file && (
+                    /* Text + time inline — Telegram style */
+                    <span style={{ fontSize: 13, color: "#e2e8f0", lineHeight: 1.5, wordBreak: "break-word" }}>
                       {m.body}
+                      <span style={{ fontSize: 10, color: "#64748b", marginLeft: 6, whiteSpace: "nowrap" }}>
+                        {timeStr}
+                      </span>
                     </span>
                   )}
                   {m.file && (
-                    <button
-                      onClick={() => handleDownload(m.file!.id, m.file!.filename)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 6,
-                        background: "#273244", border: "none", borderRadius: 8,
-                        padding: "6px 8px", color: "#93c5fd", cursor: "pointer",
-                        fontSize: 12, textAlign: "left",
-                      }}
-                    >
-                      <span>📎</span>
-                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 140 }}>
-                        {m.file.filename}
-                      </span>
-                      <span style={{ color: "#6b7280", flexShrink: 0 }}>
-                        {(m.file.size / 1024).toFixed(0)} {t("chatpanel.kb")}
-                      </span>
-                    </button>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <button
+                        onClick={() => handleDownload(m.file!.id, m.file!.filename)}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 6,
+                          background: "#273244", border: "none", borderRadius: 8,
+                          padding: "6px 8px", color: "#93c5fd", cursor: "pointer",
+                          fontSize: 12, textAlign: "left", width: "100%",
+                        }}
+                      >
+                        <span>📎</span>
+                        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {m.file.filename}
+                        </span>
+                        <span style={{ color: "#64748b", flexShrink: 0 }}>
+                          {(m.file.size / 1024).toFixed(0)} {t("chatpanel.kb")}
+                        </span>
+                      </button>
+                      {m.body && (
+                        <span style={{ fontSize: 13, color: "#e2e8f0", lineHeight: 1.5, wordBreak: "break-word" }}>
+                          {m.body}
+                        </span>
+                      )}
+                      <span style={{ fontSize: 10, color: "#64748b", textAlign: "right" }}>{timeStr}</span>
+                    </div>
                   )}
-                  <span style={{ fontSize: 10, color: "#4b5563", textAlign: "right", marginTop: 2 }}>
-                    {fmtTime(new Date(m.created_at))}
-                  </span>
                 </div>
               </div>
             </div>

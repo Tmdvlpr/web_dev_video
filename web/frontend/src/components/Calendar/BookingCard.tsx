@@ -52,8 +52,8 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
   const canDrag    = !isRedacted && !!currentUser && (currentUser.id === booking.user_id || currentUser.role === "admin" || currentUser.role === "superadmin");
 
   const shadow = isDark
-    ? `0 0 0 1px ${p.border}50, 0 4px 20px ${p.accent}30, inset 0 1px 0 rgba(255,255,255,0.07)`
-    : `0 1px 0 ${p.border}40, 0 2px 8px ${p.border}30`;
+    ? `0 0 0 1px ${cp.border}50, 0 4px 20px ${cp.border}30, inset 0 1px 0 rgba(255,255,255,0.07)`
+    : `0 1px 0 ${cp.border}40, 0 2px 8px ${cp.border}30`;
 
   const handleDragStart = (e: React.DragEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -134,12 +134,19 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
   const isVirtual = bookingType === "virtual";
   const isHybrid  = bookingType === "hybrid";
 
-  // Virtual bookings get a teal/blue left accent stripe
-  const leftBorderColor = isVirtual
-    ? (isDark ? "#38bdf8" : "#0ea5e9")
+  // Type-specific palette overrides (fixed regardless of user colour)
+  const typeOverride = isVirtual
+    ? isDark
+      ? { bg: "rgba(14,165,233,0.15)", border: "#38bdf8", text: "#e0f2fe", tint: "rgba(56,189,248,0.07)" }
+      : { bg: "#e0f7ff", border: "#0ea5e9", text: "#0c4a6e", tint: "rgba(14,165,233,0.08)" }
     : isHybrid
-    ? (isDark ? "#818cf8" : "#6366f1")
-    : p.border;
+    ? isDark
+      ? { bg: "rgba(99,102,241,0.16)", border: "#818cf8", text: "#e0e7ff", tint: "rgba(129,140,248,0.08)" }
+      : { bg: "#ede9fe", border: "#6366f1", text: "#1e1b4b", tint: "rgba(99,102,241,0.08)" }
+    : null;
+
+  const cp = typeOverride ?? p;
+  const leftBorderColor = cp.border;
 
   return (
     <motion.div
@@ -157,10 +164,10 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
         top: `${topPercent}%`,
         height: `${heightPercent}%`,
         left: 4, right: 4,
-        background: p.bg,
-        borderTop: `1px solid ${p.border}28`,
-        borderRight: `1px solid ${p.border}28`,
-        borderBottom: `1px solid ${p.border}28`,
+        background: cp.bg,
+        borderTop: `1px solid ${cp.border}28`,
+        borderRight: `1px solid ${cp.border}28`,
+        borderBottom: `1px solid ${cp.border}28`,
         borderLeft: `3px solid ${leftBorderColor}`,
         borderRadius: 10,
         cursor: canDrag ? "grab" : "pointer",
@@ -171,16 +178,22 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
       }}
       className={`px-2 ${isShort ? "py-0 flex items-center" : "py-1"}`}
     >
-      <div className="absolute inset-0 pointer-events-none" style={{ background: p.tint }} />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: cp.tint }} />
 
       {isShort ? (
-        <p className="text-xs font-bold truncate leading-none relative z-10 w-full" style={{ color: p.text }}>
-          {booking.title}
-        </p>
+        <div className="flex items-center gap-1 w-full relative z-10">
+          {isVirtual && <span style={{ fontSize: 9, flexShrink: 0 }}>🖥</span>}
+          {isHybrid  && <span style={{ fontSize: 9, flexShrink: 0 }}>🔀</span>}
+          <p className="text-xs font-bold truncate leading-none" style={{ color: cp.text }}>{booking.title}</p>
+        </div>
       ) : (
         <div className="h-full flex flex-col gap-0.5 relative z-10">
-          <p className="text-xs font-bold truncate flex-1" style={{ color: p.text }}>{booking.title}</p>
-          <p className="text-xs truncate" style={{ color: `${p.text}99` }}>{booking.user.display_name}</p>
+          <div className="flex items-center gap-1">
+            {isVirtual && <span style={{ fontSize: 10, flexShrink: 0, lineHeight: 1 }}>🖥</span>}
+            {isHybrid  && <span style={{ fontSize: 10, flexShrink: 0, lineHeight: 1 }}>🔀</span>}
+            <p className="text-xs font-bold truncate flex-1" style={{ color: cp.text }}>{booking.title}</p>
+          </div>
+          <p className="text-xs truncate" style={{ color: `${cp.text}99` }}>{booking.user.display_name}</p>
         </div>
       )}
       {canDrag && !isShort && onResizeStart && (
@@ -193,7 +206,7 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
             height: 7,
             cursor: "ns-resize",
             borderRadius: "0 0 10px 10px",
-            background: `linear-gradient(to bottom, transparent, ${p.border}50)`,
+            background: `linear-gradient(to bottom, transparent, ${cp.border}50)`,
             zIndex: 20,
           }}
         />
