@@ -51,10 +51,6 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
   const isShort    = heightPercent < 6;
   const canDrag    = !isRedacted && !!currentUser && (currentUser.id === booking.user_id || currentUser.role === "admin" || currentUser.role === "superadmin");
 
-  const shadow = isDark
-    ? `0 0 0 1px ${cp.border}50, 0 4px 20px ${cp.border}30, inset 0 1px 0 rgba(255,255,255,0.07)`
-    : `0 1px 0 ${cp.border}40, 0 2px 8px ${cp.border}30`;
-
   const handleDragStart = (e: React.DragEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetFraction = (e.clientY - rect.top) / rect.height;
@@ -147,6 +143,9 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
 
   const cp = typeOverride ?? p;
   const leftBorderColor = cp.border;
+  const shadow = isDark
+    ? `0 0 0 1px ${cp.border}50, 0 4px 20px ${cp.border}30, inset 0 1px 0 rgba(255,255,255,0.07)`
+    : `0 1px 0 ${cp.border}40, 0 2px 8px ${cp.border}30`;
 
   return (
     <motion.div
