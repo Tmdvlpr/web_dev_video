@@ -6,6 +6,16 @@ import type { ChatFile, ChatMessage } from "../../types";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
+const PALETTE = ["#6366f1","#8b5cf6","#ec4899","#f59e0b","#10b981","#3b82f6","#14b8a6","#f97316"];
+function colorFromId(id: number) { return PALETTE[Math.abs(id) % PALETTE.length]; }
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  return parts.length >= 2 ? (parts[0][0] + parts[1][0]).toUpperCase() : name.slice(0, 2).toUpperCase();
+}
+function fmtTime(d: Date) {
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 function getToken(): string {
   return localStorage.getItem("access_token") ?? "";
 }
@@ -130,37 +140,76 @@ export function MeetingChatPanel({ bookingId, readOnly, style }: Props) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2 text-sm">
+      <div className="flex-1 overflow-y-auto px-3 py-3 text-sm" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {messages.length === 0 && (
-          <p className="text-center py-4 text-xs" style={{ color: "#4b5563" }}>
+          <p className="text-center py-8 text-xs" style={{ color: "#4b5563" }}>
             {t("chatpanel.empty")}
           </p>
         )}
-        {messages.map((m) => (
-          <div key={m.id}>
-            <span className="font-semibold text-xs" style={{ color: "#60a5fa" }}>
-              {m.user_name}
-            </span>
-            {m.body && (
-              <p className="mt-0.5 text-sm break-words" style={{ color: "#e5e7eb" }}>
-                {m.body}
-              </p>
-            )}
-            {m.file && (
-              <button
-                onClick={() => handleDownload(m.file!.id, m.file!.filename)}
-                className="flex items-center gap-1.5 mt-0.5 text-xs rounded-lg px-2 py-1.5 w-full text-left"
-                style={{ background: "#1f2937", color: "#93c5fd", cursor: "pointer" }}
-              >
-                <span>📎</span>
-                <span className="truncate max-w-[160px]">{m.file.filename}</span>
-                <span style={{ color: "#6b7280" }}>
-                  ({(m.file.size / 1024).toFixed(0)} {t("chatpanel.kb")})
-                </span>
-              </button>
-            )}
-          </div>
-        ))}
+        {messages.map((m, i) => {
+          const prev = messages[i - 1];
+          const isFirstInGroup = !prev || prev.user_id !== m.user_id;
+          const color = colorFromId(m.user_id);
+          return (
+            <div key={m.id} style={{ display: "flex", gap: 8, alignItems: "flex-end", marginTop: isFirstInGroup ? 10 : 2 }}>
+              {/* Avatar — show only on first message in group */}
+              <div style={{ width: 28, flexShrink: 0, display: "flex", alignItems: "flex-end" }}>
+                {isFirstInGroup && (
+                  <div style={{
+                    width: 28, height: 28, borderRadius: "50%",
+                    background: color + "33", color,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 10, fontWeight: 700,
+                  }}>
+                    {initials(m.user_name)}
+                  </div>
+                )}
+              </div>
+              {/* Bubble */}
+              <div style={{ maxWidth: "78%", display: "flex", flexDirection: "column", gap: 2 }}>
+                {isFirstInGroup && (
+                  <span style={{ fontSize: 11, fontWeight: 600, color, paddingLeft: 2 }}>
+                    {m.user_name}
+                  </span>
+                )}
+                <div style={{
+                  background: "#1e2736",
+                  borderRadius: isFirstInGroup ? "4px 14px 14px 14px" : "4px 14px 14px 14px",
+                  padding: "7px 10px",
+                  display: "flex", flexDirection: "column", gap: 4,
+                }}>
+                  {m.body && (
+                    <span style={{ fontSize: 13, color: "#e5e7eb", lineHeight: 1.45, wordBreak: "break-word" }}>
+                      {m.body}
+                    </span>
+                  )}
+                  {m.file && (
+                    <button
+                      onClick={() => handleDownload(m.file!.id, m.file!.filename)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 6,
+                        background: "#273244", border: "none", borderRadius: 8,
+                        padding: "6px 8px", color: "#93c5fd", cursor: "pointer",
+                        fontSize: 12, textAlign: "left",
+                      }}
+                    >
+                      <span>📎</span>
+                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 140 }}>
+                        {m.file.filename}
+                      </span>
+                      <span style={{ color: "#6b7280", flexShrink: 0 }}>
+                        {(m.file.size / 1024).toFixed(0)} {t("chatpanel.kb")}
+                      </span>
+                    </button>
+                  )}
+                  <span style={{ fontSize: 10, color: "#4b5563", textAlign: "right", marginTop: 2 }}>
+                    {fmtTime(new Date(m.created_at))}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
         <div ref={bottomRef} />
       </div>
 
