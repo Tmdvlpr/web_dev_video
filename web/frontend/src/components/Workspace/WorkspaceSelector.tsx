@@ -154,7 +154,7 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
           <motion.div
             initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.14 }}
-            className="absolute left-0 top-9 z-50 rounded-xl py-2 w-72"
+            className="absolute left-0 top-9 z-50 rounded-md py-2 w-72"
             style={{
               background: isDark ? "#0f172a" : "#ffffff",
               border: "1px solid var(--border)",

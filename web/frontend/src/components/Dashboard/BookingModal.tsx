@@ -517,6 +517,7 @@ export function BookingModal({
   const delBorder = isDark ? "rgba(239,68,68,0.35)" : "#fecdd3";
 
   return (
+    <>
     <AnimatePresence>
       {isOpen && (
         <>
@@ -543,7 +544,7 @@ export function BookingModal({
               onDragStart={() => {}}
               onDragEnd={() => {}}
               onClick={e => e.stopPropagation()}
-              className="w-full max-w-md rounded-2xl relative pointer-events-auto"
+              className="w-full max-w-md rounded-lg relative pointer-events-auto"
               style={{
                 background: "var(--modal)",
                 border: "1px solid var(--border)",
@@ -579,11 +580,13 @@ export function BookingModal({
                 </div>
                 <div className="flex items-center gap-1">
                   <button onClick={onClose}
-                    className="w-8 h-8 flex items-center justify-center rounded-full text-xl leading-none transition-all"
+                    className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
                     style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
                     onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
                     onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>
-                    ×
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                      <line x1="1" y1="1" x2="13" y2="13"/><line x1="13" y1="1" x2="1" y2="13"/>
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -594,7 +597,7 @@ export function BookingModal({
                 {isReadOnly && editBooking ? (
                   <motion.div key="readonly" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                     className="px-6 py-5 space-y-3">
-                    <div className="rounded-xl p-4 space-y-2"
+                    <div className="rounded-md p-4 space-y-2"
                       style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
                       <p className="font-bold text-base" style={{ color: "var(--text)" }}>{editBooking.title}</p>
                       <p className="text-sm" style={{ color: "var(--text-sec)" }}>
@@ -625,7 +628,7 @@ export function BookingModal({
                     />
                     {tgUser && (
                       <a href={tgLink} target="_blank" rel="noreferrer"
-                        className="flex items-center gap-2 w-full py-2.5 px-4 rounded-xl text-sm font-semibold justify-center"
+                        className="flex items-center gap-2 w-full py-2.5 px-4 rounded-md text-sm font-semibold justify-center"
                         style={{ background: isDark ? "rgba(6,182,212,0.1)" : "#ecfeff", border: isDark ? "1px solid rgba(6,182,212,0.3)" : "1px solid #a5f3fc", color: "#0891b2" }}>
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/>
@@ -638,7 +641,7 @@ export function BookingModal({
                         <button
                           type="button"
                           onClick={() => setChatOpen(true)}
-                          className="w-full py-2.5 px-4 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+                          className="w-full py-2.5 px-4 rounded-md text-sm font-semibold flex items-center justify-center gap-2 transition-all"
                           style={{ background: "var(--elevated)", border: "1.5px solid var(--border)", color: "var(--text)" }}
                         >
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -651,7 +654,7 @@ export function BookingModal({
                           <div className="flex gap-2">
                             <button
                               onClick={handleJoinVideo}
-                              className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all"
+                              className="flex-1 py-2.5 rounded-md text-sm font-bold text-white flex items-center justify-center gap-2 transition-all"
                               style={{ background: "linear-gradient(135deg,#1565a8,#114e85)", boxShadow: "0 4px 16px rgba(21,101,168,0.3)" }}
                             >
                               {t("booking.joinConference")}
@@ -660,7 +663,7 @@ export function BookingModal({
                               onClick={handleCopyMeetingLink}
                               disabled={!guestInviteUrl}
                               title={t("booking.copyGuestLink")}
-                              className="px-3 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center disabled:opacity-40"
+                              className="px-3 py-2.5 rounded-md text-sm font-bold transition-all flex items-center justify-center disabled:opacity-40"
                               style={{ background: copiedLink ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copiedLink ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copiedLink ? "#22c55e" : "var(--text-sec)", minWidth: 42 }}
                             >
                               {copiedLink ? "✓" : "🔗"}
@@ -677,7 +680,7 @@ export function BookingModal({
                       )
                     )}
                     <button onClick={onClose}
-                      className="w-full py-2.5 rounded-xl text-sm font-medium transition-all"
+                      className="w-full py-2.5 rounded-md text-sm font-medium transition-all"
                       style={{ border: "1px solid var(--border)", color: "var(--text-sec)", background: "var(--elevated)" }}>
                       {t("booking.close")}
                     </button>
@@ -688,7 +691,7 @@ export function BookingModal({
                 view === "confirmDelete" ? (
                   <motion.div key="del" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                     className="px-6 py-5 space-y-3">
-                    <div className="rounded-xl p-4" style={{ background: delBg, border: `1px solid ${delBorder}` }}>
+                    <div className="rounded-md p-4" style={{ background: delBg, border: `1px solid ${delBorder}` }}>
                       <p className="text-sm font-medium mb-1" style={{ color: "var(--text)" }}>
                         {t("booking.deleteConfirmQ", { title: editBooking?.title ?? "" })}
                       </p>
@@ -710,12 +713,12 @@ export function BookingModal({
 
                     <div className="flex gap-3">
                       <button onClick={() => setView("form")}
-                        className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all"
+                        className="flex-1 py-2.5 rounded-md text-sm font-medium transition-all"
                         style={{ border: "1px solid var(--border)", color: "var(--text-sec)", background: "var(--elevated)" }}>
                         {t("common.cancel")}
                       </button>
                       <button onClick={handleDelete} disabled={isDeleting}
-                        className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                        className="flex-1 py-2.5 rounded-md text-sm font-bold text-white disabled:opacity-50"
                         style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)", boxShadow: "0 4px 14px rgba(220,38,38,0.3)" }}>
                         {isDeleting ? t("booking.deleting") : t("common.delete")}
                       </button>
@@ -736,7 +739,7 @@ export function BookingModal({
                         exit={{ opacity: 0, y: -10, scale: 0.95 }}
                         style={{
                           background: "linear-gradient(135deg,#1565a8,#06b6d4)",
-                          borderRadius: 10, padding: "8px 14px", marginBottom: 8,
+                          borderRadius: 6, padding: "8px 14px", marginBottom: 8,
                           fontSize: 13, fontWeight: 700, color: "#fff",
                         }}
                       >
@@ -757,7 +760,7 @@ export function BookingModal({
                           key={opt.value}
                           type="button"
                           onClick={() => setBookingType(opt.value)}
-                          className="flex-1 py-1.5 rounded-xl text-xs font-semibold transition-all"
+                          className="flex-1 py-1.5 rounded-md text-xs font-semibold transition-all"
                           style={{
                             background: bookingType === opt.value ? "var(--primary)" : "var(--elevated)",
                             border: bookingType === opt.value ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
@@ -778,7 +781,7 @@ export function BookingModal({
                     <input type="text" autoFocus value={title}
                       onChange={e => { setTitle(e.target.value); if (fieldErrors.title) setFieldErrors(fe => ({ ...fe, title: undefined })); }}
                       placeholder={t("booking.titlePlaceholder")}
-                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition-all"
+                      className="w-full rounded-md px-3 py-2.5 text-sm outline-none transition-all"
                       style={{
                         background: "var(--input-bg)",
                         border: `1.5px solid ${importantTitle ? "#ef4444" : fieldErrors.title ? "#ef4444" : "var(--input-border)"}`,
@@ -808,7 +811,7 @@ export function BookingModal({
                             disabled={isEdit}
                             onClick={() => !isEdit && setRoomDropOpen(v => !v)}
                             onBlur={e => { if (!roomDropRef.current?.contains(e.relatedTarget as Node)) setRoomDropOpen(false); }}
-                            className="w-full rounded-xl px-3 py-2.5 text-sm text-left flex items-center justify-between gap-2 transition-all outline-none"
+                            className="w-full rounded-md px-3 py-2.5 text-sm text-left flex items-center justify-between gap-2 transition-all outline-none"
                             style={{
                               background: "var(--input-bg)",
                               border: `1.5px solid ${fieldErrors.room ? "#ef4444" : roomDropOpen ? "var(--primary)" : "var(--input-border)"}`,
@@ -831,7 +834,7 @@ export function BookingModal({
                               style={{
                                 position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 200,
                                 background: isDark ? "#0f172a" : "#ffffff", border: "1.5px solid var(--border)",
-                                borderRadius: 12, overflow: "hidden",
+                                borderRadius: 6, overflow: "hidden",
                                 boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.6)" : "0 4px 20px rgba(0,0,0,0.12)",
                               }}
                             >
@@ -875,7 +878,7 @@ export function BookingModal({
                     )}
                     {!isEdit && conflicts.length > 0 && !fieldErrors.time && (
                       <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-                        className="rounded-xl px-3 py-2 space-y-1"
+                        className="rounded-md px-3 py-2 space-y-1"
                         style={{ background: isDark ? "rgba(239,68,68,0.08)" : "#fff1f2", border: "1px solid rgba(239,68,68,0.25)" }}>
                         <p className="text-xs font-semibold" style={{ color: "#ef4444" }}>⚠️ {t("booking.conflictsWith", { n: conflicts.length })}</p>
                         {conflicts.map(c => (
@@ -984,7 +987,7 @@ export function BookingModal({
                       )}
                     </label>
                   ) : (
-                    <div className="flex items-center gap-2 py-1 px-3 rounded-xl text-sm"
+                    <div className="flex items-center gap-2 py-1 px-3 rounded-md text-sm"
                       style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
                       <span className="font-medium">
                         {bookingType === "virtual" ? t("booking.videoOnlineInfo") : t("booking.videoHybridInfo")}
@@ -1014,7 +1017,7 @@ export function BookingModal({
                             </label>
                             <textarea value={description} onChange={e => setDesc(e.target.value)}
                               rows={3} placeholder={t("booking.agendaPlaceholder")}
-                              className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition-all resize-none"
+                              className="w-full rounded-md px-3 py-2.5 text-sm outline-none transition-all resize-none"
                               style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
                               onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(21,101,168,0.12)"; }}
                               onBlur={e => { e.currentTarget.style.borderColor = "var(--input-border)"; e.currentTarget.style.boxShadow = "none"; }} />
@@ -1033,7 +1036,7 @@ export function BookingModal({
 
                   {error && (
                     <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-                      className="text-xs rounded-xl px-3 py-2.5 font-medium"
+                      className="text-xs rounded-md px-3 py-2.5 font-medium"
                       style={{ background: errBg, border: `1px solid ${errBorder}`, color: errColor }}>
                       ⚠️ {error}
                     </motion.p>
@@ -1044,7 +1047,7 @@ export function BookingModal({
                       <button
                         type="button"
                         onClick={() => setChatOpen(true)}
-                        className="w-full py-2.5 px-4 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+                        className="w-full py-2.5 px-4 rounded-md text-sm font-semibold flex items-center justify-center gap-2 transition-all"
                         style={{ background: "var(--elevated)", border: "1.5px solid var(--border)", color: "var(--text)" }}
                       >
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -1058,7 +1061,7 @@ export function BookingModal({
                           <button
                             type="button"
                             onClick={handleJoinVideo}
-                            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all"
+                            className="flex-1 py-2.5 rounded-md text-sm font-bold text-white flex items-center justify-center gap-2 transition-all"
                             style={{ background: "linear-gradient(135deg,#1565a8,#114e85)", boxShadow: "0 4px 16px rgba(21,101,168,0.3)" }}
                           >
                             {t("booking.joinConference")}
@@ -1068,7 +1071,7 @@ export function BookingModal({
                             onClick={handleCopyMeetingLink}
                             disabled={!guestInviteUrl}
                             title={t("booking.copyGuestLink")}
-                            className="px-3 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center disabled:opacity-40"
+                            className="px-3 py-2.5 rounded-md text-sm font-bold transition-all flex items-center justify-center disabled:opacity-40"
                             style={{ background: copiedLink ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copiedLink ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copiedLink ? "#22c55e" : "var(--text-sec)", minWidth: 42 }}
                           >
                             {copiedLink ? "✓" : "🔗"}
@@ -1095,20 +1098,20 @@ export function BookingModal({
                     {isEdit && canDelete && (
                       <motion.button type="button" onClick={() => setView("confirmDelete")}
                         whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                        className="py-2.5 px-4 rounded-xl text-sm font-semibold"
+                        className="py-2.5 px-4 rounded-md text-sm font-semibold"
                         style={{ border: `1.5px solid ${delBorder}`, color: errColor, background: delBg }}>
                         {t("common.delete")}
                       </motion.button>
                     )}
                     <button type="button" onClick={onClose}
-                      className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all"
+                      className="flex-1 py-2.5 rounded-md text-sm font-medium transition-all"
                       style={{ border: "1.5px solid var(--border)", color: "var(--text-sec)", background: "var(--elevated)" }}>
                       {t("common.cancel")}
                     </button>
                     <motion.button type="submit" disabled={isCreating || isUpdating}
                       whileHover={{ scale: 1.02, boxShadow: "0 6px 24px rgba(21,101,168,0.4)" }}
                       whileTap={{ scale: 0.98 }}
-                      className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                      className="flex-1 py-2.5 rounded-md text-sm font-bold text-white disabled:opacity-50"
                       style={{ background: "linear-gradient(135deg,#1565a8,#114e85)", boxShadow: "0 4px 16px rgba(21,101,168,0.25)" }}>
                       {(isCreating || isUpdating) ? t("booking.saving") : isEdit ? t("common.save") : t("booking.book")}
                     </motion.button>
@@ -1124,6 +1127,7 @@ export function BookingModal({
         </>
       )}
 
+    </AnimatePresence>
       {/* Chat history modal — rendered in portal to escape parent transforms */}
       {chatOpen && editBooking && createPortal(
         <div
@@ -1135,19 +1139,19 @@ export function BookingModal({
           onClick={() => setChatOpen(false)}
         >
           <div
-            style={{ width: 440, height: 580, borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column" }}
+            style={{ width: 440, height: 580, borderRadius: 8, overflow: "hidden", display: "flex", flexDirection: "column" }}
             onClick={e => e.stopPropagation()}
           >
             <MeetingChatPanel
               bookingId={editBooking.id}
               readOnly
               onClose={() => setChatOpen(false)}
-              style={{ flex: 1, minHeight: 0, borderRadius: 16 }}
+              style={{ flex: 1, minHeight: 0, borderRadius: 8 }}
             />
           </div>
         </div>,
         document.body
       )}
-    </AnimatePresence>
+    </>
   );
 }

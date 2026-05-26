@@ -318,6 +318,7 @@ function FilterDropdown({
   const [joinBusy, setJoinBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
   const [dropPos, setDropPos] = useState<{ top: number; right: number } | null>(null);
 
   const rooms = myRooms.filter(r => r.workspace_id === activeWorkspace?.id);
@@ -325,7 +326,11 @@ function FilterDropdown({
 
   useEffect(() => {
     if (!open) return;
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const handler = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (ref.current?.contains(t) || dropRef.current?.contains(t)) return;
+      setOpen(false);
+    };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
@@ -381,11 +386,12 @@ function FilterDropdown({
       {/* Dropdown via portal — escapes toolbar stacking context */}
       {open && dropPos && createPortal(
         <div
+          ref={dropRef}
           style={{
             position: "fixed", top: dropPos.top, right: dropPos.right,
             zIndex: 9999, width: 240,
             background: "var(--card)", border: "1px solid var(--border)",
-            borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
+            borderRadius: 6, boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
           }}
         >
           {/* Tabs */}
@@ -522,7 +528,7 @@ function RoomStatus({ roomId, workspaceId }: { roomId?: number | null; workspace
     position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 200,
     background: isDark ? "#1e2640" : "#fff",
     border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
-    borderRadius: 12, padding: "12px 14px", minWidth: 220,
+    borderRadius: 6, padding: "12px 14px", minWidth: 220,
     boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
     color: isDark ? "#eceef5" : "#1a2038",
   };

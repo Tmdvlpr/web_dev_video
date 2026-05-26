@@ -129,7 +129,7 @@ function Overlay({ isDark, onClose, children }: { isDark: boolean; onClose: () =
           exit={{ opacity: 0, y: 12, scale: 0.97 }}
           transition={{ type: "spring", damping: 22, stiffness: 320 }}
           onClick={e => e.stopPropagation()}
-          className="w-full rounded-2xl flex flex-col"
+          className="w-full rounded-lg flex flex-col"
           style={{
             background: "var(--modal)",
             border: "1px solid var(--border)",
@@ -243,11 +243,11 @@ function GeneralTab({
           <input
             disabled={!isAdmin}
             value={name} onChange={e => setName(e.target.value)}
-            className="flex-1 rounded-xl px-3 py-2 text-sm outline-none"
+            className="flex-1 rounded-md px-3 py-2 text-sm outline-none"
             style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
           />
           <button onClick={saveName} disabled={!isAdmin || savingName || name === initialName}
-            className="px-4 rounded-xl text-xs font-bold text-white disabled:opacity-50"
+            className="px-4 rounded-md text-xs font-bold text-white disabled:opacity-50"
             style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
             {savingName ? "…" : "Сохранить"}
           </button>
@@ -270,18 +270,18 @@ function GeneralTab({
       <div>
         <Label>Инвайт-код</Label>
         <div className="flex gap-2">
-          <div className="flex-1 rounded-xl px-3 py-2 text-sm font-mono tracking-wider"
+          <div className="flex-1 rounded-md px-3 py-2 text-sm font-mono tracking-wider"
             style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}>
             {code}
           </div>
           <button onClick={handleCopy}
-            className="px-3 rounded-xl text-xs font-bold transition-all"
+            className="px-3 rounded-md text-xs font-bold transition-all"
             style={{ background: copied ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copied ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copied ? "#16a34a" : "var(--text-sec)" }}>
             {copied ? "Скопировано" : "Копировать"}
           </button>
           {isAdmin && (
             <button onClick={handleRegen} disabled={regenerating}
-              className="px-3 rounded-xl text-xs font-bold disabled:opacity-50"
+              className="px-3 rounded-md text-xs font-bold disabled:opacity-50"
               style={{ background: "var(--elevated)", border: "1.5px solid var(--border)", color: "var(--text-sec)" }}>
               {regenerating ? "…" : "Обновить код"}
             </button>
@@ -289,19 +289,19 @@ function GeneralTab({
         </div>
       </div>
 
-      {err && <p className="text-xs px-3 py-2 rounded-xl" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#dc2626" }}>{err}</p>}
+      {err && <p className="text-xs px-3 py-2 rounded-md" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#dc2626" }}>{err}</p>}
 
       {isOwner && (
         <div className="pt-4 mt-2" style={{ borderTop: "1px dashed var(--border)" }}>
           <Label>Архивирование</Label>
           {!confirmArchive ? (
             <button onClick={() => setConfirmArch(true)}
-              className="px-4 py-2 rounded-xl text-xs font-bold"
+              className="px-4 py-2 rounded-md text-xs font-bold"
               style={{ background: "rgba(239,68,68,0.08)", border: "1.5px solid rgba(239,68,68,0.35)", color: "#dc2626" }}>
               Архивировать пространство
             </button>
           ) : (
-            <div className="rounded-xl p-3 space-y-2" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.35)" }}>
+            <div className="rounded-md p-3 space-y-2" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.35)" }}>
               <p className="text-xs font-semibold" style={{ color: "#dc2626" }}>
                 Архивировать пространство? Оно будет скрыто для всех участников.
               </p>
@@ -396,11 +396,11 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner }: { workspaceId: 
               value={inviteName} onChange={e => setInviteName(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") handleInvite(); }}
               placeholder="@username"
-              className="flex-1 rounded-xl px-3 py-2 text-sm outline-none"
+              className="flex-1 rounded-md px-3 py-2 text-sm outline-none"
               style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
             />
             <button onClick={handleInvite} disabled={inviting}
-              className="px-4 rounded-xl text-xs font-bold text-white disabled:opacity-50"
+              className="px-4 rounded-md text-xs font-bold text-white disabled:opacity-50"
               style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
               {inviting ? "…" : "Пригласить"}
             </button>
@@ -419,7 +419,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner }: { workspaceId: 
               <Label>Ожидают подтверждения</Label>
               <div className="space-y-2">
                 {pending.map(m => (
-                  <div key={m.id} className="flex items-center gap-3 px-3 py-2 rounded-xl"
+                  <div key={m.id} className="flex items-center gap-3 px-3 py-2 rounded-md"
                     style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
                     <MemberAvatar member={m} />
                     <div className="flex-1 min-w-0">
@@ -455,7 +455,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner }: { workspaceId: 
                 const canRemove = isAdmin && m.user_id !== myUserId && m.role !== "owner";
                 return (
                   <div key={m.id}>
-                    <div className="flex items-center gap-3 px-3 py-2 rounded-xl"
+                    <div className="flex items-center gap-3 px-3 py-2 rounded-md"
                       style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
                       <MemberAvatar member={m} />
                       <div className="flex-1 min-w-0">
@@ -504,7 +504,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner }: { workspaceId: 
                       )}
                     </div>
                     {editMemberId === m.id && (
-                      <div className="mt-1 px-3 py-3 rounded-xl space-y-2" style={{ background: "var(--input-bg)", border: "1px solid var(--primary-border)" }}>
+                      <div className="mt-1 px-3 py-3 rounded-md space-y-2" style={{ background: "var(--input-bg)", border: "1px solid var(--primary-border)" }}>
                         <div className="grid grid-cols-2 gap-2">
                           <input value={editForm.first_name} onChange={e => setEditForm(f => ({ ...f, first_name: e.target.value }))}
                             placeholder="Имя"
@@ -664,19 +664,19 @@ function RoomsTab({ workspaceId, rooms, isAdmin, onRefetch }:
           {!creating && !joining && (
             <div className="flex gap-2">
               <button onClick={() => setCreating(true)}
-                className="flex-1 py-2 rounded-xl text-xs font-bold"
+                className="flex-1 py-2 rounded-md text-xs font-bold"
                 style={{ background: "var(--primary-light)", border: "1.5px solid var(--primary-border)", color: "var(--primary)" }}>
                 + Создать комнату
               </button>
               <button onClick={() => setJoining(true)}
-                className="flex-1 py-2 rounded-xl text-xs font-bold"
+                className="flex-1 py-2 rounded-md text-xs font-bold"
                 style={{ background: "var(--elevated)", border: "1.5px solid var(--border)", color: "var(--text-sec)" }}>
                 Добавить по коду
               </button>
             </div>
           )}
           {creating && (
-            <div className="space-y-2 rounded-xl p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+            <div className="space-y-2 rounded-md p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
               <input
                 autoFocus value={newName} onChange={e => setNewName(e.target.value)}
                 placeholder="Название переговорной"
@@ -705,7 +705,7 @@ function RoomsTab({ workspaceId, rooms, isAdmin, onRefetch }:
             </div>
           )}
           {joining && (
-            <div className="space-y-2 rounded-xl p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+            <div className="space-y-2 rounded-md p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
               <p className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
                 Введите код комнаты из другого пространства
               </p>
@@ -847,7 +847,7 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
   };
 
   return (
-    <div className="rounded-xl p-3"
+    <div className="rounded-md p-3"
       style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
       <div className="flex items-start gap-2 mb-2">
         <div className="flex-1 min-w-0">
@@ -1065,7 +1065,7 @@ function CustomSelect({
   return (
     <div>
       <button ref={btnRef} type="button" disabled={disabled} onClick={toggle}
-        className={`w-full rounded-xl ${pad} ${fz} text-left flex items-center justify-between gap-2 outline-none`}
+        className={`w-full rounded-md ${pad} ${fz} text-left flex items-center justify-between gap-2 outline-none`}
         style={{
           background: "var(--input-bg)", color: "var(--text)",
           border: `1.5px solid ${open ? "var(--primary)" : "var(--input-border)"}`,
@@ -1083,7 +1083,7 @@ function CustomSelect({
           style={{
             position: "fixed", top: dropRect.top, left: dropRect.left, width: dropRect.width,
             zIndex: 9999, background: "var(--modal)", border: "1.5px solid var(--border)",
-            borderRadius: 12, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.18)",
+            borderRadius: 6, overflow: "hidden", boxShadow: "0 8px 28px rgba(0,0,0,0.18)",
           }}>
           {options.map(o => (
             <button key={o.value} type="button"
@@ -1121,7 +1121,7 @@ function AnalyticsTab({ workspaceId }: { workspaceId: number }) {
 
   if (isLoading) return (
     <div className="space-y-3">
-      {[1,2,3].map(i => <div key={i} className="h-24 rounded-xl animate-pulse" style={{ background: "var(--elevated)" }} />)}
+      {[1,2,3].map(i => <div key={i} className="h-24 rounded-md animate-pulse" style={{ background: "var(--elevated)" }} />)}
     </div>
   );
 
@@ -1144,11 +1144,11 @@ function AnalyticsTab({ workspaceId }: { workspaceId: number }) {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+        <div className="rounded-md p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
           <div className="text-2xl font-black" style={{ color: "#7c3aed" }}>{data?.total_members ?? 0}</div>
           <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Участников</div>
         </div>
-        <div className="rounded-xl p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+        <div className="rounded-md p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
           <div className="text-2xl font-black" style={{ color: "#0891b2" }}>{data?.total_meetings ?? 0}</div>
           <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Встреч за период</div>
         </div>
