@@ -85,6 +85,14 @@ async def _get_my_membership(
     )
     member = mem_res.scalar_one_or_none()
     if not member:
+        if user.role == Role.superadmin:
+            # Superadmin gets synthetic owner access to every workspace
+            return WorkspaceMember(
+                workspace_id=workspace_id,
+                user_id=user.id,
+                role=WorkspaceMemberRole.owner,
+                status=WorkspaceMemberStatus.active,
+            )
         raise HTTPException(403, "Not a member of this workspace")
     if require_active and member.status != WorkspaceMemberStatus.active:
         raise HTTPException(403, "Membership is not active")
@@ -137,7 +145,28 @@ async def list_my_workspaces(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[WorkspaceResponse]:
-    """Return all workspaces where current user is an active member."""
+    """Return workspaces for current user. Superadmin gets all workspaces."""
+    if current_user.role == Role.superadmin:
+        # Load all workspaces with membership if exists
+        all_ws = await db.execute(
+            select(Workspace)
+            .where(Workspace.archived_at.is_(None))
+            .order_by(Workspace.created_at.desc())
+        )
+        workspaces = all_ws.scalars().all()
+        # Load user's own memberships for role lookup
+        mem_res = await db.execute(
+            select(WorkspaceMember).where(
+                WorkspaceMember.user_id == current_user.id,
+                WorkspaceMember.status == WorkspaceMemberStatus.active,
+            )
+        )
+        my_memberships = {m.workspace_id: m.role for m in mem_res.scalars().all()}
+        return [
+            _workspace_to_response(ws, my_memberships.get(ws.id, WorkspaceMemberRole.owner))
+            for ws in workspaces
+        ]
+
     result = await db.execute(
         select(Workspace, WorkspaceMember.role)
         .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)

@@ -11,7 +11,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.booking import Booking
 from app.models.room import Room, RoomJoinMode, RoomJoinRequest, RoomVisibility, WorkspaceRoom, WorkspaceRoomRole
-from app.models.user import User
+from app.models.user import Role, User
 from app.models.workspace import (
     Workspace,
     WorkspaceMember,
@@ -76,7 +76,13 @@ async def _get_room_or_404(room_id: int, db: AsyncSession) -> Room:
 
 
 async def _list_user_workspace_ids(user: User, db: AsyncSession) -> list[int]:
-    """Return all non-archived workspace ids where the user is an active member."""
+    """Return all non-archived workspace ids where the user is an active member.
+    Superadmin gets all workspace ids."""
+    if user.role == Role.superadmin:
+        res = await db.execute(
+            select(Workspace.id).where(Workspace.archived_at.is_(None))
+        )
+        return [row[0] for row in res.all()]
     res = await db.execute(
         select(Workspace.id)
         .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
