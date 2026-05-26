@@ -422,7 +422,7 @@ function FilterDropdown({
               <div className="flex flex-wrap gap-1">
                 <button
                   onClick={() => onRoomChange(null)}
-                  className="px-2.5 h-6 text-xs font-medium rounded-md transition-all"
+                  className="px-2.5 h-6 text-xs font-medium rounded transition-all"
                   style={{
                     background: !activeRoomId ? "var(--primary)" : "var(--elevated)",
                     color: !activeRoomId ? "#fff" : "var(--text-muted)",
@@ -433,7 +433,7 @@ function FilterDropdown({
                   <button
                     key={wr.room.id}
                     onClick={() => onRoomChange(wr.room.id)}
-                    className="px-2.5 h-6 text-xs font-medium rounded-md transition-all flex items-center gap-1"
+                    className="px-2.5 h-6 text-xs font-medium rounded transition-all flex items-center gap-1"
                     style={{
                       background: wr.room.id === activeRoomId ? "var(--primary)" : "var(--elevated)",
                       color: wr.room.id === activeRoomId ? "#fff" : "var(--text-muted)",
@@ -474,7 +474,7 @@ function FilterDropdown({
                 <button
                   key={key}
                   onClick={() => onTypeFilter(key)}
-                  className="px-2.5 h-6 text-xs font-medium rounded-md transition-all"
+                  className="px-2.5 h-6 text-xs font-medium rounded transition-all"
                   style={{
                     background: typeFilter === key ? "var(--primary)" : "var(--elevated)",
                     color: typeFilter === key ? "#fff" : "var(--text-muted)",
@@ -807,7 +807,7 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
         style={{ height: 48, borderBottom: "1px solid var(--border)", background: "var(--toolbar)", backdropFilter: "blur(12px)" }}>
 
         {/* View mode toggle */}
-        <div className="flex items-center shrink-0" style={{ borderRadius: 2, border: "1.5px solid var(--border)", overflow: "hidden" }}>
+        <div className="flex items-center shrink-0" style={{ borderRadius: 4, border: "1.5px solid var(--border)", overflow: "hidden" }}>
           {(["week", "month"] as const).map((mode) => (
             <button
               key={mode}

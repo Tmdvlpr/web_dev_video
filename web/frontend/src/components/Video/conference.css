@@ -14,7 +14,7 @@
   --green: #16a34a;
   --red: #dc2626;
   --amber: #d97706;
-  --r: 10px; --rs: 7px; --rl: 14px;
+  --r: 6px; --rs: 4px; --rl: 6px;
   font-family: 'Gilroy', ui-sans-serif, sans-serif;
   -webkit-font-smoothing: antialiased;
   background: #edf0f8;
@@ -87,7 +87,7 @@
 .vtile__avwrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center }
 .vtile__av { width:38%; aspect-ratio:1; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:clamp(10px,2.5vw,26px) }
 .vtile--sm .vtile__av { font-size:13px; width:44% }
-.vtile__hand { position:absolute; top:6px; right:6px; font-size:13px; background:rgba(0,0,0,.6); backdrop-filter:blur(8px); border-radius:5px; padding:2px 4px; line-height:1 }
+.vtile__hand { position:absolute; top:6px; right:6px; font-size:13px; background:rgba(0,0,0,.6); backdrop-filter:blur(8px); border-radius:4px; padding:2px 4px; line-height:1 }
 .vtile__footer { position:absolute; bottom:0; left:0; right:0; padding:20px 7px 6px; background:linear-gradient(transparent,rgba(0,0,0,.7)); display:flex; align-items:center; justify-content:space-between; gap:4px }
 .vtile__namewrap { display:flex; align-items:center; gap:3px; min-width:0 }
 .vtile__name { font-size:11px; font-weight:500; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:0 1px 4px rgba(0,0,0,.6) }
@@ -108,7 +108,7 @@
 @keyframes recdot { 0%,100%{opacity:1} 50%{opacity:.2} }
 .mhdr__center { display:flex; align-items:center }
 .mhdr__layouts { display:flex; gap:2px; background:var(--elev); border-radius:var(--rs); padding:3px }
-.mhdr__lbtn { background:none; border:none; border-radius:5px; color:var(--tx2); padding:5px 7px; display:flex; transition:background .12s,color .12s }
+.mhdr__lbtn { background:none; border:none; border-radius:4px; color:var(--tx2); padding:5px 7px; display:flex; transition:background .12s,color .12s }
 .mhdr__lbtn--on { background:var(--elev2); color:var(--tx) }
 .mhdr__lbtn:hover:not(.mhdr__lbtn--on) { color:var(--tx) }
 .mhdr__right { display:flex; align-items:center }
@@ -130,12 +130,12 @@
 .ctrlbtn--leave { background:rgba(239,68,68,.1); color:var(--red); border:1px solid rgba(239,68,68,.18); min-width:90px }
 .ctrlbtn--leave:hover { background:rgba(239,68,68,.2) }
 .ctrlbtn__icon { position:relative; display:flex; align-items:center; justify-content:center; width:24px; height:24px }
-.ctrlbtn__badge { position:absolute; top:-7px; right:-9px; background:var(--accent); color:#fff; font-size:11px; font-weight:700; border-radius:8px; padding:0 4px; min-width:15px; height:15px; display:flex; align-items:center; justify-content:center; line-height:1 }
+.ctrlbtn__badge { position:absolute; top:-7px; right:-9px; background:var(--accent); color:#fff; font-size:11px; font-weight:700; border-radius:4px; padding:0 4px; min-width:15px; height:15px; display:flex; align-items:center; justify-content:center; line-height:1 }
 .ctrlbtn__label { font-size:11px; font-weight:500; white-space:nowrap; line-height:1 }
 
 /* ── REACTIONS POPUP ─────────────────────────────── */
-.react-popup { position:absolute; bottom:calc(100% + 10px); left:50%; transform:translateX(-50%); background:var(--elev2); border:1px solid var(--brd2); border-radius:16px; padding:8px; display:flex; gap:2px; box-shadow:0 8px 32px rgba(0,0,0,.5); z-index:200; white-space:nowrap }
-.react-popup__btn { background:none; border:none; font-size:22px; padding:5px 7px; border-radius:8px; transition:background .1s,transform .1s; line-height:1 }
+.react-popup { position:absolute; bottom:calc(100% + 10px); left:50%; transform:translateX(-50%); background:var(--elev2); border:1px solid var(--brd2); border-radius:6px; padding:8px; display:flex; gap:2px; box-shadow:0 8px 32px rgba(0,0,0,.5); z-index:200; white-space:nowrap }
+.react-popup__btn { background:none; border:none; font-size:22px; padding:5px 7px; border-radius:4px; transition:background .1s,transform .1s; line-height:1 }
 .react-popup__btn:hover { background:var(--brd); transform:scale(1.3) }
 
 /* ── SIDEBAR ─────────────────────────────────────── */
@@ -168,7 +168,7 @@
 .cmsg--self .cmsg__body { align-items:flex-end }
 .cmsg__author { font-size:11px; font-weight:600 }
 .cmsg--self .cmsg__author { display:none }
-.cmsg__bubble { background:var(--elev); border-radius:10px; padding:7px 10px; display:flex; align-items:flex-end; gap:8px }
+.cmsg__bubble { background:var(--elev); border-radius:6px; padding:7px 10px; display:flex; align-items:flex-end; gap:8px }
 .cmsg--self .cmsg__bubble { background:var(--accent-dim); border:1px solid rgba(79,124,255,.18) }
 .cmsg__text { font-size:13px; line-height:1.5; color:var(--tx); word-break:break-word }
 .cmsg__time { font-size:11px; color:var(--tx3); flex-shrink:0; margin-bottom:1px }
@@ -237,10 +237,10 @@
 
 /* ── VIRTUAL BACKGROUND ──────────────────────────── */
 .vbg__grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px }
-.vbg__item { background:none; border:2px solid transparent; border-radius:10px; padding:3px; display:flex; flex-direction:column; align-items:center; gap:5px; transition:border-color .12s; font-family:inherit }
+.vbg__item { background:none; border:2px solid transparent; border-radius:6px; padding:3px; display:flex; flex-direction:column; align-items:center; gap:5px; transition:border-color .12s; font-family:inherit }
 .vbg__item--on { border-color:var(--accent) }
 .vbg__item:hover:not(.vbg__item--on) { border-color:var(--brd2) }
-.vbg__preview { width:100%; aspect-ratio:16/9; border-radius:7px; display:flex; align-items:center; justify-content:center; overflow:hidden }
+.vbg__preview { width:100%; aspect-ratio:16/9; border-radius:6px; display:flex; align-items:center; justify-content:center; overflow:hidden }
 .vbg__noicon { font-size:18px; color:var(--tx3) }
 .vbg__label { font-size:11px; color:var(--tx2); font-weight:500 }
 
@@ -359,14 +359,14 @@
   display:flex; gap:12px; width:100%; max-width:420px; margin-top:8px;
 }
 .waitroom__join {
-  flex:1; background:var(--accent); border:none; border-radius:14px;
+  flex:1; background:var(--accent); border:none; border-radius:6px;
   color:#fff; padding:15px 24px; font-size:15px; font-weight:600;
   transition:opacity .15s, transform .15s;
 }
 .waitroom__join:hover { opacity:.88; transform:translateY(-1px); }
 .waitroom__leave {
   flex:1; background:var(--elev); border:1px solid var(--brd);
-  border-radius:14px; color:var(--tx2);
+  border-radius:6px; color:var(--tx2);
   padding:15px 24px; font-size:15px; font-weight:500; transition:all .15s;
 }
 .waitroom__leave:hover { background:var(--elev2); color:var(--tx); }

@@ -1147,14 +1147,14 @@ function AnalyticsTab({ workspaceId }: { workspaceId: number }) {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-md p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
-          <div className="text-2xl font-black" style={{ color: "var(--text)" }}>{data?.total_members ?? 0}</div>
-          <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Участников</div>
+      <div className="flex gap-2">
+        <div className="flex items-center gap-2 rounded px-3 py-1.5 flex-1" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+          <span className="text-base font-black" style={{ color: "var(--text)" }}>{data?.total_members ?? 0}</span>
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>Участников</span>
         </div>
-        <div className="rounded-md p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
-          <div className="text-2xl font-black" style={{ color: "var(--text)" }}>{data?.total_meetings ?? 0}</div>
-          <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Встреч за период</div>
+        <div className="flex items-center gap-2 rounded px-3 py-1.5 flex-1" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+          <span className="text-base font-black" style={{ color: "var(--text)" }}>{data?.total_meetings ?? 0}</span>
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>Встреч за период</span>
         </div>
       </div>
 
