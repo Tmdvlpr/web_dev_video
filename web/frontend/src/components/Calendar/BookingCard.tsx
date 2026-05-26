@@ -49,7 +49,7 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
   const palettes = isDark ? DARK_PALETTES : LIGHT_PALETTES;
   const p = palettes[booking.user_id % palettes.length];
   const isShort    = heightPercent < 6;
-  const canDrag    = !isRedacted && !!currentUser && (currentUser.id === booking.user_id || currentUser.role === "admin" || currentUser.role === "superadmin");
+  const canDrag    = !isRedacted && !!currentUser && (currentUser.id === booking.user_id || currentUser.role === "superadmin");
 
   const handleDragStart = (e: React.DragEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();

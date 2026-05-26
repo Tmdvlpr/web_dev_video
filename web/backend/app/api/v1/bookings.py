@@ -94,7 +94,7 @@ async def public_ical_feed(
     )
 
 
-ADMIN_ROLES = {Role.admin, Role.superadmin}
+ADMIN_ROLES = {Role.superadmin}
 
 
 @router.get("/admin/all", response_model=list[BookingResponse])

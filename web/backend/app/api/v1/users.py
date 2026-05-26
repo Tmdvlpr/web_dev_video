@@ -17,7 +17,7 @@ from app.schemas.user import UserPublicResponse, UserResponse
 
 router = APIRouter(prefix="/users", tags=["users"])
 
-ADMIN_ROLES = {Role.admin, Role.superadmin}
+ADMIN_ROLES = {Role.superadmin}
 
 
 @router.get("/me", response_model=UserResponse)
@@ -151,8 +151,8 @@ async def admin_set_role(
     if current_user.role != Role.superadmin:
         raise HTTPException(403, "Superadmin only")
     new_role = body.role
-    if new_role not in ("user", "admin"):
-        raise HTTPException(400, "role must be 'user' or 'admin'")
+    if new_role not in ("user",):
+        raise HTTPException(400, "role must be 'user'")
     result = await db.execute(select(User).where(User.id == user_id))
     target = result.scalar_one_or_none()
     if not target:
@@ -180,8 +180,8 @@ async def admin_create_user(
 ) -> UserResponse:
     if current_user.role != Role.superadmin:
         raise HTTPException(403, "Superadmin only")
-    if body.role not in ("user", "admin"):
-        raise HTTPException(400, "role must be 'user' or 'admin'")
+    if body.role not in ("user",):
+        raise HTTPException(400, "role must be 'user'")
     user = User(
         telegram_id=None,
         name=body.name,

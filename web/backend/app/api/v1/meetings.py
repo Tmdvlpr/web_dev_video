@@ -192,7 +192,7 @@ async def join_meeting(
         raise HTTPException(403, "Meeting ended more than 2 hours ago")
 
     # Guests may not enter before the organizer (admins/superadmins bypass this check)
-    is_privileged = current_user.role in (Role.admin, Role.superadmin)
+    is_privileged = current_user.role == Role.superadmin
     if booking.user_id != current_user.id and not is_privileged:
         organizer_identity = f"user-{booking.user_id}"
         organizer_present = False
@@ -474,7 +474,7 @@ async def start_meeting_recording(
 ) -> dict:
     booking = await _get_active_booking(booking_id, db)
     await _check_meeting_access(booking, current_user, db)
-    if booking.user_id != current_user.id and current_user.role not in ("admin", "superadmin"):
+    if booking.user_id != current_user.id and current_user.role != Role.superadmin:
         raise HTTPException(403, "Only the organizer can control recording")
 
     result = await db.execute(
@@ -512,7 +512,7 @@ async def stop_meeting_recording(
 ) -> dict:
     booking = await _get_active_booking(booking_id, db)
     await _check_meeting_access(booking, current_user, db)
-    if booking.user_id != current_user.id and current_user.role not in ("admin", "superadmin"):
+    if booking.user_id != current_user.id and current_user.role != Role.superadmin:
         raise HTTPException(403, "Only the organizer can control recording")
 
     result = await db.execute(
@@ -546,7 +546,7 @@ async def create_invite_link(
 ) -> InviteLinkResponse:
     """Organizer generates a one-use invite link for an external (unregistered) guest."""
     booking = await _get_active_booking(booking_id, db)
-    is_privileged = current_user.role in (Role.admin, Role.superadmin)
+    is_privileged = current_user.role == Role.superadmin
     if booking.user_id != current_user.id and not is_privileged:
         raise HTTPException(403, "Only the organizer can create invite links")
     if not booking.video_enabled or not booking.video_room_name:
@@ -671,7 +671,7 @@ async def admit_guest(
 ) -> dict:
     """Organizer approves or rejects a guest admission request."""
     booking = await _get_active_booking(booking_id, db)
-    is_privileged = current_user.role in (Role.admin, Role.superadmin)
+    is_privileged = current_user.role == Role.superadmin
     if booking.user_id != current_user.id and not is_privileged:
         raise HTTPException(403, "Only the organizer can admit guests")
     if not booking.video_room_name:
@@ -739,7 +739,7 @@ async def get_pending_admissions(
 ) -> list[dict]:
     """Organizer polls for pending admission requests (fallback when WS broadcast is missed)."""
     booking = await _get_active_booking(booking_id, db)
-    is_privileged = current_user.role in (Role.admin, Role.superadmin)
+    is_privileged = current_user.role == Role.superadmin
     if booking.user_id != current_user.id and not is_privileged:
         raise HTTPException(403, "Only organizer can view pending admissions")
     result = await db.execute(
@@ -769,7 +769,7 @@ async def mute_participant_endpoint(
 ) -> None:
     """Organizer can server-side mute or unmute any participant's microphone."""
     booking = await _get_active_booking(booking_id, db)
-    is_privileged = current_user.role in (Role.admin, Role.superadmin)
+    is_privileged = current_user.role == Role.superadmin
     if booking.user_id != current_user.id and not is_privileged:
         raise HTTPException(403, "Only organizer can mute participants")
     if not booking.video_room_name:

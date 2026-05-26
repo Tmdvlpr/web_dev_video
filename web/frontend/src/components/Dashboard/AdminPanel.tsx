@@ -136,7 +136,6 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
 
   const roleBadge = (role: string) => {
     if (role === "superadmin") return { label: "superadmin", bg: "rgba(239,68,68,0.12)", color: "#ef4444" };
-    if (role === "admin") return { label: "admin", bg: "rgba(124,58,237,0.12)", color: "var(--primary)" };
     return null;
   };
 
@@ -408,20 +407,6 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                           </div>
                           {u.id !== currentUser?.id && u.role !== "superadmin" && (
                             <div className="flex items-center gap-1 shrink-0">
-                              {isSuperadmin && (
-                                <button
-                                  onClick={() => setRole({ userId: u.id, role: u.role === "admin" ? "user" : "admin" })}
-                                  disabled={roleVars?.userId === u.id}
-                                  className="w-7 h-7 flex items-center justify-center rounded text-sm font-bold transition-all disabled:opacity-40"
-                                  style={u.role === "admin"
-                                    ? { background: "rgba(124,58,237,0.12)", color: "var(--primary)", border: "1px solid var(--primary-border)" }
-                                    : { background: "var(--elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }
-                                  }
-                                  title={u.role === "admin" ? t("admin.removeAdmin") : t("admin.giveAdmin")}
-                                >
-                                  {u.role === "admin" ? "−" : "+"}
-                                </button>
-                              )}
                               <button
                                 onClick={() => setDeleteUserTarget({ id: u.id, name: u.display_name })}
                                 className="w-7 h-7 flex items-center justify-center rounded text-xs transition-all"

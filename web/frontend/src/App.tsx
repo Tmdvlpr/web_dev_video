@@ -199,14 +199,14 @@ function Dashboard() {
     setEditBooking(booking); setSlotStart(undefined); setSlotEnd(undefined); setModalOpen(true);
   };
 
-  const isAdmin    = user?.role === "admin" || user?.role === "superadmin";
   const isSuperadmin = user?.role === "superadmin";
+  const isAdmin    = isSuperadmin;
   const canEdit    = editBooking ? user?.id === editBooking.user_id || isAdmin : false;
 
-  const roleLabel  = user?.role === "superadmin" ? "Суперадмин" : user?.role === "admin" ? "Администратор" : "Участник";
-  const roleBg     = isSuperadmin ? "rgba(245,158,11,0.12)" : isAdmin ? "rgba(21,101,168,0.12)" : "var(--elevated)";
-  const roleColor  = isSuperadmin ? "#d97706" : isAdmin ? "var(--primary)" : "var(--text-muted)";
-  const roleBorder = isSuperadmin ? "rgba(245,158,11,0.3)" : isAdmin ? "var(--primary-border)" : "var(--border)";
+  const roleLabel  = isSuperadmin ? "Суперадмин" : "Участник";
+  const roleBg     = isSuperadmin ? "rgba(245,158,11,0.12)" : "var(--elevated)";
+  const roleColor  = isSuperadmin ? "#d97706" : "var(--text-muted)";
+  const roleBorder = isSuperadmin ? "rgba(245,158,11,0.3)" : "var(--border)";
 
   const closeSidebar = () => { setSidebarOpen(false); setAvatarPickerOpen(false); };
 
