@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -131,6 +132,10 @@ async def _get_owner_workspace_room(
     wr = res.scalars().first()
     if not wr:
         raise HTTPException(403, "You don't own this room in any of your workspaces")
+
+    # Superadmin bypasses the workspace membership check
+    if user.role == Role.superadmin:
+        return wr
 
     # Caller must additionally be admin/owner in that workspace
     mem_res = await db.execute(
@@ -590,3 +595,53 @@ async def join_room_by_code(
     await db.commit()
     await db.refresh(req)
     return JSONResponse(status_code=202, content={"status": "pending", "request_id": req.id})
+
+
+class TransferRoomOwnerRequest(BaseModel):
+    target_workspace_id: int
+
+
+@router.post("/{room_id}/transfer-owner", response_model=WorkspaceRoomResponse)
+async def transfer_room_owner(
+    room_id: int,
+    payload: TransferRoomOwnerRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> WorkspaceRoomResponse:
+    """Transfer room ownership to another workspace. Superadmin only."""
+    if current_user.role != Role.superadmin:
+        raise HTTPException(403, "Only superadmin can transfer room ownership")
+
+    cur_owner_res = await db.execute(
+        select(WorkspaceRoom).where(
+            WorkspaceRoom.room_id == room_id,
+            WorkspaceRoom.role == WorkspaceRoomRole.owner,
+        )
+    )
+    cur_owner = cur_owner_res.scalar_one_or_none()
+    if not cur_owner:
+        raise HTTPException(404, "Room not found or has no owner workspace")
+
+    if cur_owner.workspace_id == payload.target_workspace_id:
+        raise HTTPException(400, "Target workspace is already the owner")
+
+    target_res = await db.execute(
+        select(WorkspaceRoom).where(
+            WorkspaceRoom.room_id == room_id,
+            WorkspaceRoom.workspace_id == payload.target_workspace_id,
+        )
+    )
+    target_wr = target_res.scalar_one_or_none()
+    if not target_wr:
+        raise HTTPException(404, "Target workspace does not have access to this room")
+
+    cur_owner.role = WorkspaceRoomRole.shared
+    target_wr.role = WorkspaceRoomRole.owner
+    await db.commit()
+
+    res = await db.execute(
+        select(WorkspaceRoom)
+        .options(selectinload(WorkspaceRoom.room))
+        .where(WorkspaceRoom.id == target_wr.id)
+    )
+    return res.scalar_one()

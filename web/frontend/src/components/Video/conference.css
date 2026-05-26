@@ -335,8 +335,15 @@
 
 /* Flat countdown — no boxes */
 .waitroom__countdown {
-  display:flex; align-items:flex-start; justify-content:center; gap:0;
+  display:flex; flex-direction:column; align-items:center;
   margin-top:4px;
+}
+.waitroom__clabel {
+  font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--accent); opacity:0.65; margin-bottom:4px;
+}
+.waitroom__cblocks {
+  display:flex; align-items:flex-start; justify-content:center; gap:0;
 }
 .waitroom__cblock {
   display:flex; flex-direction:column; align-items:center; min-width:84px;

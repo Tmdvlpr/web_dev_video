@@ -43,6 +43,7 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
 
   const isOwner = activeWorkspace.my_role === "owner";
   const isAdmin = isOwner || activeWorkspace.my_role === "admin";
+  const isSuperadmin = user?.role === "superadmin";
 
   return (
     <Overlay isDark={isDark} onClose={onClose}>
@@ -100,6 +101,7 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
             myUserId={user?.id ?? null}
             isAdmin={isAdmin}
             isOwner={isOwner}
+            isSuperadmin={isSuperadmin}
           />
         )}
         {tab === "rooms" && (
@@ -107,6 +109,7 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
             workspaceId={activeWorkspace.id}
             rooms={myRooms.filter(r => r.workspace_id === activeWorkspace.id)}
             isAdmin={isAdmin}
+            isSuperadmin={isSuperadmin}
             onRefetch={refetchRooms}
           />
         )}
@@ -329,7 +332,7 @@ function GeneralTab({
   );
 }
 
-function MembersTab({ workspaceId, myUserId, isAdmin, isOwner }: { workspaceId: number; myUserId: number | null; isAdmin: boolean; isOwner: boolean }) {
+function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: { workspaceId: number; myUserId: number | null; isAdmin: boolean; isOwner: boolean; isSuperadmin: boolean }) {
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteName, setInviteName] = useState("");
@@ -523,13 +526,14 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner }: { workspaceId: 
                           placeholder="Должность"
                           className="w-full rounded px-2.5 py-1.5 text-xs outline-none"
                           style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
-                        {isOwner && m.role !== "owner" && (
+                        {isOwner && (m.role !== "owner" || isSuperadmin) && (
                           <CustomSelect size="xs"
                             value={editForm.role}
                             onChange={v => setEditForm(f => ({ ...f, role: v }))}
                             options={[
                               { value: "member", label: "Участник" },
                               { value: "admin", label: "Администратор" },
+                              ...(isSuperadmin ? [{ value: "owner", label: "Владелец" }] : []),
                             ]}
                           />
                         )}
@@ -547,7 +551,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner }: { workspaceId: 
                                 last_name: editForm.last_name || undefined,
                                 position: editForm.position || undefined,
                               });
-                              if (isOwner && m.role !== "owner" && editForm.role !== m.role) {
+                              if (isOwner && (m.role !== "owner" || isSuperadmin) && editForm.role !== m.role) {
                                 await workspacesApi.updateMember(workspaceId, m.id, { role: editForm.role });
                               }
                               setEditMemberId(null);
@@ -605,8 +609,8 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
-function RoomsTab({ workspaceId, rooms, isAdmin, onRefetch }:
-  { workspaceId: number; rooms: WorkspaceRoom[]; isAdmin: boolean; onRefetch: () => void }) {
+function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
+  { workspaceId: number; rooms: WorkspaceRoom[]; isAdmin: boolean; isSuperadmin: boolean; onRefetch: () => void }) {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
@@ -660,7 +664,7 @@ function RoomsTab({ workspaceId, rooms, isAdmin, onRefetch }:
         <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>Комнат пока нет</p>
       )}
       {rooms.map(r => (
-        <RoomRow key={r.id} wr={r} workspaceId={workspaceId} isAdmin={isAdmin} onRefetch={onRefetch} />
+        <RoomRow key={r.id} wr={r} workspaceId={workspaceId} isAdmin={isAdmin} isSuperadmin={isSuperadmin} onRefetch={onRefetch} />
       ))}
 
       {isAdmin && (
@@ -742,8 +746,9 @@ function RoomsTab({ workspaceId, rooms, isAdmin, onRefetch }:
   );
 }
 
-function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
-  { wr: WorkspaceRoom; workspaceId: number; isAdmin: boolean; onRefetch: () => void }) {
+function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
+  { wr: WorkspaceRoom; workspaceId: number; isAdmin: boolean; isSuperadmin: boolean; onRefetch: () => void }) {
+  const { workspaces } = useWorkspace();
   const [showShare, setShowShare] = useState(false);
   const [shareCode, setShareCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -754,8 +759,23 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
   const [joinRequests, setJoinRequests] = useState<RoomJoinRequest[]>([]);
   const [localJoinMode, setLocalJoinMode] = useState<"open" | "approval" | "closed">(wr.room.join_mode ?? "approval");
   const [localVis, setLocalVis] = useState<"full" | "busy_only">(wr.visibility ?? "full");
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferWsId, setTransferWsId] = useState<number | "">("");
 
   const isOwnerRoom = wr.role === "owner";
+
+  const handleTransfer = async () => {
+    if (!transferWsId) { setErr("Выберите пространство"); return; }
+    setErr(null); setBusy(true);
+    try {
+      await roomsApi.transferOwner(wr.room.id, Number(transferWsId));
+      setShowTransfer(false); setTransferWsId("");
+      onRefetch();
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setErr(msg ?? "Не удалось передать владение");
+    } finally { setBusy(false); }
+  };
 
   useEffect(() => {
     setLocalJoinMode(wr.room.join_mode ?? "approval");
@@ -986,6 +1006,13 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
             Поделиться
           </button>
         )}
+        {isSuperadmin && isOwnerRoom && (
+          <button onClick={() => setShowTransfer(v => !v)}
+            className="px-2.5 py-1 rounded text-xs font-semibold"
+            style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.35)", color: "#d97706" }}>
+            Передать владение
+          </button>
+        )}
         {isOwnerRoom && isAdmin && !confirmArch && (
           <button onClick={() => setConfirmArch(true)}
             className="px-2.5 py-1 rounded text-xs font-semibold"
@@ -1023,6 +1050,35 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
             style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
             {busy ? "…" : "Отправить"}
           </button>
+        </div>
+      )}
+
+      {showTransfer && isSuperadmin && isOwnerRoom && (
+        <div className="mt-2 space-y-2 rounded-md p-3" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.25)" }}>
+          <p className="text-xs font-semibold" style={{ color: "#d97706" }}>Передать владение комнатой</p>
+          <select
+            value={transferWsId}
+            onChange={e => setTransferWsId(e.target.value === "" ? "" : Number(e.target.value))}
+            className="w-full rounded px-2.5 py-1.5 text-xs outline-none"
+            style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)" }}
+          >
+            <option value="">Выберите пространство…</option>
+            {workspaces.filter(ws => ws.id !== workspaceId).map(ws => (
+              <option key={ws.id} value={ws.id}>{ws.name}</option>
+            ))}
+          </select>
+          <div className="flex gap-2">
+            <button onClick={() => { setShowTransfer(false); setTransferWsId(""); setErr(null); }}
+              className="flex-1 py-1.5 rounded text-xs font-semibold"
+              style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
+              Отмена
+            </button>
+            <button onClick={handleTransfer} disabled={busy || transferWsId === ""}
+              className="flex-1 py-1.5 rounded text-xs font-bold text-white disabled:opacity-50"
+              style={{ background: "linear-gradient(135deg,#d97706,#b45309)" }}>
+              {busy ? "…" : "Передать"}
+            </button>
+          </div>
         </div>
       )}
 

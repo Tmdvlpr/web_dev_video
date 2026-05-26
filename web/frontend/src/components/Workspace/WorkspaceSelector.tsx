@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { workspacesApi } from "../../api/workspaces";
+import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
 
@@ -57,7 +58,13 @@ function truncate(s: string, n: number) {
 
 export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
   const { isDark } = useTheme();
+  const { user } = useAuth();
   const { workspaces, activeWorkspace, setActiveWorkspaceId, refetchWorkspaces } = useWorkspace();
+  const canOpenSettings = !!activeWorkspace && (
+    activeWorkspace.my_role === "owner" ||
+    activeWorkspace.my_role === "admin" ||
+    user?.role === "superadmin"
+  );
   const [open, setOpen] = useState(false);
   const [inline, setInline] = useState<InlineMode>("none");
   const [name, setName] = useState("");
@@ -135,7 +142,7 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
           <span>{activeWorkspace ? truncate(activeWorkspace.name, 16) : "Без пространства"}</span>
           <span style={{ color: "var(--text-muted)" }}><ChevronDown /></span>
         </button>
-        {activeWorkspace && (
+        {canOpenSettings && (
           <button
             onClick={onSettingsOpen}
             title="Настройки пространства"

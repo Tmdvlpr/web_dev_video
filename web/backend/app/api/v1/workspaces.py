@@ -526,15 +526,28 @@ async def update_member(
             return None
 
     if payload.role is not None:
-        # Change role — owner-only
+        # Change role — owner-only (superadmin can also do ownership transfers)
         if my_membership.role != WorkspaceMemberRole.owner:
             raise HTTPException(403, "Only the owner can change member roles")
 
-        if target.role == WorkspaceMemberRole.owner:
-            raise HTTPException(400, "Cannot change owner role (ownership transfer not supported)")
+        # Only superadmin can change the role of the current owner
+        if target.role == WorkspaceMemberRole.owner and current_user.role != Role.superadmin:
+            raise HTTPException(403, "Only superadmin can change the owner's role")
 
+        # Ownership transfer: demote current owner to admin first
         if payload.role == WorkspaceMemberRole.owner:
-            raise HTTPException(400, "Cannot promote to owner (ownership transfer not supported)")
+            if current_user.role != Role.superadmin:
+                raise HTTPException(403, "Only superadmin can transfer ownership")
+            cur_owner_res = await db.execute(
+                select(WorkspaceMember).where(
+                    WorkspaceMember.workspace_id == ws_id,
+                    WorkspaceMember.role == WorkspaceMemberRole.owner,
+                    WorkspaceMember.id != target.id,
+                )
+            )
+            cur_owner = cur_owner_res.scalar_one_or_none()
+            if cur_owner:
+                cur_owner.role = WorkspaceMemberRole.admin
 
         target.role = payload.role
         await db.commit()

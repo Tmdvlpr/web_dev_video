@@ -1117,13 +1117,6 @@ function WaitingRoom({ startTime, onLeave, bookingId, onJoin, localUserId }: { s
         </button>
 
         <div className="waitroom__content">
-          {/* Icon circle */}
-          <div className="waitroom__icon-circle">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15 10l4.553-2.069A1 1 0 0121 8.854v6.292a1 1 0 01-1.447.894L15 14M5 8h10a2 2 0 012 2v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4a2 2 0 012-2z"/>
-            </svg>
-          </div>
-
           {/* Label with separator lines */}
           <div className="waitroom__dlabel">
             <span>Конференция запланирована на</span>
@@ -1138,23 +1131,26 @@ function WaitingRoom({ startTime, onLeave, bookingId, onJoin, localUserId }: { s
           {/* Flat countdown */}
           {remaining > 0 && (
             <div className="waitroom__countdown">
-              {h > 0 && (
-                <>
-                  <div className="waitroom__cblock">
-                    <span className="waitroom__cnum">{String(h).padStart(2, "0")}</span>
-                    <span className="waitroom__cunit">{h === 1 ? "час" : h < 5 ? "часа" : "часов"}</span>
-                  </div>
-                  <span className="waitroom__csep">:</span>
-                </>
-              )}
-              <div className="waitroom__cblock">
-                <span className="waitroom__cnum">{String(m).padStart(2, "0")}</span>
-                <span className="waitroom__cunit">минут</span>
-              </div>
-              <span className="waitroom__csep">:</span>
-              <div className="waitroom__cblock">
-                <span className="waitroom__cnum">{String(s).padStart(2, "0")}</span>
-                <span className="waitroom__cunit">секунд</span>
+              <p className="waitroom__clabel">До начала осталось</p>
+              <div className="waitroom__cblocks">
+                {h > 0 && (
+                  <>
+                    <div className="waitroom__cblock">
+                      <span className="waitroom__cnum">{String(h).padStart(2, "0")}</span>
+                      <span className="waitroom__cunit">{h === 1 ? "час" : h < 5 ? "часа" : "часов"}</span>
+                    </div>
+                    <span className="waitroom__csep">:</span>
+                  </>
+                )}
+                <div className="waitroom__cblock">
+                  <span className="waitroom__cnum">{String(m).padStart(2, "0")}</span>
+                  <span className="waitroom__cunit">минут</span>
+                </div>
+                <span className="waitroom__csep">:</span>
+                <div className="waitroom__cblock">
+                  <span className="waitroom__cnum">{String(s).padStart(2, "0")}</span>
+                  <span className="waitroom__cunit">секунд</span>
+                </div>
               </div>
             </div>
           )}

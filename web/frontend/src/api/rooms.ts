@@ -49,4 +49,8 @@ export const roomsApi = {
     const res = await apiClient.post<WorkspaceRoom>(`/api/v1/rooms/${id}/regenerate-code`);
     return res.data;
   },
+  transferOwner: async (roomId: number, targetWorkspaceId: number): Promise<WorkspaceRoom> => {
+    const res = await apiClient.post<WorkspaceRoom>(`/api/v1/rooms/${roomId}/transfer-owner`, { target_workspace_id: targetWorkspaceId });
+    return res.data;
+  },
 };
