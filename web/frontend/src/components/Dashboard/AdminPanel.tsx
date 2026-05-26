@@ -141,6 +141,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
   };
 
   return (
+    <>
     <AnimatePresence>
       {isOpen && (
         <>
@@ -632,6 +633,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
       </div>,
       document.body
     )}
+    </>
   );
 }
 
