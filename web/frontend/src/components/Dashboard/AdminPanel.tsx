@@ -76,11 +76,6 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
   };
   const exitSelection = () => { setSelectionMode(false); setSelectedIds(new Set()); };
 
-  const { mutate: setRole, variables: roleVars } = useMutation({
-    mutationFn: ({ userId, role }: { userId: number; role: "user" | "admin" }) =>
-      usersApi.adminSetRole(userId, role),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
-  });
 
   const { mutate: sendInvite, isPending: inviting } = useMutation({
     mutationFn: () => usersApi.adminInvite(newUsername.trim()),
