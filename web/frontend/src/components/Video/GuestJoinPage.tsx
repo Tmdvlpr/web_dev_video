@@ -40,7 +40,7 @@ function CameraPreview({ micOn, camOn, camOffLabel, micOffLabel }: { micOn: bool
   return (
     <div
       style={{
-        width: 280, height: 180, borderRadius: 12, overflow: "hidden",
+        width: 280, height: 180, borderRadius: 6, overflow: "hidden",
         background: "#1e293b", border: "1px solid rgba(255,255,255,0.1)",
         display: "flex", alignItems: "center", justifyContent: "center",
         position: "relative",
@@ -269,7 +269,7 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
         <button
           onClick={() => setMicOn((v) => !v)}
           style={{
-            padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.12)",
+            padding: "8px 16px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.12)",
             background: micOn ? "rgba(59,130,246,0.15)" : "rgba(239,68,68,0.15)",
             color: micOn ? "#60a5fa" : "#f87171",
             fontSize: 13, fontWeight: 600, cursor: "pointer",
@@ -280,7 +280,7 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
         <button
           onClick={() => setCamOn((v) => !v)}
           style={{
-            padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.12)",
+            padding: "8px 16px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.12)",
             background: camOn ? "rgba(59,130,246,0.15)" : "rgba(239,68,68,0.15)",
             color: camOn ? "#60a5fa" : "#f87171",
             fontSize: 13, fontWeight: 600, cursor: "pointer",
@@ -303,7 +303,7 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
           placeholder={t("guest.namePlaceholder")}
           maxLength={128}
           style={{
-            width: "100%", padding: "10px 14px", borderRadius: 10,
+            width: "100%", padding: "10px 14px", borderRadius: 6,
             border: "1px solid rgba(255,255,255,0.12)",
             background: "rgba(255,255,255,0.06)", color: "#e2e8f0",
             fontSize: 13, outline: "none", boxSizing: "border-box",
@@ -316,7 +316,7 @@ export function GuestJoinPage({ inviteToken }: { inviteToken: string }) {
         onClick={handleRequest}
         disabled={!name.trim() || phase === "requesting"}
         style={{
-          width: "100%", padding: "12px", borderRadius: 10,
+          width: "100%", padding: "12px", borderRadius: 6,
           background: name.trim() ? "linear-gradient(135deg,#1565a8,#3b82f6)" : "rgba(255,255,255,0.08)",
           color: name.trim() ? "#fff" : "#64748b",
           fontSize: 13, fontWeight: 700, cursor: name.trim() ? "pointer" : "not-allowed",
@@ -346,7 +346,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
         width: "100%", maxWidth: 360,
         background: "rgba(255,255,255,0.04)",
         border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 20, padding: "28px 24px",
+        borderRadius: 6, padding: "28px 24px",
         boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
       }}>
         <div style={{ textAlign: "center", marginBottom: 20 }}>

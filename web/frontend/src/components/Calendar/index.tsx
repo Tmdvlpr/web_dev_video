@@ -155,7 +155,7 @@ function MonthDayCell({ date, isCurrentMonth, isToday, onNavigate, onCardClick, 
       {/* Day number — top right */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 2 }}>
         <div style={{
-          width: 36, height: 36, borderRadius: 11,
+          width: 36, height: 36, borderRadius: 6,
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 22, fontWeight: isToday ? 800 : 600,
           background: isToday ? "var(--primary)" : "transparent",
@@ -180,7 +180,7 @@ function MonthDayCell({ date, isCurrentMonth, isToday, onNavigate, onCardClick, 
             title={b.title}
             style={{
               display: "flex", alignItems: "center", gap: 5,
-              borderRadius: 5,
+              borderRadius: 4,
               padding: "2px 6px 2px 4px",
               background: hashColor(b.id) + "18",
               borderLeft: `3px solid ${hashColor(b.id)}`,

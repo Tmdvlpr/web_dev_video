@@ -534,7 +534,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
           style={{
             width: "100%", maxWidth: 720, maxHeight: "90vh",
             background: "var(--modal)", border: "1px solid var(--border)",
-            borderRadius: 8, display: "flex", flexDirection: "column",
+            borderRadius: 6, display: "flex", flexDirection: "column",
             boxShadow: isDark ? "0 32px 80px rgba(0,0,0,0.8)" : "0 8px 40px rgba(15,23,42,0.18)",
           }}
         >
@@ -690,7 +690,7 @@ function CustomSelect({
           style={{
             position: "fixed", top: dropRect.top, left: dropRect.left, width: dropRect.width,
             zIndex: 9999, background: "var(--panel)", border: "1.5px solid var(--border)",
-            borderRadius: 10, overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+            borderRadius: 6, overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
           }}>
           {options.map(o => (
             <button key={o.value} type="button"

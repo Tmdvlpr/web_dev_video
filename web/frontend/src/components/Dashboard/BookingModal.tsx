@@ -1139,14 +1139,14 @@ export function BookingModal({
           onClick={() => setChatOpen(false)}
         >
           <div
-            style={{ width: 440, height: 580, borderRadius: 8, overflow: "hidden", display: "flex", flexDirection: "column" }}
+            style={{ width: 440, height: 580, borderRadius: 6, overflow: "hidden", display: "flex", flexDirection: "column" }}
             onClick={e => e.stopPropagation()}
           >
             <MeetingChatPanel
               bookingId={editBooking.id}
               readOnly
               onClose={() => setChatOpen(false)}
-              style={{ flex: 1, minHeight: 0, borderRadius: 8 }}
+              style={{ flex: 1, minHeight: 0, borderRadius: 6 }}
             />
           </div>
         </div>,

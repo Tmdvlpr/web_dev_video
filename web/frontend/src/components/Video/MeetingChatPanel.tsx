@@ -213,7 +213,7 @@ export function MeetingChatPanel({ bookingId, readOnly, onClose, style }: Props)
                         onClick={() => handleDownload(m.file!.id, m.file!.filename)}
                         style={{
                           display: "flex", alignItems: "center", gap: 6,
-                          background: "#273244", border: "none", borderRadius: 8,
+                          background: "#273244", border: "none", borderRadius: 6,
                           padding: "6px 8px", color: "#93c5fd", cursor: "pointer",
                           fontSize: 12, textAlign: "left", width: "100%",
                         }}

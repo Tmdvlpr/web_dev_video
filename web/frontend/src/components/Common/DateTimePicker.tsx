@@ -200,7 +200,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                 bottom: pos.above ? window.innerHeight - pos.top : "auto",
                 left: pos.left,
                 zIndex: 9999,
-                borderRadius: 16,
+                borderRadius: 6,
                 overflow: "hidden",
                 display: "flex",
                 flexDirection: "column",
@@ -338,7 +338,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                               ? "linear-gradient(135deg,#1565a8,#114e85)"
                               : "transparent",
                             color: h === sh ? "#fff" : "var(--text)",
-                            borderRadius: 8, cursor: "pointer", border: "none", textAlign: "center",
+                            borderRadius: 4, cursor: "pointer", border: "none", textAlign: "center",
                             transition: "all 0.1s",
                             boxShadow: h === sh ? "0 2px 8px rgba(21,101,168,0.4)" : "none",
                           }}
@@ -367,7 +367,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                               ? "linear-gradient(135deg,#1565a8,#114e85)"
                               : "transparent",
                             color: m === smin ? "#fff" : "var(--text)",
-                            borderRadius: 8, cursor: "pointer", border: "none", textAlign: "center",
+                            borderRadius: 4, cursor: "pointer", border: "none", textAlign: "center",
                             transition: "all 0.1s",
                             boxShadow: m === smin ? "0 2px 8px rgba(21,101,168,0.4)" : "none",
                           }}
@@ -394,7 +394,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                   whileTap={{ scale: 0.94 }}
                   style={{
                     background: "linear-gradient(135deg,#1565a8,#114e85)",
-                    color: "#fff", border: "none", borderRadius: 8,
+                    color: "#fff", border: "none", borderRadius: 6,
                     padding: "5px 14px", fontSize: 13, fontWeight: 800,
                     cursor: "pointer", boxShadow: "0 2px 10px rgba(21,101,168,0.45)",
                     letterSpacing: "0.02em",

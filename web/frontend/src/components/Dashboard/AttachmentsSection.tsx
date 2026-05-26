@@ -77,7 +77,7 @@ export function AttachmentsSection({
 
   const rowStyle: React.CSSProperties = {
     display: "flex", alignItems: "center", gap: 8,
-    padding: "6px 10px", borderRadius: 10,
+    padding: "6px 10px", borderRadius: 6,
     background: "var(--elevated)", border: "1px solid var(--border)",
     marginBottom: 4,
   };

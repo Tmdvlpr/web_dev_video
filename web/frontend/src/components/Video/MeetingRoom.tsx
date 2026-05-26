@@ -722,7 +722,7 @@ function ParticipantsPanel({
               onClick={handleCreateInvite}
               disabled={inviteLoading}
               style={{
-                width: "100%", padding: "8px 12px", borderRadius: 8,
+                width: "100%", padding: "8px 12px", borderRadius: 6,
                 background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)",
                 color: "#60a5fa", fontSize: 13, fontWeight: 600, cursor: "pointer",
               }}
@@ -736,7 +736,7 @@ function ParticipantsPanel({
               </p>
               <div style={{
                 display: "flex", gap: 6, alignItems: "center",
-                background: "var(--bg)", borderRadius: 8, padding: "6px 8px",
+                background: "var(--bg)", borderRadius: 6, padding: "6px 8px",
                 border: "1px solid var(--brd)",
               }}>
                 <span style={{
@@ -1208,7 +1208,7 @@ function SettingsPanel({ bookingId, noiseOn, blurOn, onNoise, onBlur }: {
 
   const rowStyle: React.CSSProperties = {
     display: "flex", alignItems: "center", justifyContent: "space-between",
-    padding: "10px 12px", borderRadius: 8, background: "var(--bg)",
+    padding: "10px 12px", borderRadius: 6, background: "var(--bg)",
     border: "1px solid var(--brd)", marginBottom: 8,
   };
   const knobStyle = (on: boolean): React.CSSProperties => ({
@@ -1259,7 +1259,7 @@ function SettingsPanel({ bookingId, noiseOn, blurOn, onNoise, onBlur }: {
         {recordings.map((r) => (
           <div key={r.session_id} style={{
             marginBottom: 8, padding: "8px 10px",
-            background: "var(--bg)", borderRadius: 8, border: "1px solid var(--brd)",
+            background: "var(--bg)", borderRadius: 6, border: "1px solid var(--brd)",
           }}>
             <p style={{ fontSize: 11, color: "var(--tx3)", marginBottom: 4 }}>
               {new Date(r.started_at).toLocaleString("ru-RU")} · {fmtDur(r.recording_duration_seconds)}
@@ -1725,7 +1725,7 @@ function ConferenceUI({
         <div style={{
           position: "fixed", top: 60, left: "50%", transform: "translateX(-50%)",
           background: "rgba(239,68,68,0.9)", color: "#fff", padding: "10px 20px",
-          borderRadius: 10, fontSize: 13, fontWeight: 600, zIndex: 10001,
+          borderRadius: 6, fontSize: 13, fontWeight: 600, zIndex: 10001,
           boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
         }}>
           ⚠️ {recordingError || uploadError}
@@ -1760,7 +1760,7 @@ function ConferenceUI({
               style={{
                 background: "rgba(15,23,42,0.95)",
                 border: "1px solid rgba(59,130,246,0.4)",
-                borderRadius: 14, padding: "14px 16px",
+                borderRadius: 6, padding: "14px 16px",
                 boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
                 backdropFilter: "blur(20px)",
               }}
@@ -1787,7 +1787,7 @@ function ConferenceUI({
                 <button
                   onClick={() => handleAdmit(req.invite_token, "approve")}
                   style={{
-                    flex: 1, padding: "8px", borderRadius: 8, border: "none",
+                    flex: 1, padding: "8px", borderRadius: 6, border: "none",
                     background: "linear-gradient(135deg,#16a34a,#22c55e)",
                     color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
                   }}
@@ -1797,7 +1797,7 @@ function ConferenceUI({
                 <button
                   onClick={() => handleAdmit(req.invite_token, "reject")}
                   style={{
-                    flex: 1, padding: "8px", borderRadius: 8,
+                    flex: 1, padding: "8px", borderRadius: 6,
                     background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)",
                     color: "#f87171", fontSize: 13, fontWeight: 700, cursor: "pointer",
                   } as React.CSSProperties}
@@ -1876,7 +1876,7 @@ function WaitingForOrganizer({ onLeave, onRetry }: { onLeave: () => void; onRetr
         <button
           onClick={onRetry}
           style={{
-            padding: "10px 20px", borderRadius: 10,
+            padding: "10px 20px", borderRadius: 6,
             background: "linear-gradient(135deg,#1565a8,#3b82f6)",
             color: "#fff", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer",
           }}
@@ -1886,7 +1886,7 @@ function WaitingForOrganizer({ onLeave, onRetry }: { onLeave: () => void; onRetr
         <button
           onClick={onLeave}
           style={{
-            padding: "10px 20px", borderRadius: 10,
+            padding: "10px 20px", borderRadius: 6,
             background: "var(--elevated)", color: "var(--tx2)",
             fontSize: 13, fontWeight: 600, border: "1px solid var(--border)", cursor: "pointer",
           }}

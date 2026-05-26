@@ -293,7 +293,7 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
             display: "none",
             background: isDark ? "rgba(21,101,168,0.25)" : "rgba(21,101,168,0.12)",
             border: "2px dashed var(--primary)",
-            borderRadius: 8,
+            borderRadius: 6,
             backdropFilter: "blur(2px)",
           }}>
           <span ref={ghostTitleRef} className="absolute top-1 left-2 text-xs font-bold"
@@ -357,7 +357,7 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
               height: `${resizePreview.heightPct}%`,
               left: 4, right: 4,
               border: "2px solid var(--primary)",
-              borderRadius: 10,
+              borderRadius: 6,
               background: isDark ? "rgba(21,101,168,0.18)" : "rgba(21,101,168,0.10)",
               padding: "4px 8px",
               overflow: "hidden",
