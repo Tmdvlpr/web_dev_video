@@ -203,7 +203,7 @@ export function ActiveMeetings({ isOpen, onClose, onCardClick, onBack }: Props) 
                 ] as const).map(({ key, labelKey, count }) => (
                   <button key={key} type="button" role="tab" aria-selected={tab === key}
                     onClick={() => setTab(key)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-semibold transition-all"
                     style={{
                       background: tab === key ? "var(--primary)" : "var(--elevated)",
                       color: tab === key ? "#fff" : "var(--text-sec)",
@@ -211,7 +211,7 @@ export function ActiveMeetings({ isOpen, onClose, onCardClick, onBack }: Props) 
                     }}>
                     {t(labelKey)}
                     {count > 0 && (
-                      <span className="px-1.5 py-0.5 rounded-full text-xs font-bold"
+                      <span className="px-1.5 py-0.5 rounded-sm text-xs font-bold"
                         style={{
                           background: tab === key ? "rgba(255,255,255,0.25)" : "var(--primary-light)",
                           color: tab === key ? "#fff" : "var(--primary)",
@@ -282,7 +282,7 @@ export function ActiveMeetings({ isOpen, onClose, onCardClick, onBack }: Props) 
                           }}>
                           <div className="flex items-start justify-between gap-2 mb-1.5">
                             <p className="text-sm font-bold leading-tight" style={{ color: "var(--text)" }}>{b.title}</p>
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full shrink-0"
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-sm shrink-0"
                               style={{ background: st.bg, color: st.color, border: `1px solid ${st.color}30` }}>
                               {st.label}
                             </span>

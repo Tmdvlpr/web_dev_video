@@ -724,12 +724,13 @@ function AdminBarChart({ data, color }: { data: Array<{ date: string; count: num
   if (data.length === 0) return (
     <p className="text-xs py-2 text-center" style={{ color: "var(--text-muted)" }}>Нет данных</p>
   );
-  const H = 76;
+  const H = 84;
   const TOP = 14;
-  const BOTTOM_LABEL = 12;
+  const BOTTOM_LABEL = 14;
   const barAreaH = H - TOP - 4 - BOTTOM_LABEL;
   const max = Math.max(...data.map(d => d.count), 1);
   const n = data.length;
+  const labelStep = Math.ceil(n / 8);
   return (
     <svg width="100%" height={H} style={{ display: "block", overflow: "visible" }}>
       {data.map((d, i) => {
@@ -750,9 +751,11 @@ function AdminBarChart({ data, color }: { data: Array<{ date: string; count: num
                 {d.count}
               </text>
             )}
-            <text x={cx} y={H - 1} textAnchor="middle" fontSize={9} fill="var(--text-muted)">
-              {fmtChartDate(d.date)}
-            </text>
+            {i % labelStep === 0 && (
+              <text x={cx} y={H - 2} textAnchor="middle" fontSize={9} fill="var(--text-muted)">
+                {fmtChartDate(d.date)}
+              </text>
+            )}
           </g>
         );
       })}

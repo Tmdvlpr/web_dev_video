@@ -143,9 +143,6 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
 
   const cp = typeOverride ?? p;
   const leftBorderColor = cp.border;
-  const shadow = isDark
-    ? `0 0 0 1px ${cp.border}50, 0 4px 20px ${cp.border}30, inset 0 1px 0 rgba(255,255,255,0.07)`
-    : `0 1px 0 ${cp.border}40, 0 2px 8px ${cp.border}30`;
 
   return (
     <motion.div
@@ -172,12 +169,9 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
         cursor: canDrag ? "grab" : "pointer",
         overflow: "hidden",
         opacity: isDragging ? 0.3 : isResizing ? 0 : 1,
-        boxShadow: shadow,
-        backdropFilter: isDark ? "blur(8px)" : "none",
       }}
       className={`px-2 ${isShort ? "py-0 flex items-center" : "py-1"}`}
     >
-      <div className="absolute inset-0 pointer-events-none" style={{ background: cp.tint }} />
 
       {isShort ? (
         <div className="flex items-center gap-1 w-full relative z-10">

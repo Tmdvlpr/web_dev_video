@@ -116,7 +116,7 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
                   const active = reminderMins.includes(min);
                   return (
                     <button key={min} onClick={() => toggleReminder(min)}
-                      className="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all"
+                      className="flex-1 py-1.5 rounded-sm text-xs font-bold transition-all"
                       style={{
                         background: active ? "var(--primary)" : "var(--elevated)",
                         border: `1.5px solid ${active ? "var(--primary)" : "var(--border)"}`,
