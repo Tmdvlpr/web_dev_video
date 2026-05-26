@@ -37,7 +37,7 @@ export function ConfirmDialog({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 10 }}
             transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className="fixed z-[9991] inset-0 m-auto w-full max-w-sm h-fit rounded-2xl p-6"
+            className="fixed z-[9991] inset-0 m-auto w-full max-w-sm h-fit rounded-md p-6"
             style={{
               background: "var(--modal)",
               border: "1px solid var(--border)",
@@ -51,7 +51,7 @@ export function ConfirmDialog({
             <div className="flex gap-3 justify-end">
               <button
                 onClick={onCancel}
-                className="px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer"
+                className="px-4 py-2 rounded-md text-sm font-medium transition-all cursor-pointer"
                 style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
                 onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = ""; }}
@@ -60,7 +60,7 @@ export function ConfirmDialog({
               </button>
               <button
                 onClick={onConfirm}
-                className="px-4 py-2 rounded-xl text-sm font-bold text-white transition-all cursor-pointer"
+                className="px-4 py-2 rounded-md text-sm font-bold text-white transition-all cursor-pointer"
                 style={{
                   background: danger ? "var(--danger)" : "var(--primary)",
                   boxShadow: danger

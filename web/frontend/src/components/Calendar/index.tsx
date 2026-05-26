@@ -370,7 +370,7 @@ function FilterDropdown({
           if (r) setDropPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
           setOpen(true);
         }}
-        className="flex items-center gap-1.5 px-2.5 h-7 text-xs font-semibold rounded-lg transition-all"
+        className="flex items-center gap-1.5 px-2.5 h-7 text-xs font-semibold rounded transition-all"
         style={{
           border: open || hasFilter ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
           background: open || hasFilter ? "var(--primary-light)" : "transparent",
@@ -451,12 +451,12 @@ function FilterDropdown({
                   <input
                     value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())}
                     placeholder="Код комнаты"
-                    className="flex-1 rounded-lg px-2 py-1 text-xs outline-none font-mono"
+                    className="flex-1 rounded px-2 py-1 text-xs outline-none font-mono"
                     style={{ background: "var(--input-bg)", border: "1px solid var(--border)", color: "var(--text)" }}
                     onKeyDown={e => { if (e.key === "Enter") handleJoin(); }}
                   />
                   <button onClick={handleJoin} disabled={joinBusy || !joinCode.trim()}
-                    className="px-2 py-1 rounded-lg text-xs font-bold text-white disabled:opacity-40"
+                    className="px-2 py-1 rounded text-xs font-bold text-white disabled:opacity-40"
                     style={{ background: "var(--primary)", border: "none" }}>
                     {joinBusy ? "…" : "+"}
                   </button>
@@ -568,7 +568,7 @@ function RoomStatus({ roomId, workspaceId }: { roomId?: number | null; workspace
       <div ref={ref} style={{ position: "relative" }}>
         <button
           onClick={() => setPopupOpen((v) => !v)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-semibold"
+          className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-semibold"
           style={{ background: isDark ? "rgba(239,68,68,0.1)" : "#fff1f2", border: "1px solid #fecdd3", color: "#dc2626", cursor: "pointer" }}>
           <motion.div animate={{ scale: [1, 1.4, 1], opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }}
             className="w-2 h-2 rounded-full" style={{ background: "#ef4444" }} />
@@ -587,7 +587,7 @@ function RoomStatus({ roomId, workspaceId }: { roomId?: number | null; workspace
         <div ref={ref} style={{ position: "relative" }}>
           <button
             onClick={() => setPopupOpen((v) => !v)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-semibold"
+            className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-semibold"
             style={{ background: isDark ? "rgba(217,119,6,0.1)" : "#fffbeb", border: "1px solid #fde68a", color: "#d97706", cursor: "pointer" }}>
             <div className="w-2 h-2 rounded-full" style={{ background: "#f59e0b" }} />
             <span>{t("status.busyAt", { time: startTime })}</span>
@@ -599,7 +599,7 @@ function RoomStatus({ roomId, workspaceId }: { roomId?: number | null; workspace
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-semibold"
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-semibold"
       style={{ background: isDark ? "rgba(22,163,74,0.1)" : "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d" }}>
       <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 2, repeat: Infinity }}
         className="w-2 h-2 rounded-full" style={{ background: "#22c55e" }} />
@@ -807,7 +807,7 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
         style={{ height: 48, borderBottom: "1px solid var(--border)", background: "var(--toolbar)", backdropFilter: "blur(12px)" }}>
 
         {/* View mode toggle */}
-        <div className="flex items-center shrink-0" style={{ borderRadius: 8, border: "1.5px solid var(--border)", overflow: "hidden" }}>
+        <div className="flex items-center shrink-0" style={{ borderRadius: 2, border: "1.5px solid var(--border)", overflow: "hidden" }}>
           {(["week", "month"] as const).map((mode) => (
             <button
               key={mode}
@@ -827,21 +827,21 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
         {/* Navigation group */}
         <div className="flex items-center gap-1">
           <button onClick={() => viewMode === "week" ? navTo(new Date()) : setAnchorDate(new Date())}
-            className="px-3 h-7 text-xs font-semibold rounded-lg transition-all shrink-0"
+            className="px-3 h-7 text-xs font-semibold rounded transition-all shrink-0"
             style={{ border: "1.5px solid var(--primary-border)", color: "var(--primary)", background: "var(--primary-light)" }}
             onMouseEnter={(e) => { e.currentTarget.style.background = "var(--primary)"; e.currentTarget.style.color = "#fff"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "var(--primary-light)"; e.currentTarget.style.color = "var(--primary)"; }}>
             {t("cal.today")}
           </button>
           <button onClick={handlePrev}
-            className="w-7 h-7 flex items-center justify-center rounded-lg font-semibold transition-all shrink-0 text-base leading-none"
+            className="w-7 h-7 flex items-center justify-center rounded font-semibold transition-all shrink-0 text-base leading-none"
             style={{ color: "var(--text-muted)" }}
             onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--elevated)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = ""; }}>
             ‹
           </button>
           <button onClick={handleNext}
-            className="w-7 h-7 flex items-center justify-center rounded-lg font-semibold transition-all shrink-0 text-base leading-none"
+            className="w-7 h-7 flex items-center justify-center rounded font-semibold transition-all shrink-0 text-base leading-none"
             style={{ color: "var(--text-muted)" }}
             onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--elevated)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = ""; }}>
@@ -858,7 +858,7 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t("cal.searchPlaceholder")}
-              className="w-full text-xs rounded-lg px-3 py-1.5 outline-none"
+              className="w-full text-xs rounded px-3 py-1.5 outline-none"
               style={{ background: "var(--input-bg)", border: "1.5px solid var(--primary)", color: "var(--text)" }}
               onBlur={() => { if (!searchQuery) setSearchOpen(false); }}
               onKeyDown={(e) => { if (e.key === "Escape") { setSearchQuery(""); setSearchOpen(false); } }}
@@ -878,7 +878,7 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
 
           <button
             onClick={() => { setSearchOpen((v) => !v); if (searchOpen) setSearchQuery(""); }}
-            className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
+            className="w-7 h-7 flex items-center justify-center rounded transition-all"
             style={{
               color: searchQuery ? "var(--primary)" : "var(--text-muted)",
               background: searchQuery ? "var(--primary-light)" : "transparent",

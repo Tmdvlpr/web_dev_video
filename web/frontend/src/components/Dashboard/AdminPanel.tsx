@@ -242,19 +242,19 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                         selectionMode ? (
                           <div className="flex items-center gap-1.5">
                             <button onClick={() => setSelectedIds(new Set(bookings.map(b => b.id)))}
-                              className="text-xs px-2 py-1 rounded-lg font-semibold transition-all"
+                              className="text-xs px-2 py-1 rounded font-semibold transition-all"
                               style={{ background: "var(--elevated)", color: "var(--text-sec)", border: "1px solid var(--border)" }}>
                               {t("admin.selectAll")}
                             </button>
                             <button onClick={exitSelection}
-                              className="text-xs px-2.5 py-1 rounded-lg font-semibold transition-all"
+                              className="text-xs px-2.5 py-1 rounded font-semibold transition-all"
                               style={{ background: "var(--elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
                               {t("admin.selectDone")}
                             </button>
                           </div>
                         ) : (
                           <button onClick={() => setSelectionMode(true)}
-                            className="text-xs px-2.5 py-1 rounded-lg font-semibold transition-all"
+                            className="text-xs px-2.5 py-1 rounded font-semibold transition-all"
                             style={{ background: "var(--primary)", color: "#fff" }}>
                             {t("admin.selectMode")}
                           </button>
@@ -295,7 +295,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                               {!selectionMode && (
                                 <button
                                   onClick={() => setDeleteBookingTarget({ id: b.id, title: b.title, seriesId: b.recurrence_group_id })}
-                                  className="w-6 h-6 flex items-center justify-center rounded-lg transition-all"
+                                  className="w-6 h-6 flex items-center justify-center rounded transition-all"
                                   style={{ color: "var(--text-muted)" }}
                                   onMouseEnter={e => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.background = "rgba(239,68,68,0.1)"; }}
                                   onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = ""; }}
@@ -331,7 +331,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                         {t("admin.usersCount", { n: users.length })}
                       </p>
                       <button onClick={() => { setShowAddForm(v => !v); setNewUsername(""); setInviteResult(null); setInviteCopied(false); }}
-                        className="text-xs px-2.5 py-1 rounded-lg font-semibold transition-all"
+                        className="text-xs px-2.5 py-1 rounded font-semibold transition-all"
                         style={{ background: "var(--primary)", color: "#fff" }}>
                         {showAddForm ? t("common.cancel") : `+ ${t("common.add")}`}
                       </button>
@@ -350,7 +350,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                             <div className="space-y-1.5">
                               <p className="text-xs" style={{ color: "var(--text-muted)" }}>{t("admin.inviteLink")}</p>
                               <div className="flex items-center gap-2">
-                                <code className="text-xs flex-1 px-2 py-1 rounded-lg truncate"
+                                <code className="text-xs flex-1 px-2 py-1 rounded truncate"
                                   style={{ background: "var(--input-bg)", color: "var(--primary)" }}>
                                   {inviteResult.link}
                                 </code>
@@ -360,7 +360,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                                     setInviteCopied(true);
                                     setTimeout(() => setInviteCopied(false), 2000);
                                   }}
-                                  className="text-xs px-2.5 py-1 rounded-lg font-semibold shrink-0"
+                                  className="text-xs px-2.5 py-1 rounded font-semibold shrink-0"
                                   style={{ background: inviteCopied ? "#16a34a" : "var(--primary)", color: "#fff" }}>
                                   {inviteCopied ? t("admin.inviteCopied") : t("admin.inviteCopy")}
                                 </button>
@@ -372,10 +372,10 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                             <input type="text" placeholder={t("admin.inviteUsername")} value={newUsername}
                               onChange={e => setNewUsername(e.target.value)}
                               onKeyDown={e => { if (e.key === "Enter" && newUsername.trim()) sendInvite(); }}
-                              className="w-full text-xs rounded-lg px-3 py-2 outline-none"
+                              className="w-full text-xs rounded px-3 py-2 outline-none"
                               style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)" }} />
                             <button onClick={() => sendInvite()} disabled={!newUsername.trim() || inviting}
-                              className="w-full text-xs py-2 rounded-lg font-bold text-white disabled:opacity-40"
+                              className="w-full text-xs py-2 rounded font-bold text-white disabled:opacity-40"
                               style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)" }}>
                               {inviting ? t("admin.inviteSending") : t("admin.inviteSend")}
                             </button>
@@ -412,7 +412,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                                 <button
                                   onClick={() => setRole({ userId: u.id, role: u.role === "admin" ? "user" : "admin" })}
                                   disabled={roleVars?.userId === u.id}
-                                  className="w-7 h-7 flex items-center justify-center rounded-lg text-sm font-bold transition-all disabled:opacity-40"
+                                  className="w-7 h-7 flex items-center justify-center rounded text-sm font-bold transition-all disabled:opacity-40"
                                   style={u.role === "admin"
                                     ? { background: "rgba(124,58,237,0.12)", color: "var(--primary)", border: "1px solid var(--primary-border)" }
                                     : { background: "var(--elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }
@@ -424,7 +424,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                               )}
                               <button
                                 onClick={() => setDeleteUserTarget({ id: u.id, name: u.display_name })}
-                                className="w-7 h-7 flex items-center justify-center rounded-lg text-xs transition-all"
+                                className="w-7 h-7 flex items-center justify-center rounded text-xs transition-all"
                                 style={{ color: "var(--text-muted)" }}
                                 onMouseEnter={e => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.background = "rgba(239,68,68,0.1)"; }}
                                 onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = ""; }}
@@ -459,14 +459,14 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                     boxShadow: isDark ? "0 -8px 24px rgba(0,0,0,0.4)" : "0 -8px 24px rgba(15,23,42,0.08)",
                   }}>
                   <button onClick={exitSelection}
-                    className="text-xs px-3 py-2 rounded-lg font-semibold transition-all"
+                    className="text-xs px-3 py-2 rounded font-semibold transition-all"
                     style={{ background: "var(--elevated)", color: "var(--text-sec)", border: "1px solid var(--border)" }}>
                     {t("common.cancel")}
                   </button>
                   <button
                     onClick={() => setBulkDeleteOpen(true)}
                     disabled={bulkDeleting}
-                    className="flex-1 text-xs px-3 py-2 rounded-lg font-bold text-white transition-all disabled:opacity-50"
+                    className="flex-1 text-xs px-3 py-2 rounded font-bold text-white transition-all disabled:opacity-50"
                     style={{ background: "#ef4444" }}>
                     {t("admin.bulkDelete", { n: selectedIds.size })}
                   </button>
@@ -672,7 +672,7 @@ function CustomSelect({
   return (
     <div>
       <button ref={btnRef} type="button" disabled={disabled} onClick={toggle}
-        className="w-full rounded-lg px-2.5 py-1.5 text-xs text-left flex items-center justify-between gap-2 outline-none"
+        className="w-full rounded px-2.5 py-1.5 text-xs text-left flex items-center justify-between gap-2 outline-none"
         style={{
           background: "var(--input-bg)", color: "var(--text)",
           border: `1.5px solid ${open ? "var(--primary)" : "var(--input-border)"}`,
@@ -747,12 +747,12 @@ function AdminBarChart({ data, color }: { data: Array<{ date: string; count: num
               rx={2} fill={color} opacity={hovered === i ? 1 : 0.75}
             />
             {d.count > 0 && (
-              <text x={cx} y={barY - 3} textAnchor="middle" fontSize={9} fontWeight="600" fill={color}>
+              <text x={cx} y={barY - 3} textAnchor="middle" fontSize={11} fontWeight="700" fill={color}>
                 {d.count}
               </text>
             )}
             {i % labelStep === 0 && (
-              <text x={cx} y={H - 2} textAnchor="middle" fontSize={9} fill="var(--text-muted)">
+              <text x={cx} y={H - 2} textAnchor="middle" fontSize={11} fill="var(--text-muted)">
                 {fmtChartDate(d.date)}
               </text>
             )}

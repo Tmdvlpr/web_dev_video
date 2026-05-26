@@ -132,7 +132,7 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
         initial={{ opacity: 0, y: 18, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", damping: 22, stiffness: 280 }}
-        className="w-full max-w-2xl rounded-2xl"
+        className="w-full max-w-2xl rounded-md"
         style={{
           background: "var(--modal)",
           border: "1px solid var(--border)",
@@ -145,7 +145,7 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
           {flow !== "menu" && (
             <button
               onClick={() => { setFlow("menu"); resetMessages(); }}
-              className="flex items-center gap-1.5 mb-4 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              className="flex items-center gap-1.5 mb-4 px-2.5 py-1.5 rounded text-xs font-semibold transition-all"
               style={{ color: "var(--text-muted)", background: "var(--elevated)", border: "1px solid var(--border)" }}
               onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
               onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}
@@ -185,13 +185,13 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
                 <input
                   autoFocus value={name} onChange={e => setName(e.target.value)}
                   placeholder="Команда проектов"
-                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                  className="w-full rounded-md px-3 py-2.5 text-sm outline-none"
                   style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
                 />
                 <FieldLabel>Часовой пояс</FieldLabel>
                 <select
                   value={tz} onChange={e => setTz(e.target.value)}
-                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                  className="w-full rounded-md px-3 py-2.5 text-sm outline-none"
                   style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
                 >
                   {TIMEZONES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -200,7 +200,7 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
                 {error && <ErrorBox>{error}</ErrorBox>}
 
                 <button type="submit" disabled={busy}
-                  className="w-full py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                  className="w-full py-2.5 rounded-md text-sm font-bold text-white disabled:opacity-50"
                   style={{ background: "linear-gradient(135deg,#1565a8,#114e85)", boxShadow: "0 4px 16px rgba(21,101,168,0.25)" }}>
                   {busy ? "Создаём…" : "Создать"}
                 </button>
@@ -218,7 +218,7 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
                 <input
                   autoFocus value={inviteCode} onChange={e => setInviteCode(e.target.value)}
                   placeholder="например: ABCDEF12"
-                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-mono tracking-wider"
+                  className="w-full rounded-md px-3 py-2.5 text-sm outline-none font-mono tracking-wider"
                   style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
                 />
 
@@ -226,7 +226,7 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
                 {successMsg && <SuccessBox>{successMsg}</SuccessBox>}
 
                 <button type="submit" disabled={busy}
-                  className="w-full py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                  className="w-full py-2.5 rounded-md text-sm font-bold text-white disabled:opacity-50"
                   style={{ background: "linear-gradient(135deg,#1565a8,#114e85)", boxShadow: "0 4px 16px rgba(21,101,168,0.25)" }}>
                   {busy ? "Отправляем…" : "Войти"}
                 </button>
@@ -242,7 +242,7 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
                 <input
                   autoFocus value={searchQ} onChange={e => setSearchQ(e.target.value)}
                   placeholder="Начните вводить название…"
-                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                  className="w-full rounded-md px-3 py-2.5 text-sm outline-none"
                   style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
                 />
 
@@ -258,7 +258,7 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
                       type="button"
                       disabled={busy}
                       onClick={() => handleJoin(w.invite_code)}
-                      className="w-full text-left px-4 py-3 rounded-xl transition-all disabled:opacity-50"
+                      className="w-full text-left px-4 py-3 rounded-md transition-all disabled:opacity-50"
                       style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--primary)"; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; }}
@@ -289,7 +289,7 @@ function MenuCard({ label, desc, Icon, onClick }: { label: string; desc: string;
       whileHover={{ y: -3 }}
       whileTap={{ scale: 0.97 }}
       onClick={onClick}
-      className="text-left p-5 rounded-2xl transition-all flex flex-col items-start gap-3"
+      className="text-left p-5 rounded-md transition-all flex flex-col items-start gap-3"
       style={{
         background: "var(--elevated)",
         border: "1.5px solid var(--border)",
@@ -320,7 +320,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 function ErrorBox({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs rounded-xl px-3 py-2.5 font-medium"
+    <p className="text-xs rounded-md px-3 py-2.5 font-medium"
       style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#dc2626" }}>
       {children}
     </p>
@@ -329,7 +329,7 @@ function ErrorBox({ children }: { children: React.ReactNode }) {
 
 function SuccessBox({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs rounded-xl px-3 py-2.5 font-medium"
+    <p className="text-xs rounded-md px-3 py-2.5 font-medium"
       style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: "#16a34a" }}>
       {children}
     </p>

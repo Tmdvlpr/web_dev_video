@@ -136,7 +136,7 @@ export function FeedbackModal({ open, onClose, onSuccess, onError, onBack }: Pro
                 {view === "form" && (
                   <button
                     onClick={() => setView("list")}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
+                    className="w-7 h-7 flex items-center justify-center rounded transition-all"
                     style={{ color: "var(--text-muted)", background: isDark ? "rgba(255,255,255,0.06)" : "#f5f5f5" }}
                     onMouseEnter={e => { e.currentTarget.style.color = "var(--primary)"; }}
                     onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>

@@ -121,12 +121,12 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
   return (
     <div className="relative" ref={ref}>
       <div
-        className="flex items-center gap-1 rounded-lg"
+        className="flex items-center gap-1 rounded"
         style={{ border: "1px solid var(--border)", background: "var(--elevated)" }}
       >
         <button
           onClick={() => setOpen(v => !v)}
-          className="flex items-center gap-1.5 px-2.5 h-7 text-xs font-semibold transition-all rounded-l-lg"
+          className="flex items-center gap-1.5 px-2.5 h-7 text-xs font-semibold transition-all rounded-l"
           style={{ color: "var(--text)" }}
           onMouseEnter={e => { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)"; }}
           onMouseLeave={e => { e.currentTarget.style.background = ""; }}
@@ -139,7 +139,7 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
           <button
             onClick={onSettingsOpen}
             title="Настройки пространства"
-            className="flex items-center justify-center h-7 w-7 rounded-r-lg transition-all"
+            className="flex items-center justify-center h-7 w-7 rounded-r transition-all"
             style={{ color: "var(--text-muted)", borderLeft: "1px solid var(--border)" }}
             onMouseEnter={e => { e.currentTarget.style.color = "var(--primary)"; e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)"; }}
             onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = ""; }}
@@ -192,7 +192,7 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
             {inline === "none" && (
               <div className="px-1.5 pb-1 space-y-0.5">
                 <button onClick={() => { setInline("create"); setError(null); setInfo(null); }}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-left"
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-semibold transition-all text-left"
                   style={{ color: "var(--text-sec)" }}
                   onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; e.currentTarget.style.color = "var(--primary)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-sec)"; }}
@@ -201,7 +201,7 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
                   Создать
                 </button>
                 <button onClick={() => { setInline("join"); setError(null); setInfo(null); }}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-left"
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-semibold transition-all text-left"
                   style={{ color: "var(--text-sec)" }}
                   onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; e.currentTarget.style.color = "var(--primary)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-sec)"; }}
@@ -218,7 +218,7 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
                   autoFocus value={name} onChange={e => setName(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") handleCreate(); }}
                   placeholder="Название пространства"
-                  className="w-full rounded-lg px-2.5 py-1.5 text-xs outline-none"
+                  className="w-full rounded px-2.5 py-1.5 text-xs outline-none"
                   style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
                   onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(21,101,168,0.12)"; }}
                   onBlur={e => { e.currentTarget.style.borderColor = "var(--input-border)"; e.currentTarget.style.boxShadow = "none"; }}
@@ -226,12 +226,12 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
                 {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}
                 <div className="flex gap-2">
                   <button onClick={() => { setInline("none"); setName(""); setError(null); }}
-                    className="flex-1 py-1.5 rounded-lg text-xs font-semibold"
+                    className="flex-1 py-1.5 rounded text-xs font-semibold"
                     style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
                     Отмена
                   </button>
                   <button onClick={handleCreate} disabled={busy}
-                    className="flex-1 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50"
+                    className="flex-1 py-1.5 rounded text-xs font-bold text-white disabled:opacity-50"
                     style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
                     {busy ? "…" : "Создать"}
                   </button>
@@ -245,7 +245,7 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
                   autoFocus value={code} onChange={e => setCode(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") handleJoin(); }}
                   placeholder="Инвайт-код"
-                  className="w-full rounded-lg px-2.5 py-1.5 text-xs outline-none font-mono"
+                  className="w-full rounded px-2.5 py-1.5 text-xs outline-none font-mono"
                   style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
                   onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(21,101,168,0.12)"; }}
                   onBlur={e => { e.currentTarget.style.borderColor = "var(--input-border)"; e.currentTarget.style.boxShadow = "none"; }}
@@ -254,12 +254,12 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
                 {info && <p className="text-xs" style={{ color: "#16a34a" }}>{info}</p>}
                 <div className="flex gap-2">
                   <button onClick={() => { setInline("none"); setCode(""); setError(null); setInfo(null); }}
-                    className="flex-1 py-1.5 rounded-lg text-xs font-semibold"
+                    className="flex-1 py-1.5 rounded text-xs font-semibold"
                     style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
                     Отмена
                   </button>
                   <button onClick={handleJoin} disabled={busy}
-                    className="flex-1 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50"
+                    className="flex-1 py-1.5 rounded text-xs font-bold text-white disabled:opacity-50"
                     style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
                     {busy ? "…" : "Войти"}
                   </button>

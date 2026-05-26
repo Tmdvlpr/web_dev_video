@@ -101,7 +101,7 @@ export function AttachmentsSection({
         {canManage && (
           <button type="button" onClick={() => fileRef.current?.click()}
             disabled={upload.isPending}
-            className="text-xs font-semibold px-2.5 py-1 rounded-lg transition-all"
+            className="text-xs font-semibold px-2.5 py-1 rounded transition-all"
             style={{ background: "var(--primary-light)", border: "1px solid var(--primary-border)", color: "var(--primary)" }}>
             {upload.isPending ? t("attach.uploading") : t("attach.attach")}
           </button>
@@ -136,7 +136,7 @@ export function AttachmentsSection({
               onClick={() => handleDownload(att)}
               disabled={downloading.has(att.id)}
               title="Скачать"
-              className="text-xs px-1.5 py-0.5 rounded-lg font-bold shrink-0 transition-all disabled:opacity-50"
+              className="text-xs px-1.5 py-0.5 rounded font-bold shrink-0 transition-all disabled:opacity-50"
               style={{ background: "var(--primary-light)", border: "1px solid var(--primary-border)", color: "var(--primary)" }}>
               {downloading.has(att.id) ? "⏳" : "↓"}
             </button>
@@ -167,7 +167,7 @@ export function AttachmentsSection({
       ))}
 
       {existing.length === 0 && pendingFiles.length === 0 && !isLoading && (
-        <div className="text-xs text-center py-3 rounded-xl"
+        <div className="text-xs text-center py-3 rounded-md"
           style={{ border: "1.5px dashed var(--border)", color: "var(--text-muted)" }}>
           {t("attach.noFiles")}
         </div>

@@ -237,7 +237,7 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
           borderBottom: `1px solid ${isToday ? "var(--primary-border)" : "var(--border)"}`,
           backdropFilter: "blur(8px)",
         }}>
-        <div className="flex items-center justify-center shrink-0 w-7 h-7 rounded-lg text-sm font-bold"
+        <div className="flex items-center justify-center shrink-0 w-7 h-7 rounded text-sm font-bold"
           style={isToday ? todayNumStyle : { color: isPast ? pastNumColor : normalNumColor }}>
           {dayNum}
         </div>

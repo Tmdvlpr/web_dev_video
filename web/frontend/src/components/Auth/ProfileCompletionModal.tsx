@@ -66,7 +66,7 @@ export function ProfileCompletionModal({ open }: Props) {
             exit={{ opacity: 0, y: 12, scale: 0.97 }}
             transition={{ type: "spring", damping: 22, stiffness: 280 }}
             onSubmit={submit}
-            className="w-full max-w-sm p-6 rounded-2xl"
+            className="w-full max-w-sm p-6 rounded-md"
             style={{
               background: "var(--card)",
               border: "1px solid var(--border)",
@@ -88,7 +88,7 @@ export function ProfileCompletionModal({ open }: Props) {
               value={first}
               onChange={(e) => setFirst(e.target.value)}
               autoFocus
-              className="w-full text-sm rounded-lg px-3 py-2 mb-3 outline-none"
+              className="w-full text-sm rounded px-3 py-2 mb-3 outline-none"
               style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)" }}
             />
 
@@ -99,7 +99,7 @@ export function ProfileCompletionModal({ open }: Props) {
               type="text"
               value={last}
               onChange={(e) => setLast(e.target.value)}
-              className="w-full text-sm rounded-lg px-3 py-2 mb-4 outline-none"
+              className="w-full text-sm rounded px-3 py-2 mb-4 outline-none"
               style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)" }}
             />
 
@@ -110,7 +110,7 @@ export function ProfileCompletionModal({ open }: Props) {
             <button
               type="submit"
               disabled={isPending || !first.trim()}
-              className="w-full text-sm py-2.5 rounded-lg font-bold text-white transition-all disabled:opacity-50"
+              className="w-full text-sm py-2.5 rounded font-bold text-white transition-all disabled:opacity-50"
               style={{ background: "var(--primary)" }}
             >
               {isPending ? t("common.loading") : t("common.save")}

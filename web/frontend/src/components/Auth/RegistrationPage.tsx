@@ -44,7 +44,7 @@ export default function RegistrationPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm p-8 rounded-3xl"
+        className="w-full max-w-sm p-8 rounded-md"
         style={{
           background: "var(--card)",
           border: "1px solid var(--border)",
@@ -79,7 +79,7 @@ export default function RegistrationPage() {
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             required
-            className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+            className="w-full px-4 py-3 rounded-md text-sm outline-none"
             style={{
               background: "var(--elevated)",
               border: "1px solid var(--border)",
@@ -92,7 +92,7 @@ export default function RegistrationPage() {
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             required
-            className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+            className="w-full px-4 py-3 rounded-md text-sm outline-none"
             style={{
               background: "var(--elevated)",
               border: "1px solid var(--border)",
@@ -111,7 +111,7 @@ export default function RegistrationPage() {
             disabled={isLoading}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-60"
+            className="w-full py-3 rounded-md text-sm font-bold text-white disabled:opacity-60"
             style={{
               background: "linear-gradient(135deg,#1565a8,#114e85)",
               boxShadow: "0 4px 16px rgba(21,101,168,0.35)",

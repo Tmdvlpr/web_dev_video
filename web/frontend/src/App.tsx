@@ -106,7 +106,7 @@ function Toasts({ toasts }: { toasts: Toast[] }) {
             <motion.div key={t.id}
               initial={{ opacity: 0, x: 60, scale: 0.9 }} animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 60, scale: 0.9 }} transition={{ type: "spring", damping: 20, stiffness: 300 }}
-              className="px-4 py-3 rounded-2xl text-sm font-semibold"
+              className="px-4 py-3 rounded-md text-sm font-semibold"
               style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.text,
                 boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.5)" : "0 4px 20px rgba(0,0,0,0.1)",
                 backdropFilter: isDark ? "blur(16px)" : undefined }}>
@@ -144,7 +144,7 @@ function SideBtn({ label, icon, onClick, danger, rightEl }: {
     : "var(--elevated)";
   return (
     <button type="button" onClick={onClick}
-      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all"
       style={{ color: base, background: "transparent" }}
       onMouseEnter={e => { e.currentTarget.style.background = hover; e.currentTarget.style.color = danger ? base : "var(--text)"; }}
       onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = base; }}>
@@ -238,7 +238,7 @@ function Dashboard() {
           {miniApp && <OpenInBrowserButton />}
           <button
             onClick={() => setSidebarOpen(v => !v)}
-            className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all"
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all"
             style={{
               background: sidebarOpen ? "var(--elevated)" : "transparent",
               border: `1px solid ${sidebarOpen ? "var(--border)" : "transparent"}`,
@@ -264,7 +264,7 @@ function Dashboard() {
       {/* FAB */}
       <button
         onClick={() => handleSlotClick(new Date(), new Date(Date.now() + 3_600_000))}
-        className="fixed z-40 flex items-center justify-center rounded-2xl text-white cursor-pointer"
+        className="fixed z-40 flex items-center justify-center rounded-md text-white cursor-pointer"
         style={{ bottom: 24, right: 24, width: 56, height: 56,
           background: "linear-gradient(135deg,#1565a8,#3b82f6)",
           boxShadow: "0 4px 20px rgba(21,101,168,0.40)" }}>
@@ -306,7 +306,7 @@ function Dashboard() {
                   Аккаунт
                 </span>
                 <button type="button" onClick={closeSidebar}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                  className="w-7 h-7 rounded flex items-center justify-center transition-all"
                   style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
                   onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--border)"; }}
                   onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "var(--elevated)"; }}>

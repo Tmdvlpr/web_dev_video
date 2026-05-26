@@ -90,7 +90,7 @@ function QrAuth() {
         className="flex flex-col items-center gap-3">
         <p className="text-sm font-semibold" style={{ color: "rgba(239,68,68,0.8)" }}>{t("auth.qrExpired")}</p>
         <button onClick={createSession}
-          className="px-4 py-2 rounded-xl text-sm font-bold text-white"
+          className="px-4 py-2 rounded-md text-sm font-bold text-white"
           style={{ background: "linear-gradient(135deg, #2563eb, #6366f1)" }}>
           {t("auth.createNew")}
         </button>
@@ -115,7 +115,7 @@ function QrAuth() {
     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }}
       className="flex flex-col items-center gap-4">
       {/* QR Code */}
-      <div className="p-3 rounded-2xl" style={{ background: "white", boxShadow: isDark ? "0 2px 16px rgba(96,165,250,0.15)" : "0 2px 16px rgba(37,99,235,0.12)" }}>
+      <div className="p-3 rounded-md" style={{ background: "white", boxShadow: isDark ? "0 2px 16px rgba(96,165,250,0.15)" : "0 2px 16px rgba(37,99,235,0.12)" }}>
         <QRCodeSVG
           value={botUrl}
           size={180}
@@ -132,7 +132,7 @@ function QrAuth() {
 
       {/* Open Telegram in a popup so the user stays on this tab */}
       <button onClick={openTgPopup}
-        className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+        className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all"
         style={{
           background: isDark ? "rgba(96,165,250,0.08)" : "rgba(37,99,235,0.06)",
           border: isDark ? "1.5px solid rgba(96,165,250,0.22)" : "1.5px solid rgba(37,99,235,0.2)",
@@ -495,13 +495,13 @@ export default function LoginPage() {
           className="relative w-full max-w-[480px]"
         >
           {/* glow */}
-          <div className="absolute -inset-8 rounded-3xl pointer-events-none" style={{
+          <div className="absolute -inset-8 rounded-md pointer-events-none" style={{
             background: isDark ? "radial-gradient(ellipse, rgba(79,124,255,0.14) 0%, transparent 70%)" : "radial-gradient(ellipse, rgba(37,99,235,0.16) 0%, transparent 70%)",
             filter: "blur(20px)",
           }} />
 
           {/* card */}
-          <div className="relative rounded-2xl overflow-hidden" style={{
+          <div className="relative rounded-md overflow-hidden" style={{
             background: isDark ? "rgba(11,15,25,0.92)" : "rgba(255,255,255,0.92)",
             border: isDark ? "1px solid rgba(96,165,250,0.18)" : "1px solid rgba(37,99,235,0.2)",
             boxShadow: isDark ? "0 24px 70px rgba(79,124,255,0.18), 0 0 0 1px rgba(96,165,250,0.07), inset 0 1px 0 rgba(255,255,255,0.04)" : "0 24px 70px rgba(37,99,235,0.13), 0 0 0 1px rgba(99,102,241,0.07), inset 0 1px 0 rgba(255,255,255,1)",

@@ -40,7 +40,7 @@ export function AvatarPicker({ user, onClose }: Props) {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -8, scale: 0.95 }}
         transition={{ duration: 0.15 }}
-        className="absolute right-0 top-full mt-2 z-50 rounded-2xl p-4"
+        className="absolute right-0 top-full mt-2 z-50 rounded-md p-4"
         style={{
           width: 224,
           background: isDark ? "#1e1b2e" : "#fff",
@@ -98,7 +98,7 @@ export function AvatarPicker({ user, onClose }: Props) {
           <button
             onClick={() => { mutate(null); onClose(); }}
             disabled={isPending}
-            className="w-full text-xs py-1.5 rounded-lg transition-all"
+            className="w-full text-xs py-1.5 rounded transition-all"
             style={{
               background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9",
               color: isDark ? "#94a3b8" : "#64748b",
@@ -127,7 +127,7 @@ export function AvatarPicker({ user, onClose }: Props) {
               transition={{ type: "spring", damping: 20, stiffness: 300 }}
               src={user.avatar}
               alt={user.display_name}
-              className="rounded-3xl object-contain shadow-2xl"
+              className="rounded-md object-contain shadow-2xl"
               style={{ maxWidth: "min(90vw, 480px)", maxHeight: "min(90vh, 480px)" }}
               onClick={e => e.stopPropagation()}
             />

@@ -133,7 +133,7 @@ function Overlay({ isDark, onClose, children }: { isDark: boolean; onClose: () =
           exit={{ opacity: 0, y: 12, scale: 0.97 }}
           transition={{ type: "spring", damping: 22, stiffness: 320 }}
           onClick={e => e.stopPropagation()}
-          className="w-full rounded-sm flex flex-col"
+          className="w-full rounded flex flex-col"
           style={{
             background: "var(--modal)",
             border: "1px solid var(--border)",
@@ -311,12 +311,12 @@ function GeneralTab({
               </p>
               <div className="flex gap-2">
                 <button onClick={() => setConfirmArch(false)}
-                  className="flex-1 py-1.5 rounded-sm text-xs font-semibold"
+                  className="flex-1 py-1.5 rounded text-xs font-semibold"
                   style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
                   Отмена
                 </button>
                 <button onClick={handleArchive} disabled={archiving}
-                  className="flex-1 py-1.5 rounded-sm text-xs font-bold text-white disabled:opacity-50"
+                  className="flex-1 py-1.5 rounded text-xs font-bold text-white disabled:opacity-50"
                   style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)" }}>
                   {archiving ? "…" : "Архивировать"}
                 </button>
@@ -435,12 +435,12 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner }: { workspaceId: 
                     {isAdmin && (
                       <div className="flex gap-1.5">
                         <button onClick={() => handleApprove(m.id, true)}
-                          className="px-2.5 py-1 rounded-sm text-xs font-bold"
+                          className="px-2.5 py-1 rounded text-xs font-bold"
                           style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.3)", color: "#16a34a" }}>
                           Принять
                         </button>
                         <button onClick={() => handleApprove(m.id, false)}
-                          className="px-2.5 py-1 rounded-sm text-xs font-bold"
+                          className="px-2.5 py-1 rounded text-xs font-bold"
                           style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#dc2626" }}>
                           Отклонить
                         </button>
@@ -485,7 +485,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner }: { workspaceId: 
                           });
                         }}
                           title="Редактировать профиль"
-                          className="w-7 h-7 flex items-center justify-center rounded-sm transition-all"
+                          className="w-7 h-7 flex items-center justify-center rounded transition-all"
                           style={editMemberId === m.id
                             ? { background: "var(--primary)", color: "#fff", border: "1px solid var(--primary)" }
                             : { background: "var(--elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
@@ -497,7 +497,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner }: { workspaceId: 
                       {canRemove && (
                         <button onClick={() => handleRemove(m.id)}
                           title="Удалить"
-                          className="w-7 h-7 flex items-center justify-center rounded-sm"
+                          className="w-7 h-7 flex items-center justify-center rounded"
                           style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#dc2626" }}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M3 6h18" />
@@ -512,16 +512,16 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner }: { workspaceId: 
                         <div className="grid grid-cols-2 gap-2">
                           <input value={editForm.first_name} onChange={e => setEditForm(f => ({ ...f, first_name: e.target.value }))}
                             placeholder="Имя"
-                            className="rounded-sm px-2.5 py-1.5 text-xs outline-none"
+                            className="rounded px-2.5 py-1.5 text-xs outline-none"
                             style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
                           <input value={editForm.last_name} onChange={e => setEditForm(f => ({ ...f, last_name: e.target.value }))}
                             placeholder="Фамилия"
-                            className="rounded-sm px-2.5 py-1.5 text-xs outline-none"
+                            className="rounded px-2.5 py-1.5 text-xs outline-none"
                             style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
                         </div>
                         <input value={editForm.position} onChange={e => setEditForm(f => ({ ...f, position: e.target.value }))}
                           placeholder="Должность"
-                          className="w-full rounded-sm px-2.5 py-1.5 text-xs outline-none"
+                          className="w-full rounded px-2.5 py-1.5 text-xs outline-none"
                           style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
                         {isOwner && m.role !== "owner" && (
                           <CustomSelect size="xs"
@@ -535,7 +535,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner }: { workspaceId: 
                         )}
                         <div className="flex gap-2 justify-end">
                           <button onClick={() => setEditMemberId(null)}
-                            className="px-3 py-1.5 rounded-sm text-xs font-semibold"
+                            className="px-3 py-1.5 rounded text-xs font-semibold"
                             style={{ background: "var(--elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
                             Отмена
                           </button>
@@ -555,7 +555,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner }: { workspaceId: 
                             } catch { setErr("Не удалось сохранить"); }
                             finally { setSaving(false); }
                           }}
-                            className="px-3 py-1.5 rounded-sm text-xs font-bold text-white disabled:opacity-50"
+                            className="px-3 py-1.5 rounded text-xs font-bold text-white disabled:opacity-50"
                             style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
                             {saving ? "…" : "Сохранить"}
                           </button>
@@ -598,7 +598,7 @@ function RoleBadge({ role }: { role: string }) {
   };
   const p = palette[role] ?? palette.member;
   return (
-    <span className="text-xs font-bold px-2 py-0.5 rounded-sm"
+    <span className="text-xs font-bold px-2 py-0.5 rounded"
       style={{ background: p.bg, color: p.color }}>
       {roleLabel(role)}
     </span>
@@ -684,24 +684,24 @@ function RoomsTab({ workspaceId, rooms, isAdmin, onRefetch }:
               <input
                 autoFocus value={newName} onChange={e => setNewName(e.target.value)}
                 placeholder="Название переговорной"
-                className="w-full rounded-sm px-2.5 py-1.5 text-sm outline-none"
+                className="w-full rounded px-2.5 py-1.5 text-sm outline-none"
                 style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)" }}
               />
               <input
                 value={newDesc} onChange={e => setNewDesc(e.target.value)}
                 placeholder="Описание (необязательно)"
-                className="w-full rounded-sm px-2.5 py-1.5 text-sm outline-none"
+                className="w-full rounded px-2.5 py-1.5 text-sm outline-none"
                 style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)" }}
               />
               {err && <p className="text-xs" style={{ color: "#dc2626" }}>{err}</p>}
               <div className="flex gap-2">
                 <button onClick={() => { setCreating(false); setNewName(""); setNewDesc(""); setErr(null); }}
-                  className="flex-1 py-1.5 rounded-sm text-xs font-semibold"
+                  className="flex-1 py-1.5 rounded text-xs font-semibold"
                   style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
                   Отмена
                 </button>
                 <button onClick={handleCreate} disabled={busy}
-                  className="flex-1 py-1.5 rounded-sm text-xs font-bold text-white disabled:opacity-50"
+                  className="flex-1 py-1.5 rounded text-xs font-bold text-white disabled:opacity-50"
                   style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
                   {busy ? "…" : "Создать"}
                 </button>
@@ -716,7 +716,7 @@ function RoomsTab({ workspaceId, rooms, isAdmin, onRefetch }:
               <input
                 autoFocus value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())}
                 placeholder="Например: A1B2C3D4"
-                className="w-full rounded-sm px-2.5 py-1.5 text-sm outline-none font-mono"
+                className="w-full rounded px-2.5 py-1.5 text-sm outline-none font-mono"
                 style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)", letterSpacing: "0.1em" }}
                 onKeyDown={e => { if (e.key === "Enter") handleJoin(); }}
               />
@@ -724,12 +724,12 @@ function RoomsTab({ workspaceId, rooms, isAdmin, onRefetch }:
               {joinInfo && <p className="text-xs" style={{ color: "#0891b2" }}>{joinInfo}</p>}
               <div className="flex gap-2">
                 <button onClick={() => { setJoining(false); setJoinCode(""); setErr(null); setJoinInfo(null); }}
-                  className="flex-1 py-1.5 rounded-sm text-xs font-semibold"
+                  className="flex-1 py-1.5 rounded text-xs font-semibold"
                   style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
                   Отмена
                 </button>
                 <button onClick={handleJoin} disabled={busy}
-                  className="flex-1 py-1.5 rounded-sm text-xs font-bold text-white disabled:opacity-50"
+                  className="flex-1 py-1.5 rounded text-xs font-bold text-white disabled:opacity-50"
                   style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
                   {busy ? "…" : "Добавить"}
                 </button>
@@ -908,7 +908,7 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
       {isOwnerRoom && isAdmin && (
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-semibold shrink-0" style={{ color: "var(--text-muted)" }}>Подключение:</span>
-          <div className="flex rounded-sm overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+          <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--border)" }}>
             {([
               { v: "open",     label: "Открытое" },
               { v: "approval", label: "С подтверждением" },
@@ -933,7 +933,7 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
       {(isOwnerRoom || isAdmin) && (
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Видимость:</span>
-          <div className="flex rounded-sm overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+          <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--border)" }}>
             {(["full", "busy_only"] as const).map(v => {
               const active = localVis === v;
               return (
@@ -955,7 +955,7 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
         <div className="mb-2 space-y-1">
           <p className="text-xs font-semibold" style={{ color: "var(--text-sec)" }}>Заявки на подключение:</p>
           {joinRequests.map(req => (
-            <div key={req.id} className="flex items-center gap-2 px-2 py-1 rounded-sm"
+            <div key={req.id} className="flex items-center gap-2 px-2 py-1 rounded"
               style={{ background: "var(--bg)", border: "1px solid var(--border)" }}>
               <div className="flex-1 min-w-0">
                 <span className="text-xs font-semibold truncate" style={{ color: "var(--text)" }}>{req.workspace_name}</span>
@@ -964,7 +964,7 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
                 )}
               </div>
               <button onClick={() => handleApproveRequest(req.id)}
-                className="px-2 py-0.5 rounded-sm text-xs font-bold shrink-0"
+                className="px-2 py-0.5 rounded text-xs font-bold shrink-0"
                 style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.3)", color: "#16a34a" }}>
                 Принять
               </button>
@@ -981,14 +981,14 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
       <div className="flex flex-wrap gap-1.5">
         {isOwnerRoom && (
           <button onClick={() => setShowShare(v => !v)}
-            className="px-2.5 py-1 rounded-sm text-xs font-semibold"
+            className="px-2.5 py-1 rounded text-xs font-semibold"
             style={{ background: "var(--primary-light)", border: "1px solid var(--primary-border)", color: "var(--primary)" }}>
             Поделиться
           </button>
         )}
         {isOwnerRoom && isAdmin && !confirmArch && (
           <button onClick={() => setConfirmArch(true)}
-            className="px-2.5 py-1 rounded-sm text-xs font-semibold"
+            className="px-2.5 py-1 rounded text-xs font-semibold"
             style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)", color: "#dc2626" }}>
             Архивировать
           </button>
@@ -996,12 +996,12 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
         {confirmArch && (
           <div className="flex gap-1.5">
             <button onClick={() => setConfirmArch(false)}
-              className="px-2.5 py-1 rounded-sm text-xs font-semibold"
+              className="px-2.5 py-1 rounded text-xs font-semibold"
               style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
               Отмена
             </button>
             <button onClick={handleArchive} disabled={busy}
-              className="px-2.5 py-1 rounded-sm text-xs font-bold text-white disabled:opacity-50"
+              className="px-2.5 py-1 rounded text-xs font-bold text-white disabled:opacity-50"
               style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)" }}>
               {busy ? "…" : "Подтвердить"}
             </button>
@@ -1015,11 +1015,11 @@ function RoomRow({ wr, workspaceId, isAdmin, onRefetch }:
             autoFocus value={shareCode} onChange={e => setShareCode(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") handleShare(); }}
             placeholder="Инвайт-код целевого пространства"
-            className="flex-1 rounded-sm px-2.5 py-1.5 text-xs outline-none font-mono"
+            className="flex-1 rounded px-2.5 py-1.5 text-xs outline-none font-mono"
             style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)" }}
           />
           <button onClick={handleShare} disabled={busy}
-            className="px-3 rounded-sm text-xs font-bold text-white disabled:opacity-50"
+            className="px-3 rounded text-xs font-bold text-white disabled:opacity-50"
             style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
             {busy ? "…" : "Отправить"}
           </button>
@@ -1135,7 +1135,7 @@ function AnalyticsTab({ workspaceId }: { workspaceId: number }) {
       <div className="flex gap-1.5">
         {[7, 30, 90].map(d => (
           <button key={d} onClick={() => setPeriod(d)}
-            className="px-3 py-1 rounded-sm text-xs font-semibold transition-all"
+            className="px-3 py-1 rounded text-xs font-semibold transition-all"
             style={{
               background: period === d ? "var(--primary)" : "var(--elevated)",
               color: period === d ? "#fff" : "var(--text-muted)",
@@ -1213,11 +1213,11 @@ function BarChart({ data, color }: { data: Array<{ date: string; count: number }
               rx={2} fill={color} opacity={hovered === i ? 1 : 0.75}
             />
             {d.count > 0 && (
-              <text x={cx} y={barY - 3} textAnchor="middle" fontSize={9} fontWeight="600" fill={color}>
+              <text x={cx} y={barY - 3} textAnchor="middle" fontSize={11} fontWeight="700" fill={color}>
                 {d.count}
               </text>
             )}
-            <text x={cx} y={H - 1} textAnchor="middle" fontSize={9} fill="var(--text-muted)">
+            <text x={cx} y={H - 1} textAnchor="middle" fontSize={11} fill="var(--text-muted)">
               {fmtChartDate(d.date)}
             </text>
           </g>

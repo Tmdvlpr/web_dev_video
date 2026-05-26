@@ -1833,12 +1833,12 @@ function FullscreenError({ message, onClose, onRetry }: { message: string; onClo
       <p className="text-sm" style={{ color: "var(--tx2)" }}>{message}</p>
       <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
         {onRetry && (
-          <button onClick={onRetry} className="px-5 py-2 rounded-xl text-sm font-semibold"
+          <button onClick={onRetry} className="px-5 py-2 rounded-md text-sm font-semibold"
             style={{ background: "linear-gradient(135deg,#1565a8,#3b82f6)", color: "#fff", border: "none", cursor: "pointer" }}>
             Переподключиться
           </button>
         )}
-        <button onClick={onClose} className="px-5 py-2 rounded-xl text-sm font-semibold"
+        <button onClick={onClose} className="px-5 py-2 rounded-md text-sm font-semibold"
           style={{ background: "var(--elev)", color: "var(--tx)" }}>
           Назад
         </button>

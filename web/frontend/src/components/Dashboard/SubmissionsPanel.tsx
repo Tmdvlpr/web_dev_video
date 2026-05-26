@@ -140,7 +140,7 @@ export function SubmissionsPanel({ isOpen, onClose, onBack }: Props) {
                       {s.photo_b64 && (
                         <a href={s.photo_b64} target="_blank" rel="noreferrer">
                           <img src={s.photo_b64} alt="attachment"
-                            className="w-full max-h-64 object-contain rounded-lg"
+                            className="w-full max-h-64 object-contain rounded"
                             style={{ background: "var(--card)", border: "1px solid var(--border)" }} />
                         </a>
                       )}
@@ -149,7 +149,7 @@ export function SubmissionsPanel({ isOpen, onClose, onBack }: Props) {
                         {s.status !== "in_progress" && (
                           <button onClick={() => setStatus({ id: s.id, status: "in_progress" })}
                             disabled={statusPending && statusVars?.id === s.id}
-                            className="text-xs px-2.5 py-1 rounded-lg font-semibold transition-all disabled:opacity-50"
+                            className="text-xs px-2.5 py-1 rounded font-semibold transition-all disabled:opacity-50"
                             style={{ background: "rgba(217,119,6,0.12)", color: "#d97706", border: "1px solid rgba(217,119,6,0.35)" }}>
                             {t("submissions.markInProgress")}
                           </button>
@@ -157,7 +157,7 @@ export function SubmissionsPanel({ isOpen, onClose, onBack }: Props) {
                         {s.status !== "closed" && (
                           <button onClick={() => setStatus({ id: s.id, status: "closed" })}
                             disabled={statusPending && statusVars?.id === s.id}
-                            className="text-xs px-2.5 py-1 rounded-lg font-semibold transition-all disabled:opacity-50"
+                            className="text-xs px-2.5 py-1 rounded font-semibold transition-all disabled:opacity-50"
                             style={{ background: "rgba(100,116,139,0.12)", color: "#64748b", border: "1px solid rgba(100,116,139,0.35)" }}>
                             {t("submissions.markClosed")}
                           </button>
@@ -165,14 +165,14 @@ export function SubmissionsPanel({ isOpen, onClose, onBack }: Props) {
                         {s.status !== "new" && (
                           <button onClick={() => setStatus({ id: s.id, status: "new" })}
                             disabled={statusPending && statusVars?.id === s.id}
-                            className="text-xs px-2.5 py-1 rounded-lg font-semibold transition-all disabled:opacity-50"
+                            className="text-xs px-2.5 py-1 rounded font-semibold transition-all disabled:opacity-50"
                             style={{ background: "rgba(124,58,237,0.12)", color: "#7c3aed", border: "1px solid rgba(124,58,237,0.35)" }}>
                             {t("submissions.markNew")}
                           </button>
                         )}
                         <div className="flex-1" />
                         <button onClick={() => { if (confirm(t("submissions.deleteConfirm"))) del(s.id); }}
-                          className="text-xs px-2 py-1 rounded-lg font-semibold transition-all"
+                          className="text-xs px-2 py-1 rounded font-semibold transition-all"
                           style={{ color: "var(--text-muted)" }}
                           onMouseEnter={e => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.background = "rgba(239,68,68,0.1)"; }}
                           onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = ""; }}>

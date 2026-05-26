@@ -84,7 +84,7 @@ export function GuestInput({
       <div ref={wrapRef} className="relative">
         {/* Tag area — click opens dropdown */}
         <div
-          className="rounded-xl px-3 py-2 flex flex-wrap gap-1.5 min-h-[40px] transition-all cursor-pointer"
+          className="rounded-md px-3 py-2 flex flex-wrap gap-1.5 min-h-[40px] transition-all cursor-pointer"
           style={{
             background: "var(--input-bg)",
             border: focused ? "1.5px solid var(--primary)" : "1.5px solid var(--input-border)",
@@ -94,7 +94,7 @@ export function GuestInput({
         >
           {guests.map(g => (
             <motion.span key={g} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold"
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold"
               style={{ background: "var(--primary-light)", border: "1px solid var(--primary-border)", color: "var(--primary)" }}>
               @{g}
               <button type="button"
@@ -114,7 +114,7 @@ export function GuestInput({
             <motion.div
               initial={{ opacity: 0, y: dropUp ? 4 : -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: dropUp ? 4 : -4 }}
               transition={{ duration: 0.12 }}
-              className={`absolute z-50 left-0 right-0 rounded-xl overflow-hidden ${dropUp ? "bottom-full mb-1" : "mt-1"}`}
+              className={`absolute z-50 left-0 right-0 rounded-md overflow-hidden ${dropUp ? "bottom-full mb-1" : "mt-1"}`}
               style={{ background: isDark ? "#0f172a" : "#ffffff", border: "1px solid var(--border)", boxShadow: dropShadow, maxHeight: 300, overflowY: "auto" }}
               onPointerDown={e => e.stopPropagation()}>
 
@@ -127,7 +127,7 @@ export function GuestInput({
                   ] as const).map(opt => (
                     <button key={opt.key} type="button"
                       onClick={e => { e.stopPropagation(); setMode(opt.key); if (opt.key === "username") setTimeout(() => inputRef.current?.focus(), 30); }}
-                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-left transition-all"
+                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded text-left transition-all"
                       onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; }}
                       onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
                       <span className="text-base leading-none">{opt.emoji}</span>

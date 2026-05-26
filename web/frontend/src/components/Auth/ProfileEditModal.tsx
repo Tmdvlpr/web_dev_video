@@ -124,7 +124,7 @@ export function ProfileEditModal({ open, user, onClose, onSaved, onBack }: Props
               value={first}
               onChange={e => setFirst(e.target.value)}
               autoFocus
-              className="w-full text-sm rounded-lg px-3 py-2 mb-3 outline-none"
+              className="w-full text-sm rounded px-3 py-2 mb-3 outline-none"
               style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)" }}
             />
 
@@ -135,7 +135,7 @@ export function ProfileEditModal({ open, user, onClose, onSaved, onBack }: Props
               type="text"
               value={last}
               onChange={e => setLast(e.target.value)}
-              className="w-full text-sm rounded-lg px-3 py-2 mb-4 outline-none"
+              className="w-full text-sm rounded px-3 py-2 mb-4 outline-none"
               style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)" }}
             />
 
@@ -149,7 +149,7 @@ export function ProfileEditModal({ open, user, onClose, onSaved, onBack }: Props
                   key={pos}
                   type="button"
                   onClick={() => setPosition(pos)}
-                  className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                  className="w-full text-left px-3 py-2 rounded text-xs font-medium transition-all"
                   style={{
                     background: position === pos ? "var(--primary)" : "var(--elevated)",
                     border: `1.5px solid ${position === pos ? "var(--primary)" : "var(--border)"}`,
@@ -224,7 +224,7 @@ export function ProfileEditModal({ open, user, onClose, onSaved, onBack }: Props
             <button
               type="submit"
               disabled={isPending || !first.trim()}
-              className="w-full text-sm py-2.5 rounded-lg font-bold text-white transition-all disabled:opacity-50"
+              className="w-full text-sm py-2.5 rounded font-bold text-white transition-all disabled:opacity-50"
               style={{ background: "var(--primary)" }}
             >
               {isPending ? t("common.loading") : t("common.save")}

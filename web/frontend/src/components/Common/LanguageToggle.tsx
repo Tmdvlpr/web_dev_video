@@ -10,7 +10,7 @@ export function LanguageToggle() {
       onClick={() => setLocale(next)}
       whileHover={{ scale: 1.06 }}
       whileTap={{ scale: 0.94 }}
-      className="flex items-center justify-center rounded-lg text-xs font-bold transition-all"
+      className="flex items-center justify-center rounded text-xs font-bold transition-all"
       title={locale === "ru" ? "Тилни ўзгартириш" : "Сменить язык"}
       style={{
         height: 32,

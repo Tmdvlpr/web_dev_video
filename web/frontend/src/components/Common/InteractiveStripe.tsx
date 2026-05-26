@@ -106,7 +106,7 @@ export function InteractiveStripe({
 
       {dragging && daysPreview !== 0 && (
         <div
-          className="absolute pointer-events-none flex items-center px-2 py-0.5 rounded-lg font-bold"
+          className="absolute pointer-events-none flex items-center px-2 py-0.5 rounded font-bold"
           style={{
             top: 8, left: "50%", transform: "translateX(-50%)",
             background: "rgba(255,255,255,0.95)",

@@ -544,7 +544,7 @@ export function BookingModal({
               onDragStart={() => {}}
               onDragEnd={() => {}}
               onClick={e => e.stopPropagation()}
-              className="w-full max-w-md rounded-lg relative pointer-events-auto"
+              className="w-full max-w-md rounded relative pointer-events-auto"
               style={{
                 background: "var(--modal)",
                 border: "1px solid var(--border)",
@@ -610,7 +610,7 @@ export function BookingModal({
                       {editBooking.guests?.length > 0 && (
                         <div className="flex flex-wrap gap-1 pt-1">
                           {editBooking.guests.map(g => (
-                            <span key={g} className="px-2 py-0.5 rounded-lg text-xs font-semibold"
+                            <span key={g} className="px-2 py-0.5 rounded text-xs font-semibold"
                               style={{ background: "var(--primary-light)", border: "1px solid var(--primary-border)", color: "var(--primary)" }}>
                               @{g}
                             </span>
@@ -672,7 +672,7 @@ export function BookingModal({
                           {guestInviteLoading ? (
                             <p className="text-xs" style={{ color: "var(--text-muted)" }}>{t("booking.creatingLink")}</p>
                           ) : guestInviteUrl ? (
-                            <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+                            <div className="flex items-center gap-2 px-2.5 py-1.5 rounded" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
                               <span className="flex-1 text-xs truncate" style={{ color: "var(--text-muted)" }}>{guestInviteUrl}</span>
                             </div>
                           ) : null}
@@ -760,7 +760,7 @@ export function BookingModal({
                           key={opt.value}
                           type="button"
                           onClick={() => setBookingType(opt.value)}
-                          className="flex-1 py-1.5 rounded-sm text-xs font-semibold transition-all"
+                          className="flex-1 py-1.5 rounded text-xs font-semibold transition-all"
                           style={{
                             background: bookingType === opt.value ? "var(--primary)" : "var(--elevated)",
                             border: bookingType === opt.value ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
@@ -894,7 +894,7 @@ export function BookingModal({
                         return (
                           <motion.button key={p.key} type="button" onClick={() => applyPreset(p.minutes)}
                             whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                            className="flex-1 py-1.5 rounded-sm text-xs font-bold transition-all"
+                            className="flex-1 py-1.5 rounded text-xs font-bold transition-all"
                             style={{
                               background: active ? "var(--primary)" : "var(--primary-light)",
                               border: `1.5px solid ${active ? "var(--primary)" : "var(--primary-border)"}`,
@@ -925,7 +925,7 @@ export function BookingModal({
                                 setRecurUntil(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);
                               }
                             }}
-                            className="flex-1 py-1.5 rounded-sm text-xs font-semibold transition-all"
+                            className="flex-1 py-1.5 rounded text-xs font-semibold transition-all"
                             style={{
                               background: recurrence === opt.value ? "var(--primary)" : "var(--elevated)",
                               border: recurrence === opt.value ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
@@ -946,7 +946,7 @@ export function BookingModal({
                               return (
                                 <button key={d.idx} type="button"
                                   onClick={() => { setRecurDays(days => on ? days.filter(x => x !== d.idx) : [...days, d.idx].sort()); setFieldErrors(fe => ({ ...fe, days: undefined })); }}
-                                  className="flex-1 py-1 rounded-lg text-xs font-bold transition-all"
+                                  className="flex-1 py-1 rounded text-xs font-bold transition-all"
                                   style={{
                                     background: on ? "var(--primary)" : "var(--elevated)",
                                     border: `1.5px solid ${on ? "var(--primary)" : "var(--border)"}`,
@@ -1080,7 +1080,7 @@ export function BookingModal({
                         {guestInviteLoading ? (
                           <p className="text-xs" style={{ color: "var(--text-muted)" }}>{t("booking.creatingLink")}</p>
                         ) : guestInviteUrl ? (
-                          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+                          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
                             <span className="flex-1 text-xs truncate" style={{ color: "var(--text-muted)" }}>{guestInviteUrl}</span>
                           </div>
                         ) : null}

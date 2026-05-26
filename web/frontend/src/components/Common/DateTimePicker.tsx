@@ -163,7 +163,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
         ref={triggerRef}
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="w-full rounded-xl px-3 py-2.5 text-left transition-all"
+        className="w-full rounded-md px-3 py-2.5 text-left transition-all"
         style={{
           border: open ? "1.5px solid var(--primary)" : "1.5px solid var(--input-border)",
           background: open ? (isDark ? "rgba(168,85,247,0.08)" : "#faf9ff") : "var(--input-bg)",
@@ -222,7 +222,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                   <div className="flex items-center justify-between mb-3 gap-1">
                     <button type="button"
                       onClick={() => { if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); } else setViewMonth(m => m - 1); }}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
+                      className="w-7 h-7 flex items-center justify-center rounded transition-all"
                       style={{ color: "var(--text-muted)", background: isDark ? "rgba(255,255,255,0.05)" : "#f5f5f5" }}
                       onMouseEnter={e => { e.currentTarget.style.color = "var(--primary)"; e.currentTarget.style.background = isDark ? "rgba(21,101,168,0.15)" : "#e6f0fa"; }}
                       onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.05)" : "#f5f5f5"; }}>
@@ -240,7 +240,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
 
                     <button type="button"
                       onClick={() => { if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); } else setViewMonth(m => m + 1); }}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
+                      className="w-7 h-7 flex items-center justify-center rounded transition-all"
                       style={{ color: "var(--text-muted)", background: isDark ? "rgba(255,255,255,0.05)" : "#f5f5f5" }}
                       onMouseEnter={e => { e.currentTarget.style.color = "var(--primary)"; e.currentTarget.style.background = isDark ? "rgba(21,101,168,0.15)" : "#e6f0fa"; }}
                       onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.05)" : "#f5f5f5"; }}>

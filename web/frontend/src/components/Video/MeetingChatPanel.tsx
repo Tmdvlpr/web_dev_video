@@ -259,7 +259,7 @@ export function MeetingChatPanel({ bookingId, readOnly, onClose, style }: Props)
           style={{ borderTop: "1px solid #1f2937" }}
         >
           <input
-            className="flex-1 rounded-lg px-2.5 py-1.5 text-sm outline-none"
+            className="flex-1 rounded px-2.5 py-1.5 text-sm outline-none"
             style={{ background: "#1f2937", color: "#f9fafb", border: "1px solid #374151" }}
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -276,7 +276,7 @@ export function MeetingChatPanel({ bookingId, readOnly, onClose, style }: Props)
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
             title={t("chatpanel.attachTitle")}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-sm transition-colors disabled:opacity-40"
+            className="w-7 h-7 flex items-center justify-center rounded text-sm transition-colors disabled:opacity-40"
             style={{ color: "#9ca3af" }}
             onMouseEnter={(e) => (e.currentTarget.style.color = "#f9fafb")}
             onMouseLeave={(e) => (e.currentTarget.style.color = "#9ca3af")}
@@ -286,7 +286,7 @@ export function MeetingChatPanel({ bookingId, readOnly, onClose, style }: Props)
           <button
             onClick={sendMessage}
             disabled={!input.trim() || uploading}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-sm font-bold transition-colors disabled:opacity-40"
+            className="w-7 h-7 flex items-center justify-center rounded text-sm font-bold transition-colors disabled:opacity-40"
             style={{ color: "#60a5fa" }}
             onMouseEnter={(e) => (e.currentTarget.style.color = "#93c5fd")}
             onMouseLeave={(e) => (e.currentTarget.style.color = "#60a5fa")}
