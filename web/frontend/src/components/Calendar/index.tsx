@@ -46,7 +46,10 @@ function DayContainer({ date, dateStr, currentUser, onSlotClick, onCardClick, is
     updateBooking({ id: booking.id, payload: { end_time: newEnd.toISOString() } });
   };
 
-  const byRoom = roomId ? (bookings as Booking[]).filter((b) => b.room_id === roomId) : bookings as Booking[];
+  // Virtual meetings have no physical room — always show them regardless of room filter
+  const byRoom = roomId
+    ? (bookings as Booking[]).filter((b) => b.room_id === roomId || (b.booking_type ?? "physical") === "virtual")
+    : bookings as Booking[];
   const byType = typeFilter && typeFilter !== "all" ? byRoom.filter((b) => (b.booking_type ?? "physical") === typeFilter) : byRoom;
   const filtered = searchQuery
     ? byType.filter((b) =>
@@ -466,7 +469,7 @@ function FilterDropdown({
 
           {/* Type tab */}
           {tab === "type" && (
-            <div className="p-2 flex flex-wrap gap-1">
+            <div className="p-2 grid grid-cols-2 gap-1">
               {TYPE_OPTS.map(({ key, label }) => (
                 <button
                   key={key}
@@ -565,7 +568,7 @@ function RoomStatus({ roomId, workspaceId }: { roomId?: number | null; workspace
       <div ref={ref} style={{ position: "relative" }}>
         <button
           onClick={() => setPopupOpen((v) => !v)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold"
           style={{ background: isDark ? "rgba(239,68,68,0.1)" : "#fff1f2", border: "1px solid #fecdd3", color: "#dc2626", cursor: "pointer" }}>
           <motion.div animate={{ scale: [1, 1.4, 1], opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }}
             className="w-2 h-2 rounded-full" style={{ background: "#ef4444" }} />
@@ -584,7 +587,7 @@ function RoomStatus({ roomId, workspaceId }: { roomId?: number | null; workspace
         <div ref={ref} style={{ position: "relative" }}>
           <button
             onClick={() => setPopupOpen((v) => !v)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold"
             style={{ background: isDark ? "rgba(217,119,6,0.1)" : "#fffbeb", border: "1px solid #fde68a", color: "#d97706", cursor: "pointer" }}>
             <div className="w-2 h-2 rounded-full" style={{ background: "#f59e0b" }} />
             <span>{t("status.busyAt", { time: startTime })}</span>
@@ -596,7 +599,7 @@ function RoomStatus({ roomId, workspaceId }: { roomId?: number | null; workspace
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold"
       style={{ background: isDark ? "rgba(22,163,74,0.1)" : "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d" }}>
       <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 2, repeat: Infinity }}
         className="w-2 h-2 rounded-full" style={{ background: "#22c55e" }} />

@@ -104,7 +104,7 @@ export function SubmissionsPanel({ isOpen, onClose, onBack }: Props) {
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-32 rounded-xl animate-pulse" style={{ background: "var(--elevated)" }} />
+                  <div key={i} className="h-32 rounded-md animate-pulse" style={{ background: "var(--elevated)" }} />
                 ))
               ) : items.length === 0 ? (
                 <p className="text-xs text-center pt-8" style={{ color: "var(--text-muted)" }}>
@@ -115,7 +115,7 @@ export function SubmissionsPanel({ isOpen, onClose, onBack }: Props) {
                   const c = STATUS_COLORS[s.status];
                   return (
                     <div key={s.id}
-                      className="rounded-xl p-3 space-y-2"
+                      className="rounded-md p-3 space-y-2"
                       style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">

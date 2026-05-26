@@ -106,7 +106,7 @@ function ExportFooter({ isDark }: { isDark: boolean }) {
         <motion.button
           onClick={handleExport} disabled={exporting}
           whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold disabled:opacity-50 transition-all"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold disabled:opacity-50 transition-all"
           style={{
             background: isDark ? "rgba(21,101,168,0.12)" : "#e6f0fa",
             border: isDark ? "1px solid rgba(21,101,168,0.3)" : "1px solid #a5cfeb",
@@ -119,7 +119,7 @@ function ExportFooter({ isDark }: { isDark: boolean }) {
         onClick={() => getFeed()}
         disabled={feedLoading}
         whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-        className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold disabled:opacity-50 transition-all"
+        className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold disabled:opacity-50 transition-all"
         style={{
           background: feedCopied
             ? (isDark ? "rgba(34,197,94,0.12)" : "#f0fdf4")
@@ -226,7 +226,7 @@ export function ActiveMeetings({ isOpen, onClose, onCardClick, onBack }: Props) 
 
             <div className="flex-1 overflow-y-auto py-1 px-4">
               {error && (
-                <div className="mt-3 px-3 py-2.5 rounded-xl text-xs"
+                <div className="mt-3 px-3 py-2.5 rounded-md text-xs"
                   style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171" }}>
                   ⚠️ {t("meetings.loadErr")}
                 </div>
@@ -272,7 +272,7 @@ export function ActiveMeetings({ isOpen, onClose, onCardClick, onBack }: Props) 
                               onClose();
                             }
                           }}
-                          className="rounded-xl p-3.5 cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-offset-2"
+                          className="rounded-md p-3.5 cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-offset-2"
                           onMouseEnter={e => { e.currentTarget.style.opacity = "0.85"; }}
                           onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
                           style={{

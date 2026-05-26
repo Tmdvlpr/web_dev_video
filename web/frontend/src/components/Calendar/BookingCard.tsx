@@ -102,7 +102,7 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
           borderRight: `1px solid ${greyBorder}`,
           borderBottom: `1px solid ${greyBorder}`,
           borderLeft: `3px solid ${greyBorder}`,
-          borderRadius: 10,
+          borderRadius: 4,
           cursor: "default",
           overflow: "hidden",
         }}
@@ -168,7 +168,7 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
         borderRight: `1px solid ${cp.border}28`,
         borderBottom: `1px solid ${cp.border}28`,
         borderLeft: `3px solid ${leftBorderColor}`,
-        borderRadius: 10,
+        borderRadius: 4,
         cursor: canDrag ? "grab" : "pointer",
         overflow: "hidden",
         opacity: isDragging ? 0.3 : isResizing ? 0 : 1,
@@ -204,7 +204,7 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
             bottom: 0, left: 0, right: 0,
             height: 7,
             cursor: "ns-resize",
-            borderRadius: "0 0 10px 10px",
+            borderRadius: "0 0 4px 4px",
             background: `linear-gradient(to bottom, transparent, ${cp.border}50)`,
             zIndex: 20,
           }}

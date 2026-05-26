@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ConfirmDialog } from "../Common/ConfirmDialog";
 import { MeetingListSkeleton } from "../Common/Skeleton";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -53,12 +54,13 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
   const [inviteResult, setInviteResult] = useState<{ created: boolean; sent: boolean; link: string } | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
 
+  const [analyticsModalOpen, setAnalyticsModalOpen] = useState(false);
   const [analyticsWorkspaceId, setAnalyticsWorkspaceId] = useState<number | undefined>(undefined);
   const [analyticsPeriod, setAnalyticsPeriod] = useState(30);
   const { data: analyticsData, isLoading: analyticsLoading } = useQuery<AdminAnalytics>({
     queryKey: ["admin-analytics", analyticsPeriod, analyticsWorkspaceId],
     queryFn: () => usersApi.adminGetAnalytics({ period_days: analyticsPeriod, workspace_id: analyticsWorkspaceId }),
-    enabled: tab === "analytics" && isSuperadmin,
+    enabled: (tab === "analytics" || analyticsModalOpen) && isSuperadmin,
   });
 
   const [selectionMode, setSelectionMode] = useState(false);
@@ -126,10 +128,10 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
 
   const statCards = stats ? [
     ...(isSuperadmin
-      ? [{ label: t("admin.statUsers"), value: stats.total_users, color: "#7c3aed", goTo: "users" as Tab }]
+      ? [{ label: t("admin.statUsers"), value: stats.total_users, color: "var(--text)", goTo: "users" as Tab }]
       : []),
-    { label: t("admin.statTotalBookings"), value: stats.total_bookings, color: "#0891b2", goTo: "bookings" as Tab },
-    { label: t("admin.statActiveBookings"), value: stats.active_bookings, color: "#16a34a", goTo: "bookings" as Tab },
+    { label: t("admin.statTotalBookings"), value: stats.total_bookings, color: "var(--text)", goTo: "bookings" as Tab },
+    { label: t("admin.statActiveBookings"), value: stats.active_bookings, color: "var(--text)", goTo: "bookings" as Tab },
   ] : [];
 
   const roleBadge = (role: string) => {
@@ -178,16 +180,16 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
             </div>
 
             {/* Tabs */}
-            <div className="flex px-4 pt-3 gap-2" style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.75rem" }}>
+            <div className="grid grid-cols-2 px-4 pt-3 gap-1.5" style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.75rem" }}>
               {(isSuperadmin ? (["stats", "bookings", "users", "analytics"] as Tab[]) : (["stats", "bookings"] as Tab[])).map(tt => (
-                <button key={tt} onClick={() => setTab(tt)}
-                  className="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all"
+                <button key={tt} onClick={() => tt === "analytics" ? setAnalyticsModalOpen(true) : setTab(tt)}
+                  className="py-1.5 rounded-md text-xs font-bold transition-all"
                   style={{
-                    background: tab === tt ? "var(--primary)" : "var(--elevated)",
-                    border: `1.5px solid ${tab === tt ? "var(--primary)" : "var(--border)"}`,
-                    color: tab === tt ? "#fff" : "var(--text-sec)",
+                    background: tt === "analytics" ? "var(--elevated)" : tab === tt ? "var(--primary)" : "var(--elevated)",
+                    border: `1.5px solid ${tt === "analytics" ? "var(--border)" : tab === tt ? "var(--primary)" : "var(--border)"}`,
+                    color: tt === "analytics" ? "var(--text-sec)" : tab === tt ? "#fff" : "var(--text-sec)",
                   }}>
-                  {tt === "stats" ? t("admin.tabStats") : tt === "bookings" ? t("admin.tabBookings") : tt === "users" ? t("admin.tabUsers") : "Аналитика"}
+                  {tt === "stats" ? t("admin.tabStats") : tt === "bookings" ? t("admin.tabBookings") : tt === "users" ? t("admin.tabUsers") : "Аналитика ↗"}
                 </button>
               ))}
             </div>
@@ -199,7 +201,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                 statsLoading ? (
                   <div className="space-y-3">
                     {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="h-20 rounded-xl animate-pulse"
+                      <div key={i} className="h-20 rounded-md animate-pulse"
                         style={{ background: "var(--elevated)" }} />
                     ))}
                   </div>
@@ -210,7 +212,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                         initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                         whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                         onClick={() => setTab(s.goTo)}
-                        className="rounded-xl p-4 flex items-center gap-4 cursor-pointer transition-all"
+                        className="rounded-md p-4 flex items-center gap-4 cursor-pointer transition-all"
                         style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}
                         onMouseEnter={e => { e.currentTarget.style.borderColor = s.color; }}
                         onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; }}>
@@ -264,7 +266,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                       return (
                         <div key={b.id}
                           onClick={selectionMode ? () => toggleSelected(b.id) : undefined}
-                          className="rounded-xl p-3 transition-all"
+                          className="rounded-md p-3 transition-all"
                           style={{
                             background: "var(--elevated)",
                             border: `1px solid ${isSelected ? "var(--primary)" : "var(--border)"}`,
@@ -336,7 +338,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
 
                     {showAddForm && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-                        className="rounded-xl p-3 space-y-2"
+                        className="rounded-md p-3 space-y-2"
                         style={{ background: "var(--elevated)", border: "1px solid var(--primary-border)" }}>
                         {inviteResult ? (
                           inviteResult.sent ? (
@@ -385,7 +387,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                       const c = color(u.id);
                       const badge = roleBadge(u.role);
                       return (
-                        <div key={u.id} className="rounded-xl p-3 flex items-center gap-3"
+                        <div key={u.id} className="rounded-md p-3 flex items-center gap-3"
                           style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
                           <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
                             style={{ background: c }}>{u.display_name[0]}</div>
@@ -438,89 +440,6 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                     })}
                   </div>
                 )
-              )}
-              {/* Analytics tab */}
-              {tab === "analytics" && isSuperadmin && (
-                <div className="space-y-4 pb-20">
-                  {/* Period + workspace filter */}
-                  <div className="space-y-2">
-                    <div className="flex gap-1.5 flex-wrap">
-                      {[7, 30, 90].map(d => (
-                        <button key={d} onClick={() => setAnalyticsPeriod(d)}
-                          className="px-3 py-1 rounded-lg text-xs font-semibold transition-all"
-                          style={{
-                            background: analyticsPeriod === d ? "var(--primary)" : "var(--elevated)",
-                            color: analyticsPeriod === d ? "#fff" : "var(--text-muted)",
-                            border: `1px solid ${analyticsPeriod === d ? "var(--primary)" : "var(--border)"}`,
-                          }}>
-                          {d} дн.
-                        </button>
-                      ))}
-                    </div>
-                    {(analyticsData?.workspaces?.length ?? 0) > 0 && (
-                      <CustomSelect
-                        value={analyticsWorkspaceId !== undefined ? String(analyticsWorkspaceId) : ""}
-                        onChange={v => setAnalyticsWorkspaceId(v ? Number(v) : undefined)}
-                        options={[
-                          { value: "", label: "Все пространства" },
-                          ...(analyticsData?.workspaces ?? []).map(ws => ({ value: String(ws.id), label: ws.name })),
-                        ]}
-                      />
-                    )}
-                  </div>
-
-                  {analyticsLoading ? (
-                    <div className="space-y-3">
-                      {[1,2,3].map(i => <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "var(--elevated)" }} />)}
-                    </div>
-                  ) : (
-                    <>
-                      {/* Summary */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="rounded-xl p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
-                          <div className="text-2xl font-black" style={{ color: "#7c3aed" }}>{analyticsData?.total_members ?? 0}</div>
-                          <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Участников</div>
-                        </div>
-                        <div className="rounded-xl p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
-                          <div className="text-2xl font-black" style={{ color: "#0891b2" }}>{analyticsData?.total_meetings ?? 0}</div>
-                          <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Встреч</div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-xs font-bold mb-1.5" style={{ color: "var(--text-sec)" }}>Новые участники</p>
-                        <AdminBarChart data={analyticsData?.new_members ?? []} color="#7c3aed" />
-                      </div>
-
-                      <div>
-                        <p className="text-xs font-bold mb-1.5" style={{ color: "var(--text-sec)" }}>Частота встреч</p>
-                        <AdminBarChart data={analyticsData?.meetings_by_day ?? []} color="#0891b2" />
-                      </div>
-
-                      {(analyticsData?.top_organizers?.length ?? 0) > 0 && (
-                        <div>
-                          <p className="text-xs font-bold mb-1.5" style={{ color: "var(--text-sec)" }}>Топ организаторов</p>
-                          <div className="space-y-2">
-                            {analyticsData!.top_organizers.map((item, i) => {
-                              const max = Math.max(...analyticsData!.top_organizers.map(x => x.count), 1);
-                              return (
-                                <div key={i}>
-                                  <div className="flex justify-between mb-0.5" style={{ fontSize: 11 }}>
-                                    <span className="font-semibold truncate" style={{ color: "var(--text)" }}>{item.user_name}</span>
-                                    <span style={{ color: "var(--text-muted)", flexShrink: 0, marginLeft: 6 }}>{item.count}</span>
-                                  </div>
-                                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--elevated)" }}>
-                                    <div className="h-full rounded-full" style={{ width: `${(item.count / max) * 100}%`, background: "linear-gradient(90deg,#7c3aed,#a855f7)" }} />
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
               )}
             </div>
 
@@ -602,6 +521,117 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
         onCancel={() => setDeleteBookingTarget(null)}
       />
     </AnimatePresence>
+
+    {/* Analytics full-screen modal */}
+    {analyticsModalOpen && isSuperadmin && createPortal(
+      <div
+        style={{ position: "fixed", inset: 0, zIndex: 10100, background: isDark ? "rgba(0,0,0,0.75)" : "rgba(15,23,42,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+        onClick={() => setAnalyticsModalOpen(false)}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            width: "100%", maxWidth: 720, maxHeight: "90vh",
+            background: "var(--modal)", border: "1px solid var(--border)",
+            borderRadius: 8, display: "flex", flexDirection: "column",
+            boxShadow: isDark ? "0 32px 80px rgba(0,0,0,0.8)" : "0 8px 40px rgba(15,23,42,0.18)",
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+            <h2 className="font-bold text-base" style={{ color: "var(--text)" }}>Аналитика</h2>
+            <button onClick={() => setAnalyticsModalOpen(false)}
+              className="w-8 h-8 flex items-center justify-center rounded-md transition-all"
+              style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
+              onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <line x1="1" y1="1" x2="13" y2="13"/><line x1="13" y1="1" x2="1" y2="13"/>
+              </svg>
+            </button>
+          </div>
+          {/* Filters */}
+          <div className="px-6 pt-4 pb-3 flex flex-wrap items-center gap-3" style={{ borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+            <div className="flex gap-1.5">
+              {[7, 30, 90].map(d => (
+                <button key={d} onClick={() => setAnalyticsPeriod(d)}
+                  className="px-3 py-1.5 rounded-md text-xs font-semibold transition-all"
+                  style={{
+                    background: analyticsPeriod === d ? "var(--primary)" : "var(--elevated)",
+                    color: analyticsPeriod === d ? "#fff" : "var(--text-muted)",
+                    border: `1px solid ${analyticsPeriod === d ? "var(--primary)" : "var(--border)"}`,
+                  }}>
+                  {d} дн.
+                </button>
+              ))}
+            </div>
+            {(analyticsData?.workspaces?.length ?? 0) > 0 && (
+              <div style={{ flex: 1, minWidth: 180 }}>
+                <CustomSelect
+                  value={analyticsWorkspaceId !== undefined ? String(analyticsWorkspaceId) : ""}
+                  onChange={v => setAnalyticsWorkspaceId(v ? Number(v) : undefined)}
+                  options={[
+                    { value: "", label: "Все пространства" },
+                    ...(analyticsData?.workspaces ?? []).map(ws => ({ value: String(ws.id), label: ws.name })),
+                  ]}
+                />
+              </div>
+            )}
+          </div>
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            {analyticsLoading ? (
+              <div className="space-y-3">
+                {[1,2,3,4].map(i => <div key={i} className="h-24 rounded-md animate-pulse" style={{ background: "var(--elevated)" }} />)}
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-md p-4" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+                    <div className="text-3xl font-black" style={{ color: "var(--text)" }}>{analyticsData?.total_members ?? 0}</div>
+                    <div className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Участников</div>
+                  </div>
+                  <div className="rounded-md p-4" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+                    <div className="text-3xl font-black" style={{ color: "var(--text)" }}>{analyticsData?.total_meetings ?? 0}</div>
+                    <div className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Встреч за период</div>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-bold mb-2" style={{ color: "var(--text-sec)" }}>Новые участники</p>
+                  <AdminBarChart data={analyticsData?.new_members ?? []} color="#7c3aed" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold mb-2" style={{ color: "var(--text-sec)" }}>Частота встреч</p>
+                  <AdminBarChart data={analyticsData?.meetings_by_day ?? []} color="#0891b2" />
+                </div>
+                {(analyticsData?.top_organizers?.length ?? 0) > 0 && (
+                  <div>
+                    <p className="text-sm font-bold mb-2" style={{ color: "var(--text-sec)" }}>Топ организаторов</p>
+                    <div className="space-y-3">
+                      {analyticsData!.top_organizers.map((item, i) => {
+                        const max = Math.max(...analyticsData!.top_organizers.map(x => x.count), 1);
+                        return (
+                          <div key={i}>
+                            <div className="flex justify-between mb-1" style={{ fontSize: 13 }}>
+                              <span className="font-semibold truncate" style={{ color: "var(--text)" }}>{item.user_name}</span>
+                              <span style={{ color: "var(--text-muted)", flexShrink: 0, marginLeft: 8 }}>{item.count}</span>
+                            </div>
+                            <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--elevated)" }}>
+                              <div className="h-full rounded-full" style={{ width: `${(item.count / max) * 100}%`, background: "linear-gradient(90deg,#7c3aed,#a855f7)" }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
   );
 }
 

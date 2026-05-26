@@ -141,7 +141,7 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
                   {notifications.map(n => (
                     <motion.div key={n.id}
                       initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                      className="rounded-xl p-3"
+                      className="rounded-md p-3"
                       style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
                       <p className="text-xs font-bold mb-0.5" style={{ color: "var(--text)" }}>{n.title}</p>
                       <p className="text-xs" style={{ color: "var(--text-sec)" }}>{n.body}</p>
@@ -155,7 +155,7 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
             {notifications.length > 0 && (
               <div className="px-4 py-3" style={{ borderTop: "1px solid var(--border)" }}>
                 <button onClick={clearAll}
-                  className="w-full py-2 rounded-xl text-xs font-semibold transition-all"
+                  className="w-full py-2 rounded-md text-xs font-semibold transition-all"
                   style={{ border: "1px solid var(--border)", color: "var(--text-muted)", background: "var(--elevated)" }}
                   onMouseEnter={e => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)"; }}
                   onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.borderColor = "var(--border)"; }}>

@@ -760,7 +760,7 @@ export function BookingModal({
                           key={opt.value}
                           type="button"
                           onClick={() => setBookingType(opt.value)}
-                          className="flex-1 py-1.5 rounded-md text-xs font-semibold transition-all"
+                          className="flex-1 py-1.5 rounded-sm text-xs font-semibold transition-all"
                           style={{
                             background: bookingType === opt.value ? "var(--primary)" : "var(--elevated)",
                             border: bookingType === opt.value ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
@@ -894,7 +894,7 @@ export function BookingModal({
                         return (
                           <motion.button key={p.key} type="button" onClick={() => applyPreset(p.minutes)}
                             whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                            className="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all"
+                            className="flex-1 py-1.5 rounded-sm text-xs font-bold transition-all"
                             style={{
                               background: active ? "var(--primary)" : "var(--primary-light)",
                               border: `1.5px solid ${active ? "var(--primary)" : "var(--primary-border)"}`,
@@ -925,7 +925,7 @@ export function BookingModal({
                                 setRecurUntil(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);
                               }
                             }}
-                            className="flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                            className="flex-1 py-1.5 rounded-sm text-xs font-semibold transition-all"
                             style={{
                               background: recurrence === opt.value ? "var(--primary)" : "var(--elevated)",
                               border: recurrence === opt.value ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",

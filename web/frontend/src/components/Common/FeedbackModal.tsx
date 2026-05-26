@@ -172,7 +172,7 @@ export function FeedbackModal({ open, onClose, onSuccess, onError, onBack }: Pro
                 <div className="px-4 pt-4 pb-2 shrink-0">
                   <button
                     onClick={() => setView("form")}
-                    className="w-full py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2"
                     style={{
                       background: "linear-gradient(135deg,#1565a8,#114e85)",
                       color: "#fff",
@@ -190,7 +190,7 @@ export function FeedbackModal({ open, onClose, onSuccess, onError, onBack }: Pro
                 <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2.5" style={{ minHeight: 0 }}>
                   {isLoading ? (
                     Array.from({ length: 2 }).map((_, i) => (
-                      <div key={i} className="h-20 rounded-xl animate-pulse"
+                      <div key={i} className="h-20 rounded-md animate-pulse"
                         style={{ background: isDark ? "rgba(255,255,255,0.05)" : "#f5f5f5" }} />
                     ))
                   ) : myItems.length === 0 ? (
@@ -210,7 +210,7 @@ export function FeedbackModal({ open, onClose, onSuccess, onError, onBack }: Pro
                         <motion.div
                           key={s.id}
                           initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                          className="rounded-xl p-3.5"
+                          className="rounded-md p-3.5"
                           style={{
                             background: isDark ? "rgba(255,255,255,0.04)" : "#fafafa",
                             border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb"}`,
@@ -244,7 +244,7 @@ export function FeedbackModal({ open, onClose, onSuccess, onError, onBack }: Pro
                   placeholder={t("feedback.textPlaceholder")}
                   rows={6}
                   maxLength={4000}
-                  className="w-full text-sm rounded-xl px-4 py-3 outline-none resize-none transition-all"
+                  className="w-full text-sm rounded-md px-4 py-3 outline-none resize-none transition-all"
                   style={{
                     background: isDark ? "rgba(255,255,255,0.05)" : "#f8fafc",
                     border: `1.5px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"}`,
@@ -255,7 +255,7 @@ export function FeedbackModal({ open, onClose, onSuccess, onError, onBack }: Pro
                 />
 
                 {photo && (
-                  <div className="relative rounded-xl overflow-hidden"
+                  <div className="relative rounded-md overflow-hidden"
                     style={{ border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb"}` }}>
                     <img src={photo} alt="attachment" className="w-full max-h-48 object-contain"
                       style={{ background: isDark ? "rgba(255,255,255,0.03)" : "#f5f5f5" }} />
@@ -272,7 +272,7 @@ export function FeedbackModal({ open, onClose, onSuccess, onError, onBack }: Pro
                   <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickFile} />
                   <button
                     onClick={() => fileRef.current?.click()}
-                    className="text-xs px-3 py-2 rounded-xl font-semibold transition-all"
+                    className="text-xs px-3 py-2 rounded-md font-semibold transition-all"
                     style={{
                       background: isDark ? "rgba(255,255,255,0.06)" : "#f1f5f9",
                       color: isDark ? "#94a3b8" : "#64748b",
@@ -284,7 +284,7 @@ export function FeedbackModal({ open, onClose, onSuccess, onError, onBack }: Pro
                   <button
                     onClick={() => mutate()}
                     disabled={isPending || !text.trim()}
-                    className="text-sm px-5 py-2 rounded-xl font-bold text-white transition-all disabled:opacity-50"
+                    className="text-sm px-5 py-2 rounded-md font-bold text-white transition-all disabled:opacity-50"
                     style={{
                       background: "linear-gradient(135deg,#1565a8,#114e85)",
                       boxShadow: "0 3px 12px rgba(21,101,168,0.35)",
