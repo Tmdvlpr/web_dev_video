@@ -114,7 +114,6 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
         {tab === "members" && (
           <MembersTab
             workspaceId={activeWorkspace.id}
-            workspaceName={activeWorkspace.name}
             myUserId={user?.id ?? null}
             isAdmin={isAdmin}
             isOwner={isOwner}
@@ -380,7 +379,7 @@ function GeneralTab({
   );
 }
 
-function MembersTab({ workspaceId, workspaceName, myUserId, isAdmin, isOwner, isSuperadmin }: { workspaceId: number; workspaceName: string; myUserId: number | null; isAdmin: boolean; isOwner: boolean; isSuperadmin: boolean }) {
+function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: { workspaceId: number; myUserId: number | null; isAdmin: boolean; isOwner: boolean; isSuperadmin: boolean }) {
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviting, setInviting] = useState(false);
