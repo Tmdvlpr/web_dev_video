@@ -199,7 +199,7 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
             height: 7,
             cursor: "ns-resize",
             borderRadius: "0 0 4px 4px",
-            background: `linear-gradient(to bottom, transparent, ${cp.border}50)`,
+            background: "transparent",
             zIndex: 20,
           }}
         />

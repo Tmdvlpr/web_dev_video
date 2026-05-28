@@ -77,6 +77,15 @@ async def _get_my_membership(
     if not workspace:
         raise HTTPException(404, "Workspace not found")
 
+    if user.role == Role.superadmin:
+        # Superadmin always gets owner-level access regardless of actual membership
+        return WorkspaceMember(
+            workspace_id=workspace_id,
+            user_id=user.id,
+            role=WorkspaceMemberRole.owner,
+            status=WorkspaceMemberStatus.active,
+        )
+
     mem_res = await db.execute(
         select(WorkspaceMember).where(
             WorkspaceMember.workspace_id == workspace_id,
@@ -85,14 +94,6 @@ async def _get_my_membership(
     )
     member = mem_res.scalar_one_or_none()
     if not member:
-        if user.role == Role.superadmin:
-            # Superadmin gets synthetic owner access to every workspace
-            return WorkspaceMember(
-                workspace_id=workspace_id,
-                user_id=user.id,
-                role=WorkspaceMemberRole.owner,
-                status=WorkspaceMemberStatus.active,
-            )
         raise HTTPException(403, "Not a member of this workspace")
     if require_active and member.status != WorkspaceMemberStatus.active:
         raise HTTPException(403, "Membership is not active")
