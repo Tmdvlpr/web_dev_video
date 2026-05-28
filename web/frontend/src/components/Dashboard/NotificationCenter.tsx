@@ -155,12 +155,45 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
                 <div className="space-y-2">
                   {notifications.map(n => (
                     <motion.div key={n.id}
-                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                      className="rounded-md p-3"
-                      style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
-                      <p className="text-xs font-bold mb-0.5" style={{ color: "var(--text)" }}>{n.title}</p>
-                      <p className="text-xs" style={{ color: "var(--text-sec)" }}>{n.body}</p>
-                      <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{timeAgo(n.time)}</p>
+                      initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                      className="rounded-xl p-3 flex gap-3"
+                      style={{
+                        background: "var(--elevated)",
+                        border: "1px solid var(--border)",
+                        boxShadow: "0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05)",
+                      }}>
+                      {/* Icon with status badge */}
+                      <div style={{ position: "relative", flexShrink: 0, marginTop: 1 }}>
+                        <div style={{
+                          width: 36, height: 36, borderRadius: "50%",
+                          background: "linear-gradient(135deg, #2563eb, #6366f1)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                        <div style={{
+                          position: "absolute", bottom: 0, right: 0,
+                          width: 13, height: 13, borderRadius: "50%",
+                          background: "#22c55e",
+                          border: "2px solid var(--elevated)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                          <svg width="7" height="7" viewBox="0 0 10 10" fill="none">
+                            <path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+                          </svg>
+                        </div>
+                      </div>
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold mb-0.5" style={{ color: "var(--text)" }}>{n.title}</p>
+                        <p className="text-xs leading-relaxed" style={{ color: "var(--text-sec)" }}>{n.body}</p>
+                        <p className="text-xs mt-1.5" style={{ color: "var(--text-muted)" }}>{timeAgo(n.time)}</p>
+                      </div>
                     </motion.div>
                   ))}
                 </div>

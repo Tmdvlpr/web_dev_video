@@ -442,6 +442,28 @@ function CtrlBtn({
   icon: React.ReactNode; label: string; active?: boolean; danger?: boolean;
   onClick?: () => void; badge?: number | null; disabled?: boolean;
 }) {
+  const [displayLabel, setDisplayLabel] = useState(label);
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const busyRef = useRef(false);
+
+  useEffect(() => {
+    if (displayLabel === label) return;
+    if (busyRef.current) { setDisplayLabel(label); return; }
+    const el = labelRef.current;
+    if (!el) { setDisplayLabel(label); return; }
+    busyRef.current = true;
+    el.classList.add("is-exit");
+    const id = setTimeout(() => {
+      setDisplayLabel(label);
+      el.classList.remove("is-exit");
+      el.classList.add("is-enter-start");
+      void el.offsetWidth;
+      el.classList.remove("is-enter-start");
+      busyRef.current = false;
+    }, 150);
+    return () => clearTimeout(id);
+  }, [label, displayLabel]);
+
   return (
     <button
       className={`ctrlbtn${active ? " ctrlbtn--active" : ""}${danger ? " ctrlbtn--danger" : ""}`}
@@ -449,9 +471,13 @@ function CtrlBtn({
     >
       <div className="ctrlbtn__icon">
         {icon}
-        {badge != null && badge > 0 && <span className="ctrlbtn__badge">{badge}</span>}
+        {badge != null && (
+          <span className="ctrlbtn__badge t-badge" data-open={badge > 0 ? "true" : "false"}>
+            {badge > 0 ? badge : ""}
+          </span>
+        )}
       </div>
-      <span className="ctrlbtn__label">{label}</span>
+      <span ref={labelRef} className="ctrlbtn__label t-text-swap">{displayLabel}</span>
     </button>
   );
 }
@@ -480,13 +506,40 @@ function ControlBar({
   onParticipants: () => void; onChat: () => void; onSettings: () => void; onLeave: () => void;
 }) {
   const { t } = useLocale();
+  const [reactDropState, setReactDropState] = useState<"closed" | "open" | "closing">("closed");
+  const prevShowReactionsRef = useRef(false);
+
+  useEffect(() => {
+    if (showReactions === prevShowReactionsRef.current) return;
+    prevShowReactionsRef.current = showReactions;
+    if (showReactions) {
+      setReactDropState("open");
+    } else {
+      setReactDropState("closing");
+      const id = setTimeout(() => setReactDropState("closed"), 150);
+      return () => clearTimeout(id);
+    }
+  }, [showReactions]);
+
   return (
     <div className="ctrlbar">
       <div className="ctrlbar__inner">
         <div className="ctrlbar__group">
-          <CtrlBtn icon={micOn ? <Ic.Mic sz={20} /> : <Ic.MicOff sz={20} />}
+          <CtrlBtn
+            icon={
+              <span className="t-icon-swap" data-state={micOn ? "a" : "b"}>
+                <span className="t-icon" data-icon="a"><Ic.Mic sz={20} /></span>
+                <span className="t-icon" data-icon="b"><Ic.MicOff sz={20} /></span>
+              </span>
+            }
             label={micOn ? t("conf.mute") : t("conf.unmute")} active={!micOn} onClick={onMic} />
-          <CtrlBtn icon={camOn ? <Ic.Cam sz={20} /> : <Ic.CamOff sz={20} />}
+          <CtrlBtn
+            icon={
+              <span className="t-icon-swap" data-state={camOn ? "a" : "b"}>
+                <span className="t-icon" data-icon="a"><Ic.Cam sz={20} /></span>
+                <span className="t-icon" data-icon="b"><Ic.CamOff sz={20} /></span>
+              </span>
+            }
             label={camOn ? t("conf.camera") : t("conf.cameraOn")} active={!camOn} onClick={onCam} />
           <CtrlBtn icon={<Ic.Monitor sz={20} />}
             label={screenOn ? t("conf.screenStop") : t("conf.screen")} active={screenOn} onClick={onScreen} />
@@ -494,9 +547,18 @@ function ControlBar({
           <div style={{ position: "relative" }}>
             <CtrlBtn icon={<Ic.Emoji sz={20} />} label={t("conf.reactions")}
               active={showReactions} onClick={() => setShowReactions((v) => !v)} />
-            {showReactions && (
-              <ReactionsPopup onReact={onReact} onClose={() => setShowReactions(false)} />
-            )}
+            <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", zIndex: 50 }}>
+              <div
+                className={"t-dropdown" +
+                  (reactDropState === "open" ? " is-open" : "") +
+                  (reactDropState === "closing" ? " is-closing" : "")}
+                data-origin="bottom-center"
+              >
+                {reactDropState !== "closed" && (
+                  <ReactionsPopup onReact={onReact} onClose={() => setShowReactions(false)} />
+                )}
+              </div>
+            </div>
           </div>
           <CtrlBtn icon={<Ic.Hand sz={20} />} label={handUp ? t("conf.lowerHand") : t("conf.raiseHand")} active={handUp} onClick={onHand} />
           {canRecord && <>
@@ -510,7 +572,7 @@ function ControlBar({
           <CtrlBtn icon={<Ic.Users sz={20} />} label={t("conf.participants")}
             active={activePanel === "participants"} badge={participantCount} onClick={onParticipants} />
           <CtrlBtn icon={<Ic.Chat sz={20} />} label={t("conf.chat")}
-            active={activePanel === "chat"} badge={unread > 0 ? unread : null} onClick={onChat} />
+            active={activePanel === "chat"} badge={unread} onClick={onChat} />
           <CtrlBtn icon={<Ic.Settings sz={20} />} label={t("conf.settings")} onClick={onSettings} />
         </div>
 
@@ -661,20 +723,41 @@ function ParticipantsPanel({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const listRef = useRef<HTMLDivElement>(null);
+  const setShifts = (activeIdx: number | null, phase: "in" | "out") => {
+    if (!listRef.current) return;
+    const lift = -4, falloff = 0.45, scale = 1.05;
+    const tf = phase === "out"
+      ? "cubic-bezier(0.34, 3.85, 0.64, 1)"
+      : "cubic-bezier(0.22, 1, 0.36, 1)";
+    const els = listRef.current.querySelectorAll<HTMLElement>(".t-avatar");
+    els.forEach((el, i) => {
+      el.style.transitionTimingFunction = tf;
+      if (activeIdx == null) {
+        el.style.setProperty("--shift", "0px");
+        el.style.setProperty("--scale-active", "1");
+      } else {
+        const d = Math.abs(i - activeIdx);
+        el.style.setProperty("--shift", `${(lift * Math.pow(falloff, d)).toFixed(3)}px`);
+        el.style.setProperty("--scale-active", i === activeIdx ? String(scale) : "1");
+      }
+    });
+  };
+
   return (
     <div className="ppanel">
       <div className="ppanel__top">
         <input className="ppanel__search" placeholder={t("conf.searchParticipants")} value={search}
           onChange={(e) => setSearch(e.target.value)} />
       </div>
-      <div className="ppanel__list">
-        {filtered.map((p) => {
+      <div ref={listRef} className="ppanel__list" onMouseLeave={() => setShifts(null, "out")}>
+        {filtered.map((p, i) => {
           const color = colorFromIdentity(p.identity);
           const name = p.name ?? p.identity;
           const initials = initialsFromName(name);
           const isLocal = p.identity === localIdentity;
           return (
-            <div key={p.identity} className="prow">
+            <div key={p.identity} className="prow t-avatar" onMouseEnter={() => setShifts(i, "in")}>
               <div className="prow__av" style={{ background: `${color}22`, color }}>{initials}</div>
               <div className="prow__info">
                 <div className="prow__name"><span>{isLocal ? t("conf.you") : name}</span></div>

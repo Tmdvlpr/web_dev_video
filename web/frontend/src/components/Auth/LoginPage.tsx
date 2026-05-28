@@ -131,20 +131,22 @@ function QrAuth() {
         {t("auth.qrHint")}
       </p>
 
-      {/* Open Telegram in a popup so the user stays on this tab */}
-      <button onClick={openTgPopup}
-        className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all"
-        style={{
-          background: isDark ? "rgba(96,165,250,0.08)" : "rgba(37,99,235,0.06)",
-          border: isDark ? "1.5px solid rgba(96,165,250,0.22)" : "1.5px solid rgba(37,99,235,0.2)",
-          color: isDark ? "rgba(255,255,255,0.9)" : "rgba(37,99,235,0.7)",
-        }}
-        onMouseEnter={e => { e.currentTarget.style.background = isDark ? "rgba(96,165,250,0.15)" : "rgba(37,99,235,0.12)"; e.currentTarget.style.borderColor = isDark ? "rgba(96,165,250,0.4)" : "rgba(37,99,235,0.4)"; }}
-        onMouseLeave={e => { e.currentTarget.style.background = isDark ? "rgba(96,165,250,0.08)" : "rgba(37,99,235,0.06)"; e.currentTarget.style.borderColor = isDark ? "rgba(96,165,250,0.22)" : "rgba(37,99,235,0.2)"; }}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.03-1.99 1.27-5.62 3.72-.53.36-1.01.54-1.44.53-.47-.01-1.38-.27-2.06-.49-.83-.27-1.49-.42-1.43-.88.03-.24.37-.49 1.02-.75 3.97-1.73 6.62-2.87 7.94-3.44 3.79-1.58 4.57-1.85 5.08-1.86.11 0 .37.03.54.17.14.12.18.28.2.47-.01.06.01.24 0 .38z"/></svg>
-        {t("auth.openTelegram")}
-      </button>
+      {/* Open Telegram in a popup — glowing pill button */}
+      <div className="tg-glow-wrap">
+        <button onClick={openTgPopup} className="tg-glow-btn"
+          style={!isDark ? { background: "rgba(255,255,255,0.93)", color: "#0f172a" } : undefined}>
+          <motion.svg
+            width="16" height="16" viewBox="0 0 24 24" fill="none"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }}
+          >
+            <circle cx="12" cy="12" r="9"
+              stroke={isDark ? "rgba(147,197,253,0.9)" : "rgba(37,99,235,0.8)"}
+              strokeWidth="2.5" strokeLinecap="round" strokeDasharray="42 14" />
+          </motion.svg>
+          {t("auth.openTelegram")}
+        </button>
+      </div>
 
       {/* Polling indicator */}
       <div className="flex items-center gap-2">

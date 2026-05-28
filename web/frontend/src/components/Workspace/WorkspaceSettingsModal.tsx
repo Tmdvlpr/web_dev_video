@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { roomsApi } from "../../api/rooms";
 import { workspacesApi } from "../../api/workspaces";
@@ -48,6 +48,17 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
   const { user } = useAuth();
   const { activeWorkspace, myRooms, refetchWorkspaces, refetchRooms } = useWorkspace();
   const [tab, setTab] = useState<Tab>("general");
+  const TAB_KEYS: Tab[] = ["general", "members", "rooms", "analytics"];
+  const prevTabRef = useRef<Tab>("general");
+  const tabDirRef = useRef<1 | -1>(1);
+
+  const handleTabChange = (newTab: Tab) => {
+    const oldIdx = TAB_KEYS.indexOf(prevTabRef.current);
+    const newIdx = TAB_KEYS.indexOf(newTab);
+    tabDirRef.current = newIdx >= oldIdx ? 1 : -1;
+    prevTabRef.current = newTab;
+    setTab(newTab);
+  };
 
   useEffect(() => {
     if (open) refetchRooms();
@@ -94,7 +105,7 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
 
       <div className="flex gap-1 px-6 pt-3" style={{ borderBottom: "1px solid var(--border)" }}>
         {([["general", t("ws.tabGeneral")], ["members", t("ws.tabMembers")], ["rooms", t("ws.tabRooms")], ["analytics", t("ws.tabAnalytics")]] as [Tab, string][]).map(([k, label]) => (
-          <button key={k} onClick={() => setTab(k)}
+          <button key={k} onClick={() => handleTabChange(k)}
             className="px-3 py-2 text-xs font-semibold transition-all"
             style={{
               color: tab === k ? "var(--primary)" : "var(--text-muted)",
@@ -107,41 +118,43 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-5">
-        {tab === "general" && (
-          <GeneralTab
-            workspaceId={activeWorkspace.id}
-            initialName={activeWorkspace.name}
-            initialTz={activeWorkspace.timezone}
-            inviteCode={activeWorkspace.invite_code}
-            tgInviteLink={activeWorkspace.tg_invite_link ?? null}
-            isOwner={isOwner}
-            isAdmin={isAdmin}
-            isSuperadmin={isSuperadmin}
-            onChanged={refetchWorkspaces}
-            onArchived={() => { refetchWorkspaces(); onClose(); }}
-          />
-        )}
-        {tab === "members" && (
-          <MembersTab
-            workspaceId={activeWorkspace.id}
-            myUserId={user?.id ?? null}
-            isAdmin={isAdmin}
-            isOwner={isOwner}
-            isSuperadmin={isSuperadmin}
-          />
-        )}
-        {tab === "rooms" && (
-          <RoomsTab
-            workspaceId={activeWorkspace.id}
-            rooms={myRooms.filter(r => r.workspace_id === activeWorkspace.id)}
-            isAdmin={isAdmin}
-            isSuperadmin={isSuperadmin}
-            onRefetch={refetchRooms}
-          />
-        )}
-        {tab === "analytics" && isAdmin && (
-          <AnalyticsTab workspaceId={activeWorkspace.id} />
-        )}
+        <div key={tab} className="t-tab-enter" data-dir={String(tabDirRef.current)}>
+          {tab === "general" && (
+            <GeneralTab
+              workspaceId={activeWorkspace.id}
+              initialName={activeWorkspace.name}
+              initialTz={activeWorkspace.timezone}
+              inviteCode={activeWorkspace.invite_code}
+              tgInviteLink={activeWorkspace.tg_invite_link ?? null}
+              isOwner={isOwner}
+              isAdmin={isAdmin}
+              isSuperadmin={isSuperadmin}
+              onChanged={refetchWorkspaces}
+              onArchived={() => { refetchWorkspaces(); onClose(); }}
+            />
+          )}
+          {tab === "members" && (
+            <MembersTab
+              workspaceId={activeWorkspace.id}
+              myUserId={user?.id ?? null}
+              isAdmin={isAdmin}
+              isOwner={isOwner}
+              isSuperadmin={isSuperadmin}
+            />
+          )}
+          {tab === "rooms" && (
+            <RoomsTab
+              workspaceId={activeWorkspace.id}
+              rooms={myRooms.filter(r => r.workspace_id === activeWorkspace.id)}
+              isAdmin={isAdmin}
+              isSuperadmin={isSuperadmin}
+              onRefetch={refetchRooms}
+            />
+          )}
+          {tab === "analytics" && isAdmin && (
+            <AnalyticsTab workspaceId={activeWorkspace.id} />
+          )}
+        </div>
       </div>
     </Overlay>
   );
@@ -215,6 +228,17 @@ function GeneralTab({
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => { setName(initialName); setTz(initialTz); setCode(inviteCode); setTgLink(tgInviteLink); }, [initialName, initialTz, inviteCode, tgInviteLink]);
+
+  const errRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (!err || !errRef.current) return;
+    const el = errRef.current;
+    el.classList.remove("is-shaking");
+    void el.offsetWidth;
+    el.classList.add("is-shaking");
+    const id = setTimeout(() => el.classList.remove("is-shaking"), 280);
+    return () => clearTimeout(id);
+  }, [err]);
 
   const saveName = async () => {
     setErr(null);
@@ -314,8 +338,16 @@ function GeneralTab({
             {code}
           </div>
           <button onClick={handleCopy}
-            className="px-3 rounded-md text-xs font-bold transition-all"
+            className="px-3 rounded-md text-xs font-bold transition-all flex items-center gap-1"
             style={{ background: copied ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copied ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copied ? "#16a34a" : "var(--text-sec)" }}>
+            {copied && (
+              <span className="t-success-check" data-state="in" aria-hidden="true"
+                style={{ "--check-y-amount": "5px", "--check-blur-from": "3px", "--check-rotate-from": "25deg" } as CSSProperties}>
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                  <path d="M1.5 5.5L4 8L9.5 2.5" stroke="#16a34a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>
+            )}
             {copied ? t("ws.copied") : t("ws.copy")}
           </button>
           {(isOwner || isSuperadmin) && (
@@ -354,7 +386,7 @@ function GeneralTab({
         </div>
       )}
 
-      {err && <p className="text-xs px-3 py-2 rounded-md" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#dc2626" }}>{err}</p>}
+      {err && <p ref={errRef} className="t-shake-target text-xs px-3 py-2 rounded-md" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#dc2626" }}>{err}</p>}
 
       {isOwner && (
         <div className="pt-4 mt-2" style={{ borderTop: "1px dashed var(--border)" }}>
@@ -1320,6 +1352,18 @@ function AnalyticsTab({ workspaceId }: { workspaceId: number }) {
     queryFn: () => workspacesApi.getAnalytics(workspaceId, period),
   });
 
+  const membersNumRef = useRef<HTMLSpanElement>(null);
+  const meetingsNumRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    [membersNumRef, meetingsNumRef].forEach(ref => {
+      const el = ref.current;
+      if (!el) return;
+      el.classList.remove("is-animating");
+      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("is-animating")));
+    });
+  }, [data]);
+
   if (isLoading) return (
     <div className="space-y-3">
       {[1,2,3].map(i => <div key={i} className="h-24 rounded-md animate-pulse" style={{ background: "var(--elevated)" }} />)}
@@ -1346,11 +1390,19 @@ function AnalyticsTab({ workspaceId }: { workspaceId: number }) {
       {/* Summary cards */}
       <div className="flex gap-2">
         <div className="flex items-center gap-2 rounded px-3 py-1.5 flex-1" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
-          <span className="text-base font-black" style={{ color: "var(--text)" }}>{data?.total_members ?? 0}</span>
+          <span ref={membersNumRef} className="t-digit-group text-base font-black" style={{ color: "var(--text)" }}>
+            {String(data?.total_members ?? 0).split("").map((ch, i) => (
+              <span key={i} className="t-digit" data-stagger={i > 0 ? Math.min(i, 2) : undefined}>{ch}</span>
+            ))}
+          </span>
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>{t("ws.analytics.members")}</span>
         </div>
         <div className="flex items-center gap-2 rounded px-3 py-1.5 flex-1" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
-          <span className="text-base font-black" style={{ color: "var(--text)" }}>{data?.total_meetings ?? 0}</span>
+          <span ref={meetingsNumRef} className="t-digit-group text-base font-black" style={{ color: "var(--text)" }}>
+            {String(data?.total_meetings ?? 0).split("").map((ch, i) => (
+              <span key={i} className="t-digit" data-stagger={i > 0 ? Math.min(i, 2) : undefined}>{ch}</span>
+            ))}
+          </span>
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>{t("ws.analytics.meetings")}</span>
         </div>
       </div>

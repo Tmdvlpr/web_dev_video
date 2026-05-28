@@ -238,8 +238,16 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
                     Отмена
                   </button>
                   <button onClick={handleCreate} disabled={busy}
-                    className="flex-1 py-1.5 rounded text-xs font-bold text-white disabled:opacity-50"
-                    style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
+                    className="flex-1 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                    style={{
+                      borderRadius: 999,
+                      background: "linear-gradient(135deg, #2563eb, #6366f1)",
+                      boxShadow: "0 2px 12px rgba(99,102,241,0.4)",
+                      border: "none",
+                      transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.04)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(99,102,241,0.6)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 2px 12px rgba(99,102,241,0.4)"; }}>
                     {busy ? "…" : "Создать"}
                   </button>
                 </div>
@@ -266,8 +274,16 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
                     Отмена
                   </button>
                   <button onClick={handleJoin} disabled={busy}
-                    className="flex-1 py-1.5 rounded text-xs font-bold text-white disabled:opacity-50"
-                    style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
+                    className="flex-1 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                    style={{
+                      borderRadius: 999,
+                      background: "linear-gradient(135deg, #2563eb, #6366f1)",
+                      boxShadow: "0 2px 12px rgba(99,102,241,0.4)",
+                      border: "none",
+                      transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.04)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(99,102,241,0.6)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 2px 12px rgba(99,102,241,0.4)"; }}>
                     {busy ? "…" : "Войти"}
                   </button>
                 </div>

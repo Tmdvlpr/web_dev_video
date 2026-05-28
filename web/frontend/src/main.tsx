@@ -6,6 +6,7 @@ import App from "./App";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LocaleProvider } from "./contexts/LocaleContext";
 import "./index.css";
+import "./styles/transitions.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
