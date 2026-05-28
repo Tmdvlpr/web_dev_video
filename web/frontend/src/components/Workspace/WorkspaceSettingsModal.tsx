@@ -479,6 +479,11 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                         {memberName(m)}
                       </p>
                       <p className="text-xs" style={{ color: "var(--text-muted)" }}>{t("ws.statusPending")}</p>
+                      {m.invite_expires_at && (
+                        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                          {t("ws.inviteExpiresAt")}: {new Date(m.invite_expires_at).toLocaleDateString()}
+                        </p>
+                      )}
                       {m.invite_deep_link && (
                         <button
                           onClick={() => navigator.clipboard.writeText(m.invite_deep_link!)}
@@ -489,6 +494,13 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                         </button>
                       )}
                     </div>
+                    {isAdmin && m.user_id === null && (
+                      <button onClick={() => handleRemove(m.id)}
+                        className="px-2.5 py-1 rounded text-xs font-bold"
+                        style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#dc2626" }}>
+                        {t("ws.revokeInvite")}
+                      </button>
+                    )}
                     {isAdmin && m.user_id !== null && (
                       <div className="flex gap-1.5">
                         <button onClick={() => handleApprove(m.id, true)}

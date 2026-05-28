@@ -46,6 +46,7 @@ class WorkspaceMember(Base):
     status: Mapped[WorkspaceMemberStatus] = mapped_column(Enum(WorkspaceMemberStatus), default=WorkspaceMemberStatus.active, server_default="active")
     invited_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     invite_token: Mapped[str | None] = mapped_column(String(32), nullable=True, unique=True, index=True)
+    invite_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     invite_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

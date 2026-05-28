@@ -25,6 +25,7 @@ class WorkspaceMemberResponse(BaseModel):
     user: UserPublicResponse | None
     created_at: datetime
     invite_deep_link: str | None = None
+    invite_expires_at: datetime | None = None
 
     class Config:
         from_attributes = True

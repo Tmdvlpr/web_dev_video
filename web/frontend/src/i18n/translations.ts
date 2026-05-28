@@ -450,6 +450,8 @@ export const T: Dict = {
   "ws.pendingLabel":        { ru: "Ожидают подтверждения",              uz: "Тасдиқ кутилмоқда" },
   "ws.statusPending":       { ru: "ожидает",                            uz: "кутмоқда" },
   "ws.copyTgLink":          { ru: "Копировать ссылку Telegram",         uz: "Telegram ҳаволасини нусхалаш" },
+  "ws.revokeInvite":        { ru: "Отозвать",                           uz: "Bekor qilish" },
+  "ws.inviteExpiresAt":     { ru: "Истекает",                           uz: "Muddati tugaydi" },
   "ws.accept":              { ru: "Принять",                            uz: "Қабул қилиш" },
   "ws.reject":              { ru: "Отклонить",                          uz: "Рад этиш" },
   "ws.activeLabel":         { ru: "Активные ({n})",                     uz: "Фаоллар ({n})" },

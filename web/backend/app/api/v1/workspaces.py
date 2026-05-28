@@ -59,8 +59,8 @@ async def _generate_unique_slug(name: str, db: AsyncSession) -> str:
 
 
 def _generate_invite_code() -> str:
-    """Generate a URL-safe invite code (~8 chars)."""
-    return secrets.token_urlsafe(6)
+    """Generate a URL-safe invite code (128 bits of entropy, ~22 chars)."""
+    return secrets.token_urlsafe(16)
 
 
 async def _get_my_membership(
@@ -303,6 +303,10 @@ async def claim_invite_web(
         raise HTTPException(404, "Invite not found or already used")
     if member.status != WorkspaceMemberStatus.pending:
         raise HTTPException(400, "Invite already used")
+    if member.invite_expires_at and member.invite_expires_at < datetime.now(timezone.utc):
+        await db.delete(member)
+        await db.commit()
+        raise HTTPException(410, "Invite link has expired")
 
     # Check if user is already a member
     existing = await db.scalar(
@@ -453,12 +457,27 @@ async def list_members(
         .order_by(WorkspaceMember.created_at)
     )
     members = list(result.scalars().all())
+    now = datetime.now(timezone.utc)
     responses = []
+    deleted_any = False
     for m in members:
+        # Auto-cleanup expired anonymous invites
+        if (
+            m.status == WorkspaceMemberStatus.pending
+            and m.user_id is None
+            and m.pending_username is None
+            and m.invite_expires_at is not None
+            and m.invite_expires_at < now
+        ):
+            await db.delete(m)
+            deleted_any = True
+            continue
         r = WorkspaceMemberResponse.model_validate(m)
         if settings.TG_BOT_USERNAME and m.status == WorkspaceMemberStatus.pending and m.invite_token:
             r.invite_deep_link = f"https://t.me/{settings.TG_BOT_USERNAME}?start=invite_{m.invite_token}"
         responses.append(r)
+    if deleted_any:
+        await db.commit()
     return responses
 
 
@@ -476,7 +495,21 @@ async def generate_invite_link(
     member = await _get_my_membership(ws_id, current_user, db)
     _require_admin_or_owner(member)
 
+    # Delete existing unclaimed anonymous invites for this workspace
+    old_invites = await db.execute(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == ws_id,
+            WorkspaceMember.status == WorkspaceMemberStatus.pending,
+            WorkspaceMember.user_id.is_(None),
+            WorkspaceMember.pending_username.is_(None),
+            WorkspaceMember.invite_token.is_not(None),
+        )
+    )
+    for old in old_invites.scalars().all():
+        await db.delete(old)
+
     invite_token = secrets.token_urlsafe(16)
+    invite_expires_at = datetime.now(timezone.utc) + timedelta(days=7)
     new_member = WorkspaceMember(
         workspace_id=ws_id,
         user_id=None,
@@ -485,6 +518,7 @@ async def generate_invite_link(
         status=WorkspaceMemberStatus.pending,
         invited_by_user_id=current_user.id,
         invite_token=invite_token,
+        invite_expires_at=invite_expires_at,
     )
     db.add(new_member)
     await db.commit()

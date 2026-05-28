@@ -197,6 +197,7 @@ export interface WorkspaceMember {
   user: User | null;
   created_at: string;
   invite_deep_link?: string | null;
+  invite_expires_at?: string | null;
 }
 
 export interface Workspace {
