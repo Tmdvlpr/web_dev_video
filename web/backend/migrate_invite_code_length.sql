@@ -1,0 +1,1 @@
+ALTER TABLE workspaces ALTER COLUMN invite_code TYPE VARCHAR(32);
