@@ -85,6 +85,8 @@ class BookingBotInfo(BaseModel):
     booking_type: str = "physical"
     workspace_id: int | None = None
     workspace_telegram_chat_id: int | None = None
+    room_id: int | None = None
+    room_name: str | None = None
 
     class Config:
         from_attributes = True
@@ -207,7 +209,7 @@ async def bookings_since(
     """
     result = await db.execute(
         select(Booking)
-        .options(selectinload(Booking.user))
+        .options(selectinload(Booking.user), selectinload(Booking.room))
         .where(and_(
             Booking.updated_at >= updated_at,
             Booking.deleted_at.is_(None),
@@ -253,6 +255,8 @@ async def bookings_since(
             booking_type=b.booking_type if b.booking_type else "physical",
             workspace_id=b.workspace_id,
             workspace_telegram_chat_id=ws_tg_map.get(b.workspace_id) if b.workspace_id else None,
+            room_id=b.room_id,
+            room_name=b.room.name if b.room else None,
         )
         for b in bookings
     ]
@@ -281,7 +285,7 @@ async def bookings_for_reminder(
     # Load all future unreminded bookings within max possible reminder window (24 h)
     result = await db.execute(
         select(Booking)
-        .options(selectinload(Booking.user))
+        .options(selectinload(Booking.user), selectinload(Booking.room))
         .where(and_(
             Booking.start_time > now,
             Booking.start_time <= now + timedelta(hours=25),
@@ -335,6 +339,8 @@ async def bookings_for_reminder(
             booking_type=b.booking_type if b.booking_type else "physical",
             workspace_id=b.workspace_id,
             workspace_telegram_chat_id=ws_tg_map.get(b.workspace_id) if b.workspace_id else None,
+            room_id=b.room_id,
+            room_name=b.room.name if b.room else None,
         )
         for b in due
     ]
@@ -371,7 +377,7 @@ async def bookings_deleted_since(
 ) -> list[BookingBotInfo]:
     result = await db.execute(
         select(Booking)
-        .options(selectinload(Booking.user))
+        .options(selectinload(Booking.user), selectinload(Booking.room))
         .where(and_(
             Booking.deleted_at.isnot(None),
             Booking.deleted_at >= since,
@@ -408,6 +414,8 @@ async def bookings_deleted_since(
             booking_type=b.booking_type if b.booking_type else "physical",
             workspace_id=b.workspace_id,
             workspace_telegram_chat_id=ws_tg_map.get(b.workspace_id) if b.workspace_id else None,
+            room_id=b.room_id,
+            room_name=b.room.name if b.room else None,
         )
         for b in bookings
     ]

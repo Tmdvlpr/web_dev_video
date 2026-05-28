@@ -24,6 +24,14 @@ const TIMEZONES = [
   "Asia/Baku",
 ];
 
+const POSITIONS = [
+  "Начальник департамента/отдела",
+  "PM",
+  "Аналитик",
+  "Программист и др.",
+  "Дизайнер",
+];
+
 export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModalProps) {
   const { isDark } = useTheme();
   const { user } = useAuth();
@@ -395,7 +403,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
 
   return (
     <div className="space-y-5">
-      {isAdmin && (
+      {(isAdmin || isSuperadmin) && (
         <div>
           <Label>Пригласить по username</Label>
           <div className="flex gap-2">
@@ -459,7 +467,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
             <Label>Активные ({active.length})</Label>
             <div className="space-y-2">
               {active.map(m => {
-                const canRemove = isAdmin && m.user_id !== myUserId && m.role !== "owner";
+                const canRemove = (isAdmin || isSuperadmin) && m.user_id !== myUserId && m.role !== "owner";
                 return (
                   <div key={m.id}>
                     <div className="flex items-center gap-3 px-3 py-2 rounded-md"
@@ -477,7 +485,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                         </p>
                       </div>
                       <RoleBadge role={m.role} />
-                      {isAdmin && m.user && (
+                      {(isAdmin || isSuperadmin) && m.user && (
                         <button onClick={() => {
                           setEditMemberId(editMemberId === m.id ? null : m.id);
                           setEditForm({
@@ -522,11 +530,17 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                             className="rounded px-2.5 py-1.5 text-xs outline-none"
                             style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
                         </div>
-                        <input value={editForm.position} onChange={e => setEditForm(f => ({ ...f, position: e.target.value }))}
-                          placeholder="Должность"
-                          className="w-full rounded px-2.5 py-1.5 text-xs outline-none"
-                          style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
-                        {isOwner && (m.role !== "owner" || isSuperadmin) && (
+                        <CustomSelect size="xs"
+                          value={editForm.position}
+                          onChange={v => setEditForm(f => ({ ...f, position: v }))}
+                          options={[
+                            ...(editForm.position && !POSITIONS.includes(editForm.position)
+                              ? [{ value: editForm.position, label: editForm.position }]
+                              : []),
+                            ...POSITIONS.map(p => ({ value: p, label: p })),
+                          ]}
+                        />
+                        {(isOwner || isSuperadmin) && (m.role !== "owner" || isSuperadmin) && (
                           <CustomSelect size="xs"
                             value={editForm.role}
                             onChange={v => setEditForm(f => ({ ...f, role: v }))}
@@ -544,6 +558,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                             Отмена
                           </button>
                           <button disabled={saving} onClick={async () => {
+                            setErr(null); setInfo(null);
                             setSaving(true);
                             try {
                               await workspacesApi.updateMemberProfile(workspaceId, m.id, {
@@ -551,12 +566,14 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                                 last_name: editForm.last_name || undefined,
                                 position: editForm.position || undefined,
                               });
-                              if (isOwner && (m.role !== "owner" || isSuperadmin) && editForm.role !== m.role) {
+                            } catch { setErr("Не удалось сохранить профиль"); setSaving(false); return; }
+                            try {
+                              if ((isOwner || isSuperadmin) && (m.role !== "owner" || isSuperadmin) && editForm.role !== m.role) {
                                 await workspacesApi.updateMember(workspaceId, m.id, { role: editForm.role });
                               }
                               setEditMemberId(null);
                               await load();
-                            } catch { setErr("Не удалось сохранить"); }
+                            } catch { setErr("Не удалось сохранить роль"); }
                             finally { setSaving(false); }
                           }}
                             className="px-3 py-1.5 rounded text-xs font-bold text-white disabled:opacity-50"
@@ -795,11 +812,21 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
       .catch(() => { setLocalVis(wr.visibility ?? "full"); setErr("Не удалось обновить"); });
   };
 
-  const handleJoinMode = (mode: "open" | "approval" | "closed") => {
+  const handleJoinMode = async (mode: "open" | "approval" | "closed") => {
+    if (busy) return;
     setLocalJoinMode(mode);
-    roomsApi.update(wr.room.id, { join_mode: mode })
-      .then(() => onRefetch())
-      .catch(() => { setLocalJoinMode(wr.room.join_mode ?? "approval"); setErr("Не удалось обновить"); });
+    setBusy(true);
+    setErr(null);
+    try {
+      const updated = await roomsApi.update(wr.room.id, { join_mode: mode });
+      setLocalJoinMode((updated.room.join_mode ?? "approval") as "open" | "approval" | "closed");
+      onRefetch();
+    } catch (e: unknown) {
+      onRefetch();
+      setErr("Не удалось сохранить режим подключения");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleShare = async () => {
@@ -936,7 +963,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
             ] as const).map(({ v, label }) => {
               const active = localJoinMode === v;
               return (
-                <button key={v} onClick={() => handleJoinMode(v)} disabled={active}
+                <button key={v} onClick={() => handleJoinMode(v)} disabled={active || busy}
                   className="px-2 py-1 text-xs font-semibold transition-all"
                   style={{
                     background: active ? "var(--primary)" : "transparent",
