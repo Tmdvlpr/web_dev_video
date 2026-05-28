@@ -103,8 +103,10 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
             initialName={activeWorkspace.name}
             initialTz={activeWorkspace.timezone}
             inviteCode={activeWorkspace.invite_code}
+            tgInviteLink={activeWorkspace.tg_invite_link ?? null}
             isOwner={isOwner}
             isAdmin={isAdmin}
+            isSuperadmin={isSuperadmin}
             onChanged={refetchWorkspaces}
             onArchived={() => { refetchWorkspaces(); onClose(); }}
           />
@@ -175,22 +177,26 @@ function roleLabel(role: string | null): string {
 }
 
 function GeneralTab({
-  workspaceId, initialName, initialTz, inviteCode, isOwner, isAdmin,
+  workspaceId, initialName, initialTz, inviteCode, tgInviteLink, isOwner, isAdmin, isSuperadmin,
   onChanged, onArchived,
 }: {
   workspaceId: number;
   initialName: string;
   initialTz: string;
   inviteCode: string;
+  tgInviteLink: string | null;
   isOwner: boolean;
   isAdmin: boolean;
+  isSuperadmin: boolean;
   onChanged: () => void;
   onArchived: () => void;
 }) {
   const [name, setName] = useState(initialName);
   const [tz, setTz] = useState(initialTz);
   const [code, setCode] = useState(inviteCode);
+  const [tgLink, setTgLink] = useState(tgInviteLink);
   const [copied, setCopied] = useState(false);
+  const [copiedTg, setCopiedTg] = useState(false);
   const [savingName, setSavingName] = useState(false);
   const [savingTz, setSavingTz] = useState(false);
   const [regenerating, setRegen] = useState(false);
@@ -198,7 +204,7 @@ function GeneralTab({
   const [confirmArchive, setConfirmArch] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => { setName(initialName); setTz(initialTz); setCode(inviteCode); }, [initialName, initialTz, inviteCode]);
+  useEffect(() => { setName(initialName); setTz(initialTz); setCode(inviteCode); setTgLink(tgInviteLink); }, [initialName, initialTz, inviteCode, tgInviteLink]);
 
   const saveName = async () => {
     setErr(null);
@@ -238,6 +244,7 @@ function GeneralTab({
     try {
       const ws = await workspacesApi.regenerateCode(workspaceId);
       setCode(ws.invite_code);
+      setTgLink(ws.tg_invite_link ?? null);
       onChanged();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -301,15 +308,36 @@ function GeneralTab({
             style={{ background: copied ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copied ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copied ? "#16a34a" : "var(--text-sec)" }}>
             {copied ? "Скопировано" : "Копировать"}
           </button>
-          {isAdmin && (
+          {(isOwner || isSuperadmin) && (
             <button onClick={handleRegen} disabled={regenerating}
               className="px-3 rounded-md text-xs font-bold disabled:opacity-50"
               style={{ background: "var(--elevated)", border: "1.5px solid var(--border)", color: "var(--text-sec)" }}>
-              {regenerating ? "…" : "Обновить код"}
+              {regenerating ? "…" : "Обновить"}
             </button>
           )}
         </div>
       </div>
+
+      {tgLink && (isOwner || isSuperadmin) && (
+        <div>
+          <Label>Публичная ссылка Telegram</Label>
+          <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
+            Любой, у кого есть ссылка, вступит в пространство автоматически. После обновления кода старая ссылка перестаёт работать.
+          </p>
+          <div className="flex gap-2">
+            <div className="flex-1 rounded-md px-3 py-2 text-xs font-mono truncate"
+              style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}>
+              {tgLink}
+            </div>
+            <button
+              onClick={() => { navigator.clipboard.writeText(tgLink); setCopiedTg(true); setTimeout(() => setCopiedTg(false), 1500); }}
+              className="px-3 rounded-md text-xs font-bold transition-all"
+              style={{ background: copiedTg ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copiedTg ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copiedTg ? "#16a34a" : "var(--text-sec)" }}>
+              {copiedTg ? "Скопировано" : "Копировать"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {err && <p className="text-xs px-3 py-2 rounded-md" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#dc2626" }}>{err}</p>}
 
@@ -350,10 +378,8 @@ function GeneralTab({
 function MembersTab({ workspaceId, workspaceName, myUserId, isAdmin, isOwner, isSuperadmin }: { workspaceId: number; workspaceName: string; myUserId: number | null; isAdmin: boolean; isOwner: boolean; isSuperadmin: boolean }) {
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [inviteName, setInviteName] = useState("");
   const [inviting, setInviting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
   const [editMemberId, setEditMemberId] = useState<number | null>(null);
@@ -375,22 +401,17 @@ function MembersTab({ workspaceId, workspaceName, myUserId, isAdmin, isOwner, is
   const pending = members.filter(m => m.status === "pending");
 
   const handleInvite = async () => {
-    setErr(null); setInfo(null); setInviteLink(null);
-    const u = inviteName.trim().replace(/^@/, "");
-    if (!u) { setErr("Введите username"); return; }
+    setErr(null); setInviteLink(null);
     setInviting(true);
     try {
-      const result = await workspacesApi.invite(workspaceId, u);
-      setInviteName("");
+      const result = await workspacesApi.generateInviteLink(workspaceId);
       if (result.invite_deep_link) {
         setInviteLink(result.invite_deep_link);
-      } else {
-        setInfo("Приглашение отправлено");
       }
       await load();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось пригласить");
+      setErr(msg ?? "Не удалось создать ссылку");
     } finally { setInviting(false); }
   };
 
@@ -419,23 +440,16 @@ function MembersTab({ workspaceId, workspaceName, myUserId, isAdmin, isOwner, is
     <div className="space-y-5">
       {(isAdmin || isSuperadmin) && (
         <div>
-          <Label>Пригласить по username</Label>
-          <div className="flex gap-2">
-            <input
-              value={inviteName} onChange={e => setInviteName(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") handleInvite(); }}
-              placeholder="@username"
-              className="flex-1 rounded-md px-3 py-2 text-sm outline-none"
-              style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
-            />
-            <button onClick={handleInvite} disabled={inviting}
-              className="px-4 rounded-md text-xs font-bold text-white disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
-              {inviting ? "…" : "Пригласить"}
-            </button>
-          </div>
+          <Label>Ссылка-приглашение</Label>
+          <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
+            Одноразовая ссылка. Отправьте любому — при регистрации через бот он автоматически попадёт в пространство.
+          </p>
+          <button onClick={handleInvite} disabled={inviting}
+            className="px-4 py-2 rounded-md text-xs font-bold text-white disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
+            {inviting ? "…" : "Создать ссылку-приглашение"}
+          </button>
           {err && <p className="text-xs mt-1.5" style={{ color: "#dc2626" }}>{err}</p>}
-          {info && <p className="text-xs mt-1.5" style={{ color: "#16a34a" }}>{info}</p>}
           {inviteLink && (
             <div className="mt-2 rounded-md p-3 space-y-2" style={{ background: "var(--elevated)", border: "1px solid var(--primary-border)" }}>
               <p className="text-xs font-semibold" style={{ color: "var(--text-sec)" }}>

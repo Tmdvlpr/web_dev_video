@@ -46,6 +46,10 @@ export const workspacesApi = {
     const res = await apiClient.post<WorkspaceMember>(`/api/v1/workspaces/${id}/invite`, { username });
     return res.data;
   },
+  generateInviteLink: async (id: number): Promise<WorkspaceMember> => {
+    const res = await apiClient.post<WorkspaceMember>(`/api/v1/workspaces/${id}/generate-invite-link`);
+    return res.data;
+  },
   updateMember: async (wsId: number, memberId: number, payload: { approve?: boolean; role?: string }): Promise<WorkspaceMember | null> => {
     const res = await apiClient.patch<WorkspaceMember | null>(`/api/v1/workspaces/${wsId}/members/${memberId}`, payload);
     return res.data;

@@ -560,6 +560,78 @@ async def accept_invite(
     return {"ok": True, "id": mid}
 
 
+class ClaimInviteRequest(BaseModel):
+    token: str
+    telegram_id: int
+    username: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+
+
+@router.post(
+    "/invites/claim",
+    summary="Принять анонимный инвайт (пользователь перешёл по ссылке без username)",
+)
+async def claim_invite(
+    body: ClaimInviteRequest,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_bot_secret),
+) -> dict:
+    """
+    Вызывается ботом при /start invite_{token} когда invite создан без username.
+    Создаёт пользователя если нужно, привязывает к инвайту, автоматически принимает.
+    """
+    member = await db.scalar(
+        select(WorkspaceMember).where(WorkspaceMember.invite_token == body.token)
+    )
+    if not member:
+        raise HTTPException(status_code=404, detail="Invite not found or already used")
+    if member.status != WorkspaceMemberStatus.pending:
+        raise HTTPException(status_code=400, detail="Invite is not in pending state")
+
+    # Создать или обновить пользователя
+    user = await db.scalar(select(User).where(User.telegram_id == body.telegram_id))
+    if not user:
+        name = f"{body.first_name or ''} {body.last_name or ''}".strip() or body.username or str(body.telegram_id)
+        user = User(
+            telegram_id=body.telegram_id,
+            first_name=body.first_name,
+            last_name=body.last_name,
+            name=name,
+            username=body.username,
+            is_registered=False,
+            is_active=True,
+        )
+        db.add(user)
+        await db.flush()
+    elif body.username and body.username != user.username:
+        user.username = body.username
+
+    # Проверить что этот пользователь не уже в пространстве
+    existing = await db.scalar(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == member.workspace_id,
+            WorkspaceMember.user_id == user.id,
+            WorkspaceMember.id != member.id,
+        )
+    )
+    if existing:
+        # Уже состоит — просто гасим токен
+        await db.delete(member)
+        ws = await db.scalar(select(Workspace).where(Workspace.id == existing.workspace_id))
+        await db.commit()
+        return {"ok": True, "already_member": True, "status": existing.status.value, "workspace_name": ws.name if ws else ""}
+
+    member.user_id = user.id
+    member.pending_username = None
+    member.status = WorkspaceMemberStatus.active
+    member.invite_token = None
+
+    ws = await db.scalar(select(Workspace).where(Workspace.id == member.workspace_id))
+    await db.commit()
+    return {"ok": True, "already_member": False, "status": "active", "workspace_name": ws.name if ws else ""}
+
+
 @router.post(
     "/invites/{mid}/reject",
     summary="Отклонить инвайт (пользователь нажал «Отказаться» в боте)",
@@ -835,6 +907,71 @@ async def unbind_workspace_telegram(
     ws.telegram_chat_id = None
     await db.commit()
     return {"ok": True, "workspace_name": ws.name}
+
+
+class WorkspaceJoinByInviteRequest(BaseModel):
+    invite_code: str
+    telegram_id: int
+    username: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+
+
+@router.post(
+    "/workspaces/join-by-invite",
+    summary="Вступить в пространство по универсальной ссылке-приглашению (ws_CODE)",
+)
+async def join_workspace_by_invite(
+    body: WorkspaceJoinByInviteRequest,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_bot_secret),
+) -> dict:
+    """
+    Вызывается ботом при /start ws_{invite_code}.
+    Создаёт пользователя если не существует, добавляет в пространство как active member.
+    Идемпотентен: повторный вызов возвращает текущий статус без ошибки.
+    """
+    ws = await db.scalar(select(Workspace).where(Workspace.invite_code == body.invite_code))
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    # Создать или обновить пользователя
+    user = await db.scalar(select(User).where(User.telegram_id == body.telegram_id))
+    if not user:
+        name = f"{body.first_name or ''} {body.last_name or ''}".strip() or body.username or str(body.telegram_id)
+        user = User(
+            telegram_id=body.telegram_id,
+            first_name=body.first_name,
+            last_name=body.last_name,
+            name=name,
+            username=body.username,
+            is_registered=False,
+            is_active=True,
+        )
+        db.add(user)
+        await db.flush()
+    elif body.username and body.username != user.username:
+        user.username = body.username
+
+    # Проверить существующее членство
+    existing = await db.scalar(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == ws.id,
+            WorkspaceMember.user_id == user.id,
+        )
+    )
+    if existing:
+        return {"ok": True, "already_member": True, "status": existing.status.value, "workspace_name": ws.name}
+
+    new_member = WorkspaceMember(
+        workspace_id=ws.id,
+        user_id=user.id,
+        role=WorkspaceMemberRole.member,
+        status=WorkspaceMemberStatus.active,
+    )
+    db.add(new_member)
+    await db.commit()
+    return {"ok": True, "already_member": False, "status": "active", "workspace_name": ws.name}
 
 
 # ── LiveKit webhook (подпись проверяется самим LiveKit JWT, не X-Bot-Secret) ──

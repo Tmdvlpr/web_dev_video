@@ -39,6 +39,7 @@ class WorkspaceResponse(BaseModel):
     telegram_chat_id: int | None
     created_at: datetime
     my_role: WorkspaceMemberRole | None = None
+    tg_invite_link: str | None = None
 
     class Config:
         from_attributes = True

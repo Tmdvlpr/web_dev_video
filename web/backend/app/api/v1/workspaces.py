@@ -112,6 +112,9 @@ def _require_owner(member: WorkspaceMember) -> None:
 
 
 def _workspace_to_response(ws: Workspace, my_role: WorkspaceMemberRole | None) -> WorkspaceResponse:
+    tg_invite_link = None
+    if settings.TG_BOT_USERNAME:
+        tg_invite_link = f"https://t.me/{settings.TG_BOT_USERNAME}?start=ws_{ws.invite_code}"
     return WorkspaceResponse(
         id=ws.id,
         name=ws.name,
@@ -121,6 +124,7 @@ def _workspace_to_response(ws: Workspace, my_role: WorkspaceMemberRole | None) -
         telegram_chat_id=ws.telegram_chat_id,
         created_at=ws.created_at,
         my_role=my_role,
+        tg_invite_link=tg_invite_link,
     )
 
 
@@ -362,9 +366,9 @@ async def regenerate_invite_code(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> WorkspaceResponse:
-    """Generate a new invite code for the workspace (owner/admin only)."""
+    """Generate a new invite code for the workspace (owner/superadmin only)."""
     member = await _get_my_membership(ws_id, current_user, db)
-    _require_admin_or_owner(member)
+    _require_owner(member)
 
     ws_res = await db.execute(select(Workspace).where(Workspace.id == ws_id))
     workspace = ws_res.scalar_one()
@@ -410,6 +414,40 @@ async def list_members(
             r.invite_deep_link = f"https://t.me/{settings.TG_BOT_USERNAME}?start=invite_{m.invite_token}"
         responses.append(r)
     return responses
+
+
+@router.post(
+    "/{ws_id}/generate-invite-link",
+    response_model=WorkspaceMemberResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def generate_invite_link(
+    ws_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> WorkspaceMemberResponse:
+    """Generate a one-time personal invite link without requiring a username (owner/admin only)."""
+    member = await _get_my_membership(ws_id, current_user, db)
+    _require_admin_or_owner(member)
+
+    invite_token = secrets.token_urlsafe(16)
+    new_member = WorkspaceMember(
+        workspace_id=ws_id,
+        user_id=None,
+        pending_username=None,
+        role=WorkspaceMemberRole.member,
+        status=WorkspaceMemberStatus.pending,
+        invited_by_user_id=current_user.id,
+        invite_token=invite_token,
+    )
+    db.add(new_member)
+    await db.commit()
+    await db.refresh(new_member)
+
+    r = WorkspaceMemberResponse.model_validate(new_member)
+    if settings.TG_BOT_USERNAME:
+        r.invite_deep_link = f"https://t.me/{settings.TG_BOT_USERNAME}?start=invite_{invite_token}"
+    return r
 
 
 @router.post(

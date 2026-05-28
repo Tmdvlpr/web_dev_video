@@ -208,6 +208,7 @@ export interface Workspace {
   telegram_chat_id: number | null;
   created_at: string;
   my_role: "owner" | "admin" | "member" | null;
+  tg_invite_link?: string | null;
 }
 
 export interface WorkspaceDetail extends Workspace {
