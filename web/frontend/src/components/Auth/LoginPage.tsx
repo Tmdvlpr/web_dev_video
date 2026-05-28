@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { motion, useMotionValue, useTransform, useSpring } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
 import { authApi } from "../../api/auth";
+import { workspacesApi } from "../../api/workspaces";
 import { storage } from "../../utils/storage";
 import { useTelegram } from "../../hooks/useTelegram";
 import { useAuth } from "../../hooks/useAuth";
@@ -395,7 +396,7 @@ function CircuitShapes({ mouseX, mouseY }: { mouseX: number; mouseY: number }) {
 const isTouchDevice = () => "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
 export default function LoginPage() {
-  const { isMiniApp, initData } = useTelegram();
+  const { isMiniApp, initData, inviteParam } = useTelegram();
   const navigate = useNavigate();
   const { t } = useLocale();
   const { isAuthenticated } = useAuth();
@@ -473,10 +474,27 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isMiniApp) return;
+    const param = inviteParam;
+    if (param) sessionStorage.setItem("__corpmeet_invite", JSON.stringify(param));
     authApi.login(initData)
-      .then(res => { storage.setToken(res.access_token); sessionStorage.setItem("__corpmeet_replay_splash", "1"); window.dispatchEvent(new CustomEvent("corpmeet:replay-splash")); navigate("/bookings", { replace: true }); })
+      .then(async res => {
+        storage.setToken(res.access_token);
+        if (param) {
+          try {
+            if (param.invite_token) {
+              await workspacesApi.claimInvite(param.invite_token);
+            } else if (param.ws_code) {
+              await workspacesApi.join(param.ws_code);
+            }
+          } catch { /* already member or invalid — ignore */ }
+          sessionStorage.removeItem("__corpmeet_invite");
+        }
+        sessionStorage.setItem("__corpmeet_replay_splash", "1");
+        window.dispatchEvent(new CustomEvent("corpmeet:replay-splash"));
+        navigate("/bookings", { replace: true });
+      })
       .catch(() => navigate("/register", { replace: true }));
-  }, [isMiniApp, initData, navigate]);
+  }, [isMiniApp, initData, inviteParam, navigate]);
 
   if (isMiniApp) return <LoadingSpinner />;
 

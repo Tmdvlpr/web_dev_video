@@ -5,6 +5,9 @@ class RegisterRequest(BaseModel):
     initData: str
     first_name: str
     last_name: str
+    position: str | None = None
+    invite_token: str | None = None
+    ws_code: str | None = None
 
 
 class LoginRequest(BaseModel):

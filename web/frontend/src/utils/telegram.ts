@@ -28,3 +28,11 @@ export function isMiniApp(): boolean {
 export function getInitData(): string {
   return tg?.initData ?? "";
 }
+
+export function getInviteParam(): { invite_token?: string; ws_code?: string } | null {
+  const params = new URLSearchParams(window.location.search);
+  const invite_token = params.get("invite_token") ?? undefined;
+  const ws_code = params.get("ws_code") ?? undefined;
+  if (invite_token || ws_code) return { invite_token, ws_code };
+  return null;
+}

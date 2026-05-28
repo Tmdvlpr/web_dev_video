@@ -272,7 +272,7 @@ async def join_workspace(
         workspace_id=workspace.id,
         user_id=current_user.id,
         role=WorkspaceMemberRole.member,
-        status=WorkspaceMemberStatus.pending,
+        status=WorkspaceMemberStatus.active,
     )
     db.add(member)
     await db.commit()
@@ -281,6 +281,52 @@ async def join_workspace(
         select(WorkspaceMember)
         .options(selectinload(WorkspaceMember.user))
         .where(WorkspaceMember.id == member.id)
+    )
+    return res.scalar_one()
+
+
+class ClaimInviteWebRequest(BaseModel):
+    invite_token: str
+
+
+@router.post("/claim-invite", response_model=WorkspaceMemberResponse)
+async def claim_invite_web(
+    payload: ClaimInviteWebRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> WorkspaceMemberResponse:
+    """Claim an anonymous personal invite link for the currently authenticated user."""
+    member = await db.scalar(
+        select(WorkspaceMember).where(WorkspaceMember.invite_token == payload.invite_token)
+    )
+    if not member:
+        raise HTTPException(404, "Invite not found or already used")
+    if member.status != WorkspaceMemberStatus.pending:
+        raise HTTPException(400, "Invite already used")
+
+    # Check if user is already a member
+    existing = await db.scalar(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == member.workspace_id,
+            WorkspaceMember.user_id == current_user.id,
+            WorkspaceMember.id != member.id,
+        )
+    )
+    if existing:
+        await db.delete(member)
+        await db.commit()
+        res = await db.execute(
+            select(WorkspaceMember).options(selectinload(WorkspaceMember.user)).where(WorkspaceMember.id == existing.id)
+        )
+        return res.scalar_one()
+
+    member.user_id = current_user.id
+    member.pending_username = None
+    member.status = WorkspaceMemberStatus.active
+    member.invite_token = None
+    await db.commit()
+    res = await db.execute(
+        select(WorkspaceMember).options(selectinload(WorkspaceMember.user)).where(WorkspaceMember.id == member.id)
     )
     return res.scalar_one()
 
@@ -568,6 +614,8 @@ async def update_member(
             raise HTTPException(400, "Member is not in pending state")
 
         if payload.approve:
+            if target.user_id is None and not target.pending_username:
+                raise HTTPException(400, "Anonymous invite must be claimed via Telegram bot, not approved manually")
             target.status = WorkspaceMemberStatus.active
             await db.commit()
             res = await db.execute(

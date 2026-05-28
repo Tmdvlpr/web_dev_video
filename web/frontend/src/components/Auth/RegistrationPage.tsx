@@ -5,9 +5,18 @@ import { authApi } from "../../api/auth";
 import { storage } from "../../utils/storage";
 import { useTelegram } from "../../hooks/useTelegram";
 
+const POSITIONS = [
+  "Начальник департамента/отдела",
+  "PM",
+  "Аналитик",
+  "Программист и др.",
+  "Дизайнер",
+];
+
 export default function RegistrationPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [position, setPosition] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const { initData } = useTelegram();
@@ -23,8 +32,14 @@ export default function RegistrationPage() {
     try {
       setIsLoading(true);
       setError("");
-      const res = await authApi.register(initData, firstName.trim(), lastName.trim());
+      const savedInvite = JSON.parse(sessionStorage.getItem("__corpmeet_invite") || "null");
+      const res = await authApi.register(initData, firstName.trim(), lastName.trim(), {
+        position: position || undefined,
+        invite_token: savedInvite?.invite_token,
+        ws_code: savedInvite?.ws_code,
+      });
       storage.setToken(res.access_token);
+      sessionStorage.removeItem("__corpmeet_invite");
       sessionStorage.setItem("__corpmeet_replay_splash", "1");
       window.dispatchEvent(new CustomEvent("corpmeet:replay-splash"));
       navigate("/bookings", { replace: true });
@@ -99,6 +114,23 @@ export default function RegistrationPage() {
               color: "var(--text)",
             }}
           />
+          <select
+            value={position}
+            onChange={(e) => setPosition(e.target.value)}
+            className="w-full px-4 py-3 rounded-md text-sm outline-none"
+            style={{
+              background: "var(--elevated)",
+              border: "1px solid var(--border)",
+              color: position ? "var(--text)" : "var(--text-muted)",
+            }}
+          >
+            <option value="">Должность (необязательно)</option>
+            {POSITIONS.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
 
           {error && (
             <p className="text-sm text-center" style={{ color: "#f87171" }}>

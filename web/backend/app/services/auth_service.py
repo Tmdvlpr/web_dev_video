@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.browser_session import BrowserSession
 from app.models.user import User
+from app.models.workspace import Workspace, WorkspaceMember, WorkspaceMemberRole, WorkspaceMemberStatus
 
 # initData freshness window (5 minutes for Mini App)
 INIT_DATA_MAX_AGE_SECONDS = 300
@@ -92,6 +93,9 @@ async def register_user(
     first_name: str,
     last_name: str,
     db: AsyncSession,
+    position: str | None = None,
+    invite_token: str | None = None,
+    ws_code: str | None = None,
 ) -> str | None:
     """Register a new Mini App user. Returns JWT or None if already registered / invalid."""
     user_data = verify_telegram_init_data(init_data)
@@ -118,7 +122,38 @@ async def register_user(
         is_registered=True,
         is_active=True,
     )
+    if position:
+        user.position = position
     db.add(user)
+    await db.flush()
+
+    if invite_token:
+        member_res = await db.execute(
+            select(WorkspaceMember).where(WorkspaceMember.invite_token == invite_token)
+        )
+        member = member_res.scalar_one_or_none()
+        if member and member.status == WorkspaceMemberStatus.pending:
+            member.user_id = user.id
+            member.pending_username = None
+            member.status = WorkspaceMemberStatus.active
+            member.invite_token = None
+    elif ws_code:
+        ws_res = await db.execute(
+            select(Workspace).where(
+                Workspace.invite_code == ws_code,
+                Workspace.archived_at.is_(None),
+            )
+        )
+        workspace = ws_res.scalar_one_or_none()
+        if workspace:
+            new_member = WorkspaceMember(
+                workspace_id=workspace.id,
+                user_id=user.id,
+                role=WorkspaceMemberRole.member,
+                status=WorkspaceMemberStatus.active,
+            )
+            db.add(new_member)
+
     await db.commit()
     await db.refresh(user)
 

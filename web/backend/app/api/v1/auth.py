@@ -46,7 +46,15 @@ async def register(request: Request, body: RegisterRequest, db: AsyncSession = D
     if not body.first_name.strip() or not body.last_name.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="first_name and last_name are required")
 
-    token = await register_user(body.initData, body.first_name.strip(), body.last_name.strip(), db)
+    token = await register_user(
+        body.initData,
+        body.first_name.strip(),
+        body.last_name.strip(),
+        db,
+        position=body.position,
+        invite_token=body.invite_token,
+        ws_code=body.ws_code,
+    )
     if token is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -61,6 +61,10 @@ export const workspacesApi = {
     const res = await apiClient.post<WorkspaceMember>("/api/v1/workspaces/join", { invite_code });
     return res.data;
   },
+  claimInvite: async (invite_token: string): Promise<WorkspaceMember> => {
+    const res = await apiClient.post<WorkspaceMember>("/api/v1/workspaces/claim-invite", { invite_token });
+    return res.data;
+  },
   getAnalytics: async (id: number, periodDays = 30): Promise<WorkspaceAnalytics> => {
     const res = await apiClient.get<WorkspaceAnalytics>(`/api/v1/workspaces/${id}/analytics`, { params: { period_days: periodDays } });
     return res.data;

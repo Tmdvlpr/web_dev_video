@@ -2,11 +2,17 @@ import { apiClient } from "./axios";
 import type { BrowserSessionResponse, TokenResponse, User } from "../types";
 
 export const authApi = {
-  register: async (initData: string, first_name: string, last_name: string): Promise<TokenResponse> => {
+  register: async (
+    initData: string,
+    first_name: string,
+    last_name: string,
+    opts?: { position?: string; invite_token?: string; ws_code?: string }
+  ): Promise<TokenResponse> => {
     const res = await apiClient.post<TokenResponse>("/api/v1/auth/register", {
       initData,
       first_name,
       last_name,
+      ...opts,
     });
     return res.data;
   },
