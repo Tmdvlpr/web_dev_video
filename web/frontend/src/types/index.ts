@@ -195,6 +195,7 @@ export interface WorkspaceMember {
   status: "active" | "pending";
   user: User | null;
   created_at: string;
+  invite_deep_link?: string | null;
 }
 
 export interface Workspace {
