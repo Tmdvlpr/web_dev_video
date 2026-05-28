@@ -10,6 +10,7 @@ interface WorkspaceContextValue {
   setActiveWorkspaceId: (id: number | null) => void;
   myRooms: WorkspaceRoom[];
   isLoading: boolean;
+  wsFetched: boolean;
   refetchWorkspaces: () => void;
   refetchRooms: () => void;
 }
@@ -20,6 +21,7 @@ const WorkspaceContext = createContext<WorkspaceContextValue>({
   setActiveWorkspaceId: () => {},
   myRooms: [],
   isLoading: false,
+  wsFetched: false,
   refetchWorkspaces: () => {},
   refetchRooms: () => {},
 });
@@ -29,7 +31,7 @@ const STORAGE_KEY = "__corpmeet_active_ws";
 export function WorkspaceProvider({ children, enabled }: { children: React.ReactNode; enabled: boolean }) {
   const queryClient = useQueryClient();
 
-  const { data: workspaces = [], isLoading: wsLoading, refetch: refetchWorkspaces } = useQuery({
+  const { data: workspaces = [], isLoading: wsLoading, isFetched: wsFetched, refetch: refetchWorkspaces } = useQuery({
     queryKey: ["workspaces"],
     queryFn: workspacesApi.list,
     enabled,
@@ -77,6 +79,7 @@ export function WorkspaceProvider({ children, enabled }: { children: React.React
       setActiveWorkspaceId,
       myRooms,
       isLoading: wsLoading || roomsLoading,
+      wsFetched,
       refetchWorkspaces,
       refetchRooms,
     }}>

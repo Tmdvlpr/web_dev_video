@@ -34,6 +34,14 @@ const POSITIONS = [
   "Дизайнер",
 ];
 
+const POSITION_T_KEYS: Record<string, string> = {
+  "Начальник департамента/отдела": "pos.chief",
+  "PM": "pos.pm",
+  "Аналитик": "pos.analyst",
+  "Программист и др.": "pos.programmer",
+  "Дизайнер": "pos.designer",
+};
+
 export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModalProps) {
   const { isDark } = useTheme();
   const { t } = useLocale();
@@ -537,7 +545,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                         </p>
                         <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
                           {[
-                            m.user?.position,
+                            m.user?.position ? (POSITION_T_KEYS[m.user.position] ? t(POSITION_T_KEYS[m.user.position] as Parameters<typeof t>[0]) : m.user.position) : undefined,
                             m.user?.role && m.user.role !== "user" ? (m.user.role === "superadmin" ? t("ws.roleSuperadmin") : t("ws.roleAdminLabel")) : null,
                           ].filter(Boolean).join(" · ") || roleLabel(m.role, t)}
                         </p>
@@ -595,7 +603,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                             ...(editForm.position && !POSITIONS.includes(editForm.position)
                               ? [{ value: editForm.position, label: editForm.position }]
                               : []),
-                            ...POSITIONS.map(p => ({ value: p, label: p })),
+                            ...POSITIONS.map(p => ({ value: p, label: POSITION_T_KEYS[p] ? t(POSITION_T_KEYS[p] as Parameters<typeof t>[0]) : p })),
                           ]}
                         />
                         {(isOwner || isSuperadmin) && (m.role !== "owner" || isSuperadmin) && (

@@ -183,7 +183,7 @@ function Dashboard() {
   const { isDark, toggle } = useTheme();
   const { t, locale, setLocale } = useLocale();
   const { toasts, add: addToast } = useToasts();
-  const { workspaces, isLoading: wsLoading } = useWorkspace();
+  const { workspaces, isLoading: wsLoading, wsFetched } = useWorkspace();
   const navigate = useNavigate();
 
   const [modalOpen,      setModalOpen]      = useState(false);
@@ -199,7 +199,7 @@ function Dashboard() {
   const [editBooking,    setEditBooking]    = useState<Booking | null>(null);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [profileOpen,    setProfileOpen]    = useState(false);
-  const needsOnboarding = !wsLoading && workspaces.length === 0;
+  const needsOnboarding = wsFetched && !wsLoading && workspaces.length === 0;
 
   const handleLogout = () => { logout(); navigate("/login", { replace: true }); };
 
@@ -215,7 +215,7 @@ function Dashboard() {
   const unreadCount = useUnreadCount();
   const canEdit    = editBooking ? user?.id === editBooking.user_id || isAdmin : false;
 
-  const roleLabel  = isSuperadmin ? "Суперадмин" : "Участник";
+  const roleLabel  = isSuperadmin ? t("ws.roleSuperadmin") : t("ws.memberMember");
   const roleBg     = isSuperadmin ? "rgba(245,158,11,0.12)" : "var(--elevated)";
   const roleColor  = isSuperadmin ? "#d97706" : "var(--text-muted)";
   const roleBorder = isSuperadmin ? "rgba(245,158,11,0.3)" : "var(--border)";
