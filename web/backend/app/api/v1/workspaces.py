@@ -402,7 +402,14 @@ async def list_members(
         .where(and_(*conditions))
         .order_by(WorkspaceMember.created_at)
     )
-    return list(result.scalars().all())
+    members = list(result.scalars().all())
+    responses = []
+    for m in members:
+        r = WorkspaceMemberResponse.model_validate(m)
+        if settings.TG_BOT_USERNAME and m.status == WorkspaceMemberStatus.pending and m.invite_token:
+            r.invite_deep_link = f"https://t.me/{settings.TG_BOT_USERNAME}?start=invite_{m.invite_token}"
+        responses.append(r)
+    return responses
 
 
 @router.post(

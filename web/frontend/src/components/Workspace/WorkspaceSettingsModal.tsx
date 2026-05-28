@@ -491,6 +491,15 @@ function MembersTab({ workspaceId, workspaceName, myUserId, isAdmin, isOwner, is
                         {memberName(m)}
                       </p>
                       <p className="text-xs" style={{ color: "var(--text-muted)" }}>ожидает</p>
+                      {m.invite_deep_link && (
+                        <button
+                          onClick={() => navigator.clipboard.writeText(m.invite_deep_link!)}
+                          className="text-xs mt-0.5 truncate max-w-full text-left"
+                          style={{ color: "var(--primary)", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                          title="Копировать ссылку Telegram">
+                          Копировать ссылку Telegram
+                        </button>
+                      )}
                     </div>
                     {isAdmin && (
                       <div className="flex gap-1.5">
