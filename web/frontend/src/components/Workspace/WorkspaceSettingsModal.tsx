@@ -630,7 +630,7 @@ function MembersTab({ workspaceId, workspaceName, myUserId, isAdmin, isOwner, is
                             Отмена
                           </button>
                           <button disabled={saving} onClick={async () => {
-                            setErr(null); setInfo(null);
+                            setErr(null);
                             setSaving(true);
                             try {
                               await workspacesApi.updateMemberProfile(workspaceId, m.id, {
