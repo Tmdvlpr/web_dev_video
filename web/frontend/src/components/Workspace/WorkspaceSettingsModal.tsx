@@ -489,7 +489,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                         </button>
                       )}
                     </div>
-                    {isAdmin && (
+                    {isAdmin && m.user_id !== null && (
                       <div className="flex gap-1.5">
                         <button onClick={() => handleApprove(m.id, true)}
                           className="px-2.5 py-1 rounded text-xs font-bold"

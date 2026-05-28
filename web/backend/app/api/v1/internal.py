@@ -554,6 +554,8 @@ async def accept_invite(
         raise HTTPException(status_code=404, detail="Member not found")
     if member.status != WorkspaceMemberStatus.pending:
         raise HTTPException(status_code=400, detail="Invite is not in pending state")
+    if member.user_id is None and not member.pending_username:
+        raise HTTPException(status_code=400, detail="Anonymous invite must be claimed via /invites/claim")
     member.status = WorkspaceMemberStatus.active
     member.invite_token = None
     await db.commit()
@@ -599,7 +601,7 @@ async def claim_invite(
             last_name=body.last_name,
             name=name,
             username=body.username,
-            is_registered=False,
+            is_registered=True,
             is_active=True,
         )
         db.add(user)
@@ -945,7 +947,7 @@ async def join_workspace_by_invite(
             last_name=body.last_name,
             name=name,
             username=body.username,
-            is_registered=False,
+            is_registered=True,
             is_active=True,
         )
         db.add(user)
