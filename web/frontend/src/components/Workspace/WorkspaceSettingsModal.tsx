@@ -322,7 +322,7 @@ function GeneralTab({
         <div>
           <Label>Публичная ссылка Telegram</Label>
           <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
-            Любой, у кого есть ссылка, вступит в пространство автоматически. После обновления кода старая ссылка перестаёт работать.
+            Любой, у кого есть ссылка, вступит в пространство автоматически. После обновления старая ссылка перестаёт работать.
           </p>
           <div className="flex gap-2">
             <div className="flex-1 rounded-md px-3 py-2 text-xs font-mono truncate"
@@ -334,6 +334,11 @@ function GeneralTab({
               className="px-3 rounded-md text-xs font-bold transition-all"
               style={{ background: copiedTg ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copiedTg ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copiedTg ? "#16a34a" : "var(--text-sec)" }}>
               {copiedTg ? "Скопировано" : "Копировать"}
+            </button>
+            <button onClick={handleRegen} disabled={regenerating}
+              className="px-3 rounded-md text-xs font-bold disabled:opacity-50"
+              style={{ background: "var(--elevated)", border: "1.5px solid var(--border)", color: "var(--text-sec)" }}>
+              {regenerating ? "…" : "Обновить"}
             </button>
           </div>
         </div>
@@ -379,9 +384,8 @@ function MembersTab({ workspaceId, workspaceName, myUserId, isAdmin, isOwner, is
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviting, setInviting] = useState(false);
+  const [inviteCopied, setInviteCopied] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
-  const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
   const [editMemberId, setEditMemberId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ first_name: "", last_name: "", position: "", role: "member" });
   const [saving, setSaving] = useState(false);
@@ -401,12 +405,14 @@ function MembersTab({ workspaceId, workspaceName, myUserId, isAdmin, isOwner, is
   const pending = members.filter(m => m.status === "pending");
 
   const handleInvite = async () => {
-    setErr(null); setInviteLink(null);
+    setErr(null);
     setInviting(true);
     try {
       const result = await workspacesApi.generateInviteLink(workspaceId);
       if (result.invite_deep_link) {
-        setInviteLink(result.invite_deep_link);
+        await navigator.clipboard.writeText(result.invite_deep_link);
+        setInviteCopied(true);
+        setTimeout(() => setInviteCopied(false), 2000);
       }
       await load();
     } catch (e: unknown) {
@@ -444,47 +450,12 @@ function MembersTab({ workspaceId, workspaceName, myUserId, isAdmin, isOwner, is
           <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
             Одноразовая ссылка. Отправьте любому — при регистрации через бот он автоматически попадёт в пространство.
           </p>
-          <button onClick={handleInvite} disabled={inviting}
-            className="px-4 py-2 rounded-md text-xs font-bold text-white disabled:opacity-50"
-            style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
-            {inviting ? "…" : "Создать ссылку-приглашение"}
+          <button onClick={handleInvite} disabled={inviting || inviteCopied}
+            className="px-4 py-2 rounded-md text-xs font-bold text-white disabled:opacity-50 transition-all"
+            style={{ background: inviteCopied ? "rgba(22,163,74,0.85)" : "linear-gradient(135deg,#1565a8,#114e85)" }}>
+            {inviting ? "…" : inviteCopied ? "Ссылка скопирована!" : "Создать ссылку-приглашение"}
           </button>
           {err && <p className="text-xs mt-1.5" style={{ color: "#dc2626" }}>{err}</p>}
-          {inviteLink && (
-            <div className="mt-2 rounded-md p-3 space-y-2" style={{ background: "var(--elevated)", border: "1px solid var(--primary-border)" }}>
-              <p className="text-xs font-semibold" style={{ color: "var(--text-sec)" }}>
-                Скопируйте и отправьте пользователю:
-              </p>
-              <p className="text-xs leading-relaxed font-mono px-2 py-1.5 rounded select-all"
-                style={{ color: "var(--primary)", background: "var(--bg)", border: "1px solid var(--primary-border)", wordBreak: "break-all" }}>
-                {inviteLink}
-              </p>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(inviteLink!).then(() => { setInviteLinkCopied(true); setTimeout(() => setInviteLinkCopied(false), 2000); });
-                  }}
-                  className="px-3 py-1 rounded text-xs font-bold transition-all"
-                  style={{
-                    background: inviteLinkCopied ? "rgba(34,197,94,0.12)" : "var(--primary-light)",
-                    border: `1px solid ${inviteLinkCopied ? "rgba(34,197,94,0.4)" : "var(--primary-border)"}`,
-                    color: inviteLinkCopied ? "#16a34a" : "var(--primary)",
-                  }}>
-                  {inviteLinkCopied ? "Скопировано!" : "Копировать ссылку"}
-                </button>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(
-                      `Тебя пригласили в пространство «${workspaceName}» в CorpMeet. Открой ссылку, чтобы принять приглашение: ${inviteLink}`
-                    );
-                  }}
-                  className="px-3 py-1 rounded text-xs font-semibold"
-                  style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
-                  Копировать сообщение
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
