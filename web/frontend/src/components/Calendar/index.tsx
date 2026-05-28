@@ -361,7 +361,7 @@ function FilterDropdown({
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
         </svg>
-        Фильтры
+        {t("cal.filters")}
         {hasFilter && (
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--primary)", flexShrink: 0 }} />
         )}
@@ -392,7 +392,7 @@ function FilterDropdown({
                   marginBottom: -1,
                 }}
               >
-                {k === "rooms" ? "Комнаты" : "Тип встречи"}
+                {k === "rooms" ? t("cal.tabRooms") : t("cal.tabType")}
               </button>
             ))}
           </div>
@@ -504,7 +504,7 @@ function RoomStatus({ roomId, workspaceId }: { roomId?: number | null; workspace
     return (
       <div style={popupStyle}>
         <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: isNow ? "#dc2626" : "#d97706", marginBottom: 6 }}>
-          {isNow ? "Идёт сейчас" : "Скоро начнётся"}
+          {isNow ? t("cal.statusNow") : t("cal.statusSoon")}
         </div>
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{booking.title}</div>
         <div style={{ fontSize: 13, color: isDark ? "#7882a8" : "#546080", marginBottom: 2 }}>
@@ -512,7 +512,7 @@ function RoomStatus({ roomId, workspaceId }: { roomId?: number | null; workspace
         </div>
         {booking.user?.display_name && (
           <div style={{ fontSize: 13, color: isDark ? "#7882a8" : "#546080" }}>
-            Организатор: {booking.user.display_name}
+            {t("cal.organizer")} {booking.user.display_name}
           </div>
         )}
         {booking.description && (
@@ -845,7 +845,7 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
               color: searchQuery ? "var(--primary)" : "var(--text-muted)",
               background: searchQuery ? "var(--primary-light)" : "transparent",
             }}
-            title="Поиск">
+            title={t("common.search")}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>

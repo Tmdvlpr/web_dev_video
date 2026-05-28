@@ -7,6 +7,7 @@ import { addNotification } from "../Dashboard/NotificationCenter";
 import type { WorkspaceAnalytics } from "../../api/workspaces";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useLocale } from "../../contexts/LocaleContext";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
 import type { RoomJoinRequest, WorkspaceMember, WorkspaceRoom } from "../../types";
 
@@ -35,6 +36,7 @@ const POSITIONS = [
 
 export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModalProps) {
   const { isDark } = useTheme();
+  const { t } = useLocale();
   const { user } = useAuth();
   const { activeWorkspace, myRooms, refetchWorkspaces, refetchRooms } = useWorkspace();
   const [tab, setTab] = useState<Tab>("general");
@@ -49,7 +51,7 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
     return (
       <Overlay isDark={isDark} onClose={onClose}>
         <div className="p-8 text-center">
-          <p style={{ color: "var(--text-sec)" }}>Нет активного пространства</p>
+          <p style={{ color: "var(--text-sec)" }}>{t("ws.noActive")}</p>
         </div>
       </Overlay>
     );
@@ -65,10 +67,10 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
         style={{ borderBottom: "1px solid var(--border)" }}>
         <div>
           <h2 className="text-lg font-bold" style={{ color: "var(--text)" }}>
-            Настройки · {activeWorkspace.name}
+            {t("ws.settingsTitle")} · {activeWorkspace.name}
           </h2>
           <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-            Ваша роль: {roleLabel(activeWorkspace.my_role)}
+            {t("ws.myRole")} {roleLabel(activeWorkspace.my_role, t)}
           </p>
         </div>
         <button onClick={onClose}
@@ -83,7 +85,7 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
       </div>
 
       <div className="flex gap-1 px-6 pt-3" style={{ borderBottom: "1px solid var(--border)" }}>
-        {([["general", "Общее"], ["members", "Участники"], ["rooms", "Переговорные"], ["analytics", "Аналитика"]] as const).map(([k, label]) => (
+        {([["general", t("ws.tabGeneral")], ["members", t("ws.tabMembers")], ["rooms", t("ws.tabRooms")], ["analytics", t("ws.tabAnalytics")]] as [Tab, string][]).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className="px-3 py-2 text-xs font-semibold transition-all"
             style={{
@@ -168,10 +170,10 @@ function Overlay({ isDark, onClose, children }: { isDark: boolean; onClose: () =
   );
 }
 
-function roleLabel(role: string | null): string {
-  if (role === "owner") return "владелец";
-  if (role === "admin") return "администратор";
-  if (role === "member") return "участник";
+function roleLabel(role: string | null, t: (k: string) => string): string {
+  if (role === "owner") return t("ws.roleOwner");
+  if (role === "admin") return t("ws.roleAdmin");
+  if (role === "member") return t("ws.roleMember");
   return "—";
 }
 
@@ -190,6 +192,7 @@ function GeneralTab({
   onChanged: () => void;
   onArchived: () => void;
 }) {
+  const { t } = useLocale();
   const [name, setName] = useState(initialName);
   const [tz, setTz] = useState(initialTz);
   const [code, setCode] = useState(inviteCode);
@@ -207,14 +210,14 @@ function GeneralTab({
 
   const saveName = async () => {
     setErr(null);
-    if (!name.trim()) { setErr("Название не может быть пустым"); return; }
+    if (!name.trim()) { setErr(t("ws.nameEmpty")); return; }
     setSavingName(true);
     try {
       await workspacesApi.update(workspaceId, { name: name.trim() });
       onChanged();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось сохранить");
+      setErr(msg ?? t("ws.saveFail"));
     } finally { setSavingName(false); }
   };
 
@@ -227,7 +230,7 @@ function GeneralTab({
       onChanged();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось сохранить");
+      setErr(msg ?? t("ws.saveFail"));
     } finally { setSavingTz(false); }
   };
 
@@ -247,7 +250,7 @@ function GeneralTab({
       onChanged();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось обновить код");
+      setErr(msg ?? t("ws.regenFail"));
     } finally { setRegen(false); }
   };
 
@@ -258,7 +261,7 @@ function GeneralTab({
       onArchived();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось архивировать");
+      setErr(msg ?? t("ws.archiveFail"));
       setArch(false);
     }
   };
@@ -266,7 +269,7 @@ function GeneralTab({
   return (
     <div className="space-y-5">
       <div>
-        <Label>Название</Label>
+        <Label>{t("ws.labelName")}</Label>
         <div className="flex gap-2">
           <input
             disabled={!isAdmin}
@@ -277,26 +280,26 @@ function GeneralTab({
           <button onClick={saveName} disabled={!isAdmin || savingName || name === initialName}
             className="px-4 rounded-md text-xs font-bold text-white disabled:opacity-50"
             style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
-            {savingName ? "…" : "Сохранить"}
+            {savingName ? "…" : t("common.save")}
           </button>
         </div>
       </div>
 
       <div>
-        <Label>Часовой пояс</Label>
+        <Label>{t("ws.labelTimezone")}</Label>
         <CustomSelect
           disabled={!isAdmin || savingTz}
           value={tz}
           onChange={saveTz}
           options={[
             ...(TIMEZONES.includes(tz) ? [] : [{ value: tz, label: tz }]),
-            ...TIMEZONES.map(t => ({ value: t, label: t })),
+            ...TIMEZONES.map(tz => ({ value: tz, label: tz })),
           ]}
         />
       </div>
 
       <div>
-        <Label>Инвайт-код</Label>
+        <Label>{t("ws.labelInviteCode")}</Label>
         <div className="flex gap-2">
           <div className="flex-1 rounded-md px-3 py-2 text-sm font-mono tracking-wider"
             style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}>
@@ -305,13 +308,13 @@ function GeneralTab({
           <button onClick={handleCopy}
             className="px-3 rounded-md text-xs font-bold transition-all"
             style={{ background: copied ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copied ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copied ? "#16a34a" : "var(--text-sec)" }}>
-            {copied ? "Скопировано" : "Копировать"}
+            {copied ? t("ws.copied") : t("ws.copy")}
           </button>
           {(isOwner || isSuperadmin) && (
             <button onClick={handleRegen} disabled={regenerating}
               className="px-3 rounded-md text-xs font-bold disabled:opacity-50"
               style={{ background: "var(--elevated)", border: "1.5px solid var(--border)", color: "var(--text-sec)" }}>
-              {regenerating ? "…" : "Обновить"}
+              {regenerating ? "…" : t("ws.update")}
             </button>
           )}
         </div>
@@ -319,9 +322,9 @@ function GeneralTab({
 
       {tgLink && (isOwner || isSuperadmin) && (
         <div>
-          <Label>Публичная ссылка Telegram</Label>
+          <Label>{t("ws.tgPublicLink")}</Label>
           <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
-            Любой, у кого есть ссылка, вступит в пространство автоматически. После обновления старая ссылка перестаёт работать.
+            {t("ws.tgPublicLinkDesc")}
           </p>
           <div className="flex gap-2">
             <div className="flex-1 rounded-md px-3 py-2 text-xs font-mono truncate"
@@ -332,12 +335,12 @@ function GeneralTab({
               onClick={() => { navigator.clipboard.writeText(tgLink); setCopiedTg(true); setTimeout(() => setCopiedTg(false), 1500); }}
               className="px-3 rounded-md text-xs font-bold transition-all"
               style={{ background: copiedTg ? "rgba(34,197,94,0.15)" : "var(--elevated)", border: `1.5px solid ${copiedTg ? "rgba(34,197,94,0.5)" : "var(--border)"}`, color: copiedTg ? "#16a34a" : "var(--text-sec)" }}>
-              {copiedTg ? "Скопировано" : "Копировать"}
+              {copiedTg ? t("ws.copied") : t("ws.copy")}
             </button>
             <button onClick={handleRegen} disabled={regenerating}
               className="px-3 rounded-md text-xs font-bold disabled:opacity-50"
               style={{ background: "var(--elevated)", border: "1.5px solid var(--border)", color: "var(--text-sec)" }}>
-              {regenerating ? "…" : "Обновить"}
+              {regenerating ? "…" : t("ws.update")}
             </button>
           </div>
         </div>
@@ -347,28 +350,28 @@ function GeneralTab({
 
       {isOwner && (
         <div className="pt-4 mt-2" style={{ borderTop: "1px dashed var(--border)" }}>
-          <Label>Архивирование</Label>
+          <Label>{t("ws.labelArchive")}</Label>
           {!confirmArchive ? (
             <button onClick={() => setConfirmArch(true)}
               className="px-4 py-2 rounded-md text-xs font-bold"
               style={{ background: "rgba(239,68,68,0.08)", border: "1.5px solid rgba(239,68,68,0.35)", color: "#dc2626" }}>
-              Архивировать пространство
+              {t("ws.archiveBtn")}
             </button>
           ) : (
             <div className="rounded-md p-3 space-y-2" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.35)" }}>
               <p className="text-xs font-semibold" style={{ color: "#dc2626" }}>
-                Архивировать пространство? Оно будет скрыто для всех участников.
+                {t("ws.archiveConfirm")}
               </p>
               <div className="flex gap-2">
                 <button onClick={() => setConfirmArch(false)}
                   className="flex-1 py-1.5 rounded text-xs font-semibold"
                   style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
-                  Отмена
+                  {t("common.cancel")}
                 </button>
                 <button onClick={handleArchive} disabled={archiving}
                   className="flex-1 py-1.5 rounded text-xs font-bold text-white disabled:opacity-50"
                   style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)" }}>
-                  {archiving ? "…" : "Архивировать"}
+                  {archiving ? "…" : t("ws.archive")}
                 </button>
               </div>
             </div>
@@ -380,6 +383,7 @@ function GeneralTab({
 }
 
 function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: { workspaceId: number; myUserId: number | null; isAdmin: boolean; isOwner: boolean; isSuperadmin: boolean }) {
+  const { t } = useLocale();
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviting, setInviting] = useState(false);
@@ -416,7 +420,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
       await load();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось создать ссылку");
+      setErr(msg ?? t("ws.inviteCreateFail"));
     } finally { setInviting(false); }
   };
 
@@ -427,7 +431,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
       await load();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось обновить");
+      setErr(msg ?? t("ws.approveFail"));
     }
   };
 
@@ -437,7 +441,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
       await load();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось удалить");
+      setErr(msg ?? t("ws.deleteFail"));
     }
   };
 
@@ -445,26 +449,26 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
     <div className="space-y-5">
       {(isAdmin || isSuperadmin) && (
         <div>
-          <Label>Ссылка-приглашение</Label>
+          <Label>{t("ws.inviteLinkLabel")}</Label>
           <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
-            Одноразовая ссылка. Отправьте любому — при регистрации через бот он автоматически попадёт в пространство.
+            {t("ws.inviteLinkDesc")}
           </p>
           <button onClick={handleInvite} disabled={inviting || inviteCopied}
             className="px-4 py-2 rounded-md text-xs font-bold text-white disabled:opacity-50 transition-all"
             style={{ background: inviteCopied ? "rgba(22,163,74,0.85)" : "linear-gradient(135deg,#1565a8,#114e85)" }}>
-            {inviting ? "…" : inviteCopied ? "Ссылка скопирована!" : "Создать ссылку-приглашение"}
+            {inviting ? "…" : inviteCopied ? t("ws.inviteLinkCopied") : t("ws.inviteLinkCreate")}
           </button>
           {err && <p className="text-xs mt-1.5" style={{ color: "#dc2626" }}>{err}</p>}
         </div>
       )}
 
       {loading ? (
-        <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>Загрузка…</p>
+        <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>{t("ws.loading")}</p>
       ) : (
         <>
           {pending.length > 0 && (
             <div>
-              <Label>Ожидают подтверждения</Label>
+              <Label>{t("ws.pendingLabel")}</Label>
               <div className="space-y-2">
                 {pending.map(m => (
                   <div key={m.id} className="flex items-center gap-3 px-3 py-2 rounded-md"
@@ -474,14 +478,14 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                       <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
                         {memberName(m)}
                       </p>
-                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>ожидает</p>
+                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>{t("ws.statusPending")}</p>
                       {m.invite_deep_link && (
                         <button
                           onClick={() => navigator.clipboard.writeText(m.invite_deep_link!)}
                           className="text-xs mt-0.5 truncate max-w-full text-left"
                           style={{ color: "var(--primary)", background: "none", border: "none", padding: 0, cursor: "pointer" }}
-                          title="Копировать ссылку Telegram">
-                          Копировать ссылку Telegram
+                          title={t("ws.copyTgLink")}>
+                          {t("ws.copyTgLink")}
                         </button>
                       )}
                     </div>
@@ -490,12 +494,12 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                         <button onClick={() => handleApprove(m.id, true)}
                           className="px-2.5 py-1 rounded text-xs font-bold"
                           style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.3)", color: "#16a34a" }}>
-                          Принять
+                          {t("ws.accept")}
                         </button>
                         <button onClick={() => handleApprove(m.id, false)}
                           className="px-2.5 py-1 rounded text-xs font-bold"
                           style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#dc2626" }}>
-                          Отклонить
+                          {t("ws.reject")}
                         </button>
                       </div>
                     )}
@@ -506,7 +510,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
           )}
 
           <div>
-            <Label>Активные ({active.length})</Label>
+            <Label>{t("ws.activeLabel", { n: active.length })}</Label>
             <div className="space-y-2">
               {active.map(m => {
                 const canRemove = (isAdmin || isSuperadmin) && m.user_id !== myUserId && m.role !== "owner";
@@ -522,8 +526,8 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                         <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
                           {[
                             m.user?.position,
-                            m.user?.role && m.user.role !== "user" ? (m.user.role === "superadmin" ? "Суперадмин" : "Администратор") : null,
-                          ].filter(Boolean).join(" · ") || roleLabel(m.role)}
+                            m.user?.role && m.user.role !== "user" ? (m.user.role === "superadmin" ? t("ws.roleSuperadmin") : t("ws.roleAdminLabel")) : null,
+                          ].filter(Boolean).join(" · ") || roleLabel(m.role, t)}
                         </p>
                       </div>
                       <RoleBadge role={m.role} />
@@ -537,7 +541,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                             role: m.role,
                           });
                         }}
-                          title="Редактировать профиль"
+                          title={t("profile.editTitle")}
                           className="w-7 h-7 flex items-center justify-center rounded transition-all"
                           style={editMemberId === m.id
                             ? { background: "var(--primary)", color: "#fff", border: "1px solid var(--primary)" }
@@ -549,7 +553,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                       )}
                       {canRemove && (
                         <button onClick={() => handleRemove(m.id)}
-                          title="Удалить"
+                          title={t("common.delete")}
                           className="w-7 h-7 flex items-center justify-center rounded"
                           style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#dc2626" }}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -564,11 +568,11 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                       <div className="mt-1 px-3 py-3 rounded-md space-y-2" style={{ background: "var(--input-bg)", border: "1px solid var(--primary-border)" }}>
                         <div className="grid grid-cols-2 gap-2">
                           <input value={editForm.first_name} onChange={e => setEditForm(f => ({ ...f, first_name: e.target.value }))}
-                            placeholder="Имя"
+                            placeholder={t("profile.firstName")}
                             className="rounded px-2.5 py-1.5 text-xs outline-none"
                             style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
                           <input value={editForm.last_name} onChange={e => setEditForm(f => ({ ...f, last_name: e.target.value }))}
-                            placeholder="Фамилия"
+                            placeholder={t("profile.lastName")}
                             className="rounded px-2.5 py-1.5 text-xs outline-none"
                             style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
                         </div>
@@ -587,9 +591,9 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                             value={editForm.role}
                             onChange={v => setEditForm(f => ({ ...f, role: v }))}
                             options={[
-                              { value: "member", label: "Участник" },
-                              { value: "admin", label: "Администратор" },
-                              ...(isSuperadmin ? [{ value: "owner", label: "Владелец" }] : []),
+                              { value: "member", label: t("ws.memberMember") },
+                              { value: "admin", label: t("ws.memberAdmin") },
+                              ...(isSuperadmin ? [{ value: "owner", label: t("ws.memberOwner") }] : []),
                             ]}
                           />
                         )}
@@ -597,7 +601,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                           <button onClick={() => setEditMemberId(null)}
                             className="px-3 py-1.5 rounded text-xs font-semibold"
                             style={{ background: "var(--elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-                            Отмена
+                            {t("common.cancel")}
                           </button>
                           <button disabled={saving} onClick={async () => {
                             setErr(null);
@@ -608,19 +612,19 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                                 last_name: editForm.last_name || undefined,
                                 position: editForm.position || undefined,
                               });
-                            } catch { setErr("Не удалось сохранить профиль"); setSaving(false); return; }
+                            } catch { setErr(t("ws.saveFail")); setSaving(false); return; }
                             try {
                               if ((isOwner || isSuperadmin) && (m.role !== "owner" || isSuperadmin) && editForm.role !== m.role) {
                                 await workspacesApi.updateMember(workspaceId, m.id, { role: editForm.role });
                               }
                               setEditMemberId(null);
                               await load();
-                            } catch { setErr("Не удалось сохранить роль"); }
+                            } catch { setErr(t("ws.updateFail")); }
                             finally { setSaving(false); }
                           }}
                             className="px-3 py-1.5 rounded text-xs font-bold text-white disabled:opacity-50"
                             style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
-                            {saving ? "…" : "Сохранить"}
+                            {saving ? "…" : t("common.save")}
                           </button>
                         </div>
                       </div>
@@ -654,6 +658,7 @@ function MemberAvatar({ member }: { member: WorkspaceMember }) {
 }
 
 function RoleBadge({ role }: { role: string }) {
+  const { t } = useLocale();
   const palette: Record<string, { bg: string; color: string }> = {
     owner: { bg: "rgba(217,119,6,0.12)", color: "#d97706" },
     admin: { bg: "rgba(21,101,168,0.12)", color: "#1565a8" },
@@ -663,13 +668,14 @@ function RoleBadge({ role }: { role: string }) {
   return (
     <span className="text-xs font-bold px-2 py-0.5 rounded"
       style={{ background: p.bg, color: p.color }}>
-      {roleLabel(role)}
+      {roleLabel(role, t)}
     </span>
   );
 }
 
 function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
   { workspaceId: number; rooms: WorkspaceRoom[]; isAdmin: boolean; isSuperadmin: boolean; onRefetch: () => void }) {
+  const { t } = useLocale();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
@@ -681,7 +687,7 @@ function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
 
   const handleCreate = async () => {
     setErr(null);
-    if (!newName.trim()) { setErr("Введите название"); return; }
+    if (!newName.trim()) { setErr(t("ws.rooms.nameEmpty")); return; }
     setBusy(true);
     try {
       await roomsApi.create({ name: newName.trim(), description: newDesc.trim() || undefined, workspace_id: workspaceId });
@@ -689,13 +695,13 @@ function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
       onRefetch();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось создать");
+      setErr(msg ?? t("ws.createFail"));
     } finally { setBusy(false); }
   };
 
   const handleJoin = async () => {
     setErr(null); setJoinInfo(null);
-    if (!joinCode.trim()) { setErr("Введите код комнаты"); return; }
+    if (!joinCode.trim()) { setErr(t("ws.rooms.codeEmpty")); return; }
     setBusy(true);
     try {
       const result = await roomsApi.join(joinCode.trim(), workspaceId);
@@ -704,16 +710,16 @@ function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
         onRefetch();
       } else if (result.status === 202) {
         setJoinCode("");
-        setJoinInfo("⏳ Заявка отправлена. Ждём подтверждения от владельца комнаты.");
-        addNotification({ id: `room-req-${Date.now()}`, title: "⏳ Заявка на комнату отправлена", body: `Ожидайте подтверждения от владельца`, time: Date.now(), type: "room_request" });
+        setJoinInfo(t("ws.rooms.requestSent"));
+        addNotification({ id: `room-req-${Date.now()}`, title: t("ws.rooms.requestNotifTitle"), body: t("ws.rooms.requestNotifBody"), time: Date.now(), type: "room_request" });
       }
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number; data?: { detail?: string } } })?.response?.status;
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       if (status === 403 && !msg) {
-        setErr("❌ Подключение по коду отключено для этой комнаты.");
+        setErr(t("ws.rooms.codeDisabled"));
       } else {
-        setErr(msg ?? "Не удалось добавить комнату");
+        setErr(msg ?? t("ws.rooms.addFail"));
       }
     } finally { setBusy(false); }
   };
@@ -721,7 +727,7 @@ function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
   return (
     <div className="space-y-3">
       {rooms.length === 0 && (
-        <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>Комнат пока нет</p>
+        <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>{t("ws.rooms.empty")}</p>
       )}
       {rooms.map(r => (
         <RoomRow key={r.id} wr={r} workspaceId={workspaceId} isAdmin={isAdmin} isSuperadmin={isSuperadmin} onRefetch={onRefetch} />
@@ -734,12 +740,12 @@ function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
               <button onClick={() => setCreating(true)}
                 className="flex-1 py-2 rounded-md text-xs font-bold"
                 style={{ background: "var(--primary-light)", border: "1.5px solid var(--primary-border)", color: "var(--primary)" }}>
-                + Создать комнату
+                {t("ws.rooms.create")}
               </button>
               <button onClick={() => setJoining(true)}
                 className="flex-1 py-2 rounded-md text-xs font-bold"
                 style={{ background: "var(--elevated)", border: "1.5px solid var(--border)", color: "var(--text-sec)" }}>
-                Добавить по коду
+                {t("ws.rooms.addByCode")}
               </button>
             </div>
           )}
@@ -747,13 +753,13 @@ function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
             <div className="space-y-2 rounded-md p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
               <input
                 autoFocus value={newName} onChange={e => setNewName(e.target.value)}
-                placeholder="Название переговорной"
+                placeholder={t("ws.rooms.namePh")}
                 className="w-full rounded px-2.5 py-1.5 text-sm outline-none"
                 style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)" }}
               />
               <input
                 value={newDesc} onChange={e => setNewDesc(e.target.value)}
-                placeholder="Описание (необязательно)"
+                placeholder={t("ws.rooms.descPh")}
                 className="w-full rounded px-2.5 py-1.5 text-sm outline-none"
                 style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)" }}
               />
@@ -762,12 +768,12 @@ function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
                 <button onClick={() => { setCreating(false); setNewName(""); setNewDesc(""); setErr(null); }}
                   className="flex-1 py-1.5 rounded text-xs font-semibold"
                   style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
-                  Отмена
+                  {t("common.cancel")}
                 </button>
                 <button onClick={handleCreate} disabled={busy}
                   className="flex-1 py-1.5 rounded text-xs font-bold text-white disabled:opacity-50"
                   style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
-                  {busy ? "…" : "Создать"}
+                  {busy ? "…" : t("common.create")}
                 </button>
               </div>
             </div>
@@ -775,11 +781,11 @@ function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
           {joining && (
             <div className="space-y-2 rounded-md p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
               <p className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
-                Введите код комнаты из другого пространства
+                {t("ws.rooms.codeInstruction")}
               </p>
               <input
                 autoFocus value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())}
-                placeholder="Например: A1B2C3D4"
+                placeholder={t("ws.rooms.codePh")}
                 className="w-full rounded px-2.5 py-1.5 text-sm outline-none font-mono"
                 style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)", letterSpacing: "0.1em" }}
                 onKeyDown={e => { if (e.key === "Enter") handleJoin(); }}
@@ -790,12 +796,12 @@ function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
                 <button onClick={() => { setJoining(false); setJoinCode(""); setErr(null); setJoinInfo(null); }}
                   className="flex-1 py-1.5 rounded text-xs font-semibold"
                   style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
-                  Отмена
+                  {t("common.cancel")}
                 </button>
                 <button onClick={handleJoin} disabled={busy}
                   className="flex-1 py-1.5 rounded text-xs font-bold text-white disabled:opacity-50"
                   style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
-                  {busy ? "…" : "Добавить"}
+                  {busy ? "…" : t("ws.rooms.add")}
                 </button>
               </div>
             </div>
@@ -808,6 +814,7 @@ function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
 
 function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
   { wr: WorkspaceRoom; workspaceId: number; isAdmin: boolean; isSuperadmin: boolean; onRefetch: () => void }) {
+  const { t } = useLocale();
   const { workspaces } = useWorkspace();
   const [showShare, setShowShare] = useState(false);
   const [shareCode, setShareCode] = useState("");
@@ -826,7 +833,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
   const isOwnerRoom = wr.role === "owner";
 
   const handleTransfer = async () => {
-    if (!transferWsId) { setErr("Выберите пространство"); return; }
+    if (!transferWsId) { setErr(t("ws.rooms.wsRequired")); return; }
     setErr(null); setBusy(true);
     try {
       await roomsApi.transferOwner(wr.room.id, Number(transferWsId));
@@ -834,7 +841,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
       onRefetch();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось передать владение");
+      setErr(msg ?? t("ws.rooms.transferFail"));
     } finally { setBusy(false); }
   };
 
@@ -855,7 +862,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
       onRefetch();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось отозвать доступ");
+      setErr(msg ?? t("ws.rooms.revokeFail"));
     }
   };
 
@@ -869,7 +876,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
     setLocalVis(v);
     roomsApi.updateVisibility(wr.room.id, workspaceId, v)
       .then(() => onRefetch())
-      .catch(() => { setLocalVis(wr.visibility ?? "full"); setErr("Не удалось обновить"); });
+      .catch(() => { setLocalVis(wr.visibility ?? "full"); setErr(t("ws.rooms.updateFail")); });
   };
 
   const handleJoinMode = async (mode: "open" | "approval" | "closed") => {
@@ -884,7 +891,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
     } catch (e: unknown) {
       setLocalJoinMode(wr.room.join_mode ?? "approval");
       onRefetch();
-      setErr("Не удалось сохранить режим подключения");
+      setErr(t("ws.rooms.modeFail"));
     } finally {
       setBusy(false);
     }
@@ -892,7 +899,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
 
   const handleShare = async () => {
     setErr(null);
-    if (!shareCode.trim()) { setErr("Введите код"); return; }
+    if (!shareCode.trim()) { setErr(t("ws.rooms.codeEmpty")); return; }
     setBusy(true);
     try {
       await roomsApi.share(wr.room.id, shareCode.trim());
@@ -900,7 +907,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
       onRefetch();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось поделиться");
+      setErr(msg ?? t("ws.rooms.shareFail"));
     } finally { setBusy(false); }
   };
 
@@ -911,7 +918,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
       onRefetch();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось архивировать");
+      setErr(msg ?? t("ws.rooms.archiveFail"));
       setBusy(false);
     }
   };
@@ -924,7 +931,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
       onRefetch();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось сменить код");
+      setErr(msg ?? t("ws.rooms.regenFail"));
       setBusy(false);
     }
   };
@@ -933,11 +940,11 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
     try {
       await roomsApi.approveJoinRequest(wr.room.id, reqId);
       setJoinRequests(r => r.filter(x => x.id !== reqId));
-      addNotification({ id: `room-approved-${reqId}`, title: "✅ Заявка на комнату принята", body: `Комната «${wr.room.name}» добавлена в пространство`, time: Date.now(), type: "room_approved" });
+      addNotification({ id: `room-approved-${reqId}`, title: t("ws.rooms.requestApproved"), body: t("ws.rooms.requestApprovedBody", { name: wr.room.name }), time: Date.now(), type: "room_approved" });
       onRefetch();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось принять");
+      setErr(msg ?? t("ws.accept"));
     }
   };
 
@@ -947,7 +954,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
       setJoinRequests(r => r.filter(x => x.id !== reqId));
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setErr(msg ?? "Не удалось отклонить");
+      setErr(msg ?? t("ws.rejectFail"));
     }
   };
 
@@ -981,35 +988,35 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
 
       {isOwnerRoom && wr.room.invite_code && (
         <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-          <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Код:</span>
+          <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{t("ws.rooms.codeLabel")}</span>
           <code className="text-xs font-mono px-2 py-0.5 rounded" style={{ background: "var(--bg)", color: "var(--primary)", border: "1px solid var(--primary-border)", letterSpacing: "0.1em" }}>
             {wr.room.invite_code}
           </code>
           <button onClick={handleCopyCode}
             className="px-2 py-0.5 rounded text-xs font-semibold transition-all"
             style={{ background: copiedCode ? "rgba(34,197,94,0.12)" : "var(--bg)", color: copiedCode ? "#16a34a" : "var(--text-muted)", border: `1px solid ${copiedCode ? "rgba(34,197,94,0.4)" : "var(--border)"}` }}>
-            {copiedCode ? "✓" : "Копировать"}
+            {copiedCode ? "✓" : t("ws.copy")}
           </button>
           {!confirmRegen ? (
             <button onClick={() => setConfirmRegen(true)}
               className="px-2 py-0.5 rounded text-xs font-semibold"
               style={{ background: "var(--bg)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-              Сменить код
+              {t("ws.rooms.changeCode")}
             </button>
           ) : (
             <div className="flex flex-wrap items-center gap-1 mt-1 w-full">
               <p className="w-full text-xs mb-1" style={{ color: "var(--text-muted)" }}>
-                Старый код перестанет работать для новых подключений. Существующие пространства, уже добавившие комнату, не затронуты.
+                {t("ws.rooms.changeCodeConfirm")}
               </p>
               <button onClick={handleRegen} disabled={busy}
                 className="px-2 py-0.5 rounded text-xs font-bold text-white disabled:opacity-50"
                 style={{ background: "linear-gradient(135deg,#d97706,#b45309)" }}>
-                {busy ? "…" : "Сменить"}
+                {busy ? "…" : t("ws.rooms.changeCodeBtn")}
               </button>
               <button onClick={() => setConfirmRegen(false)}
                 className="px-2 py-0.5 rounded text-xs font-semibold"
                 style={{ background: "var(--elevated)", color: "var(--text-sec)", border: "1px solid var(--border)" }}>
-                Отмена
+                {t("common.cancel")}
               </button>
             </div>
           )}
@@ -1018,12 +1025,12 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
 
       {isOwnerRoom && isAdmin && (
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-semibold shrink-0" style={{ color: "var(--text-muted)" }}>Подключение:</span>
+          <span className="text-xs font-semibold shrink-0" style={{ color: "var(--text-muted)" }}>{t("ws.rooms.connection")}</span>
           <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--border)" }}>
             {([
-              { v: "open",     label: "Открытое" },
-              { v: "approval", label: "С подтверждением" },
-              { v: "closed",   label: "Закрытое" },
+              { v: "open",     label: t("ws.rooms.open") },
+              { v: "approval", label: t("ws.rooms.approval") },
+              { v: "closed",   label: t("ws.rooms.closed") },
             ] as const).map(({ v, label }) => {
               const active = localJoinMode === v;
               return (
@@ -1043,7 +1050,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
 
       {(isOwnerRoom || isAdmin) && (
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Видимость:</span>
+          <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{t("ws.rooms.visibility")}</span>
           <div className="flex rounded overflow-hidden" style={{ border: "1px solid var(--border)" }}>
             {(["full", "busy_only"] as const).map(v => {
               const active = localVis === v;
@@ -1054,7 +1061,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
                     background: active ? "var(--primary)" : "transparent",
                     color: active ? "#fff" : "var(--text-sec)",
                   }}>
-                  {v === "full" ? "полная" : "только занятость"}
+                  {v === "full" ? t("ws.rooms.visFull") : t("ws.rooms.visBusy")}
                 </button>
               );
             })}
@@ -1064,7 +1071,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
 
       {joinRequests.length > 0 && (
         <div className="mb-2 space-y-1">
-          <p className="text-xs font-semibold" style={{ color: "var(--text-sec)" }}>Заявки на подключение:</p>
+          <p className="text-xs font-semibold" style={{ color: "var(--text-sec)" }}>{t("ws.rooms.requests")}</p>
           {joinRequests.map(req => (
             <div key={req.id} className="flex items-center gap-2 px-2 py-1 rounded"
               style={{ background: "var(--bg)", border: "1px solid var(--border)" }}>
@@ -1077,12 +1084,12 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
               <button onClick={() => handleApproveRequest(req.id)}
                 className="px-2 py-0.5 rounded text-xs font-bold shrink-0"
                 style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.3)", color: "#16a34a" }}>
-                Принять
+                {t("ws.accept")}
               </button>
               <button onClick={() => handleRejectRequest(req.id)}
                 className="px-2 py-0.5 rounded text-xs font-bold shrink-0"
                 style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#dc2626" }}>
-                Отклонить
+                {t("ws.reject")}
               </button>
             </div>
           ))}
@@ -1091,7 +1098,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
 
       {isOwnerRoom && sharedWorkspaces.length > 0 && (
         <div className="mb-2">
-          <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-muted)" }}>Поделён с:</p>
+          <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-muted)" }}>{t("ws.rooms.sharedWith")}</p>
           <div className="flex flex-wrap gap-1">
             {sharedWorkspaces.map(ws => (
               <div key={ws.workspace_id} className="flex items-center gap-1 px-2 py-0.5 rounded"
@@ -1102,7 +1109,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
                   style={{ color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", padding: "0 1px" }}
                   onMouseEnter={e => { e.currentTarget.style.color = "#dc2626"; }}
                   onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}
-                  title="Отозвать доступ">
+                  title={t("ws.rooms.revokeAccess")}>
                   ×
                 </button>
               </div>
@@ -1116,21 +1123,21 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
           <button onClick={() => setShowShare(v => !v)}
             className="px-2.5 py-1 rounded text-xs font-semibold"
             style={{ background: "var(--primary-light)", border: "1px solid var(--primary-border)", color: "var(--primary)" }}>
-            Поделиться
+            {t("ws.rooms.share")}
           </button>
         )}
         {isSuperadmin && isOwnerRoom && (
           <button onClick={() => setShowTransfer(v => !v)}
             className="px-2.5 py-1 rounded text-xs font-semibold"
             style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.35)", color: "#d97706" }}>
-            Передать владение
+            {t("ws.rooms.transferOwner")}
           </button>
         )}
         {isOwnerRoom && isAdmin && !confirmArch && (
           <button onClick={() => setConfirmArch(true)}
             className="px-2.5 py-1 rounded text-xs font-semibold"
             style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)", color: "#dc2626" }}>
-            Архивировать
+            {t("ws.archive")}
           </button>
         )}
         {confirmArch && (
@@ -1138,12 +1145,12 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
             <button onClick={() => setConfirmArch(false)}
               className="px-2.5 py-1 rounded text-xs font-semibold"
               style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
-              Отмена
+              {t("common.cancel")}
             </button>
             <button onClick={handleArchive} disabled={busy}
               className="px-2.5 py-1 rounded text-xs font-bold text-white disabled:opacity-50"
               style={{ background: "linear-gradient(135deg,#dc2626,#ef4444)" }}>
-              {busy ? "…" : "Подтвердить"}
+              {busy ? "…" : t("common.confirm")}
             </button>
           </div>
         )}
@@ -1154,28 +1161,28 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
           <input
             autoFocus value={shareCode} onChange={e => setShareCode(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") handleShare(); }}
-            placeholder="Инвайт-код целевого пространства"
+            placeholder={t("ws.rooms.shareCodePh")}
             className="flex-1 rounded px-2.5 py-1.5 text-xs outline-none font-mono"
             style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)" }}
           />
           <button onClick={handleShare} disabled={busy}
             className="px-3 rounded text-xs font-bold text-white disabled:opacity-50"
             style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
-            {busy ? "…" : "Отправить"}
+            {busy ? "…" : t("ws.rooms.send")}
           </button>
         </div>
       )}
 
       {showTransfer && isSuperadmin && isOwnerRoom && (
         <div className="mt-2 space-y-2 rounded-md p-3" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.25)" }}>
-          <p className="text-xs font-semibold" style={{ color: "#d97706" }}>Передать владение комнатой</p>
+          <p className="text-xs font-semibold" style={{ color: "#d97706" }}>{t("ws.rooms.transferTitle")}</p>
           <select
             value={transferWsId}
             onChange={e => setTransferWsId(e.target.value === "" ? "" : Number(e.target.value))}
             className="w-full rounded px-2.5 py-1.5 text-xs outline-none"
             style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)" }}
           >
-            <option value="">Выберите пространство…</option>
+            <option value="">{t("ws.rooms.selectWs")}</option>
             {workspaces.filter(ws => ws.id !== workspaceId).map(ws => (
               <option key={ws.id} value={ws.id}>{ws.name}</option>
             ))}
@@ -1184,12 +1191,12 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
             <button onClick={() => { setShowTransfer(false); setTransferWsId(""); setErr(null); }}
               className="flex-1 py-1.5 rounded text-xs font-semibold"
               style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
-              Отмена
+              {t("common.cancel")}
             </button>
             <button onClick={handleTransfer} disabled={busy || transferWsId === ""}
               className="flex-1 py-1.5 rounded text-xs font-bold text-white disabled:opacity-50"
               style={{ background: "linear-gradient(135deg,#d97706,#b45309)" }}>
-              {busy ? "…" : "Передать"}
+              {busy ? "…" : t("ws.rooms.transfer")}
             </button>
           </div>
         </div>
@@ -1285,6 +1292,7 @@ function Label({ children }: { children: React.ReactNode }) {
 }
 
 function AnalyticsTab({ workspaceId }: { workspaceId: number }) {
+  const { t } = useLocale();
   const [period, setPeriod] = useState(30);
 
   const { data, isLoading } = useQuery<WorkspaceAnalytics>({
@@ -1310,7 +1318,7 @@ function AnalyticsTab({ workspaceId }: { workspaceId: number }) {
               color: period === d ? "#fff" : "var(--text-muted)",
               border: `1px solid ${period === d ? "var(--primary)" : "var(--border)"}`,
             }}>
-            {d} дн.
+            {d} {t("ws.analytics.days")}
           </button>
         ))}
       </div>
@@ -1319,30 +1327,30 @@ function AnalyticsTab({ workspaceId }: { workspaceId: number }) {
       <div className="flex gap-2">
         <div className="flex items-center gap-2 rounded px-3 py-1.5 flex-1" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
           <span className="text-base font-black" style={{ color: "var(--text)" }}>{data?.total_members ?? 0}</span>
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>Участников</span>
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>{t("ws.analytics.members")}</span>
         </div>
         <div className="flex items-center gap-2 rounded px-3 py-1.5 flex-1" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
           <span className="text-base font-black" style={{ color: "var(--text)" }}>{data?.total_meetings ?? 0}</span>
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>Встреч за период</span>
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>{t("ws.analytics.meetings")}</span>
         </div>
       </div>
 
       {/* New members chart */}
       <div>
-        <p className="text-xs font-bold mb-2" style={{ color: "var(--text-sec)" }}>Новые участники</p>
-        <BarChart data={data?.new_members ?? []} color="#7c3aed" />
+        <p className="text-xs font-bold mb-2" style={{ color: "var(--text-sec)" }}>{t("ws.analytics.newMembers")}</p>
+        <BarChart data={data?.new_members ?? []} color="#7c3aed" noDataText={t("ws.analytics.noData")} />
       </div>
 
       {/* Meetings chart */}
       <div>
-        <p className="text-xs font-bold mb-2" style={{ color: "var(--text-sec)" }}>Частота встреч</p>
-        <BarChart data={data?.meetings_by_day ?? []} color="#0891b2" />
+        <p className="text-xs font-bold mb-2" style={{ color: "var(--text-sec)" }}>{t("ws.analytics.freq")}</p>
+        <BarChart data={data?.meetings_by_day ?? []} color="#0891b2" noDataText={t("ws.analytics.noData")} />
       </div>
 
       {/* Top organizers */}
       {(data?.top_organizers?.length ?? 0) > 0 && (
         <div>
-          <p className="text-xs font-bold mb-2" style={{ color: "var(--text-sec)" }}>Топ организаторов</p>
+          <p className="text-xs font-bold mb-2" style={{ color: "var(--text-sec)" }}>{t("ws.analytics.top")}</p>
           <TopOrgList items={data!.top_organizers} />
         </div>
       )}
@@ -1355,10 +1363,10 @@ function fmtChartDate(iso: string): string {
   return p.length === 3 ? `${p[2]}.${p[1]}` : iso;
 }
 
-function BarChart({ data, color }: { data: Array<{ date: string; count: number }>; color: string }) {
+function BarChart({ data, color, noDataText }: { data: Array<{ date: string; count: number }>; color: string; noDataText?: string }) {
   const [hovered, setHovered] = useState<number | null>(null);
   if (data.length === 0) return (
-    <p className="text-xs py-3 text-center" style={{ color: "var(--text-muted)" }}>Нет данных за период</p>
+    <p className="text-xs py-3 text-center" style={{ color: "var(--text-muted)" }}>{noDataText ?? "—"}</p>
   );
   const H = 88;
   const TOP = 16;

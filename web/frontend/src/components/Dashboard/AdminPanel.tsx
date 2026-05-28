@@ -184,7 +184,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                     border: `1.5px solid ${tt === "analytics" ? "var(--border)" : tab === tt ? "var(--primary)" : "var(--border)"}`,
                     color: tt === "analytics" ? "var(--text-sec)" : tab === tt ? "#fff" : "var(--text-sec)",
                   }}>
-                  {tt === "stats" ? t("admin.tabStats") : tt === "bookings" ? t("admin.tabBookings") : tt === "users" ? t("admin.tabUsers") : "Аналитика ↗"}
+                  {tt === "stats" ? t("admin.tabStats") : tt === "bookings" ? t("admin.tabBookings") : tt === "users" ? t("admin.tabUsers") : `${t("ws.analytics.title")} ↗`}
                 </button>
               ))}
             </div>
@@ -520,7 +520,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-            <h2 className="font-bold text-base" style={{ color: "var(--text)" }}>Аналитика</h2>
+            <h2 className="font-bold text-base" style={{ color: "var(--text)" }}>{t("ws.analytics.title")}</h2>
             <button onClick={() => setAnalyticsModalOpen(false)}
               className="w-8 h-8 flex items-center justify-center rounded-md transition-all"
               style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
@@ -542,7 +542,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                     color: analyticsPeriod === d ? "#fff" : "var(--text-muted)",
                     border: `1px solid ${analyticsPeriod === d ? "var(--primary)" : "var(--border)"}`,
                   }}>
-                  {d} дн.
+                  {d} {t("ws.analytics.days")}
                 </button>
               ))}
             </div>
@@ -552,7 +552,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                   value={analyticsWorkspaceId !== undefined ? String(analyticsWorkspaceId) : ""}
                   onChange={v => setAnalyticsWorkspaceId(v ? Number(v) : undefined)}
                   options={[
-                    { value: "", label: "Все пространства" },
+                    { value: "", label: t("ws.analytics.allSpaces") },
                     ...(analyticsData?.workspaces ?? []).map(ws => ({ value: String(ws.id), label: ws.name })),
                   ]}
                 />
@@ -570,24 +570,24 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                 <div className="flex gap-2">
                   <div className="flex items-center gap-2 rounded px-3 py-1.5 flex-1" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
                     <span className="text-base font-black" style={{ color: "var(--text)" }}>{analyticsData?.total_members ?? 0}</span>
-                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>Участников</span>
+                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>{t("ws.analytics.members")}</span>
                   </div>
                   <div className="flex items-center gap-2 rounded px-3 py-1.5 flex-1" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
                     <span className="text-base font-black" style={{ color: "var(--text)" }}>{analyticsData?.total_meetings ?? 0}</span>
-                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>Встреч за период</span>
+                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>{t("ws.analytics.meetings")}</span>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-bold mb-2" style={{ color: "var(--text-sec)" }}>Новые участники</p>
-                  <AdminBarChart data={analyticsData?.new_members ?? []} color="#7c3aed" />
+                  <p className="text-sm font-bold mb-2" style={{ color: "var(--text-sec)" }}>{t("ws.analytics.newMembers")}</p>
+                  <AdminBarChart data={analyticsData?.new_members ?? []} color="#7c3aed" noDataText={t("ws.analytics.noData")} />
                 </div>
                 <div>
-                  <p className="text-sm font-bold mb-2" style={{ color: "var(--text-sec)" }}>Частота встреч</p>
-                  <AdminBarChart data={analyticsData?.meetings_by_day ?? []} color="#0891b2" />
+                  <p className="text-sm font-bold mb-2" style={{ color: "var(--text-sec)" }}>{t("ws.analytics.freq")}</p>
+                  <AdminBarChart data={analyticsData?.meetings_by_day ?? []} color="#0891b2" noDataText={t("ws.analytics.noData")} />
                 </div>
                 {(analyticsData?.top_organizers?.length ?? 0) > 0 && (
                   <div>
-                    <p className="text-sm font-bold mb-2" style={{ color: "var(--text-sec)" }}>Топ организаторов</p>
+                    <p className="text-sm font-bold mb-2" style={{ color: "var(--text-sec)" }}>{t("ws.analytics.top")}</p>
                     <div className="space-y-3">
                       {analyticsData!.top_organizers.map((item, i) => {
                         const max = Math.max(...analyticsData!.top_organizers.map(x => x.count), 1);
@@ -699,10 +699,10 @@ function fmtChartDate(iso: string): string {
   return p.length === 3 ? `${p[2]}.${p[1]}` : iso;
 }
 
-function AdminBarChart({ data, color }: { data: Array<{ date: string; count: number }>; color: string }) {
+function AdminBarChart({ data, color, noDataText }: { data: Array<{ date: string; count: number }>; color: string; noDataText?: string }) {
   const [hovered, setHovered] = useState<number | null>(null);
   if (data.length === 0) return (
-    <p className="text-xs py-2 text-center" style={{ color: "var(--text-muted)" }}>Нет данных</p>
+    <p className="text-xs py-2 text-center" style={{ color: "var(--text-muted)" }}>{noDataText ?? "—"}</p>
   );
   const H = 84;
   const TOP = 14;
