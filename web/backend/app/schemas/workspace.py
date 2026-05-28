@@ -24,6 +24,7 @@ class WorkspaceMemberResponse(BaseModel):
     status: WorkspaceMemberStatus
     user: UserPublicResponse | None
     created_at: datetime
+    invite_deep_link: str | None = None
 
     class Config:
         from_attributes = True

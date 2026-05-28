@@ -101,6 +101,13 @@ POSITIONS = [
 ]
 
 
+class InviteNotificationInfo(BaseModel):
+    member_id: int
+    workspace_id: int
+    workspace_name: str
+    telegram_id: int
+
+
 class EnsureUserRequest(BaseModel):
     telegram_id: int
     first_name: str | None = None
@@ -427,6 +434,153 @@ async def bookings_deleted_since(
     return infos
 
 
+# ── Эндпоинты: инвайты в пространства (deep-link flow) ───────────────────────
+
+@router.get(
+    "/workspace-invites/pending",
+    response_model=list[InviteNotificationInfo],
+    summary="Инвайты, требующие отправки уведомления в Telegram",
+)
+async def pending_invite_notifications(
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_bot_secret),
+) -> list[InviteNotificationInfo]:
+    """
+    Возвращает членов пространства, добавленных через инвайт, которым ещё не было
+    отправлено уведомление (invite_notified_at IS NULL). Бот поллит этот эндпоинт
+    и отправляет сообщение в Telegram.
+    """
+    result = await db.execute(
+        select(WorkspaceMember, Workspace, User)
+        .join(Workspace, Workspace.id == WorkspaceMember.workspace_id)
+        .join(User, User.id == WorkspaceMember.user_id)
+        .where(
+            WorkspaceMember.invite_notified_at.is_(None),
+            WorkspaceMember.invited_by_user_id.isnot(None),
+            User.telegram_id.isnot(None),
+        )
+        .order_by(WorkspaceMember.created_at)
+    )
+    rows = result.all()
+    return [
+        InviteNotificationInfo(
+            member_id=member.id,
+            workspace_id=ws.id,
+            workspace_name=ws.name,
+            telegram_id=user.telegram_id,
+        )
+        for member, ws, user in rows
+    ]
+
+
+@router.post(
+    "/workspace-invites/{mid}/mark-notified",
+    summary="Пометить инвайт как уведомлённый",
+)
+async def mark_invite_notified(
+    mid: int,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_bot_secret),
+) -> dict:
+    """Вызывается ботом после успешной отправки уведомления об инвайте."""
+    result = await db.execute(select(WorkspaceMember).where(WorkspaceMember.id == mid))
+    member = result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    member.invite_notified_at = datetime.now(timezone.utc)
+    await db.commit()
+    return {"ok": True, "id": mid}
+
+
+@router.get(
+    "/invites/by-token/{token}",
+    summary="Получить данные инвайта по токену (при /start invite_TOKEN)",
+)
+async def get_invite_by_token(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_bot_secret),
+) -> dict:
+    """
+    Бот вызывает при /start invite_<TOKEN>.
+    Возвращает данные пространства и пригласившего, чтобы показать пользователю
+    кнопки «Принять / Отказаться».
+    """
+    result = await db.execute(
+        select(WorkspaceMember, Workspace)
+        .join(Workspace, Workspace.id == WorkspaceMember.workspace_id)
+        .options(selectinload(WorkspaceMember.user))
+        .where(WorkspaceMember.invite_token == token)
+    )
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Invite not found or already used")
+    member, ws = row
+
+    inviter_name: str | None = None
+    if member.invited_by_user_id:
+        inv_res = await db.execute(select(User).where(User.id == member.invited_by_user_id))
+        inviter = inv_res.scalar_one_or_none()
+        if inviter:
+            inviter_name = inviter.display_name
+
+    return {
+        "member_id": member.id,
+        "workspace_id": ws.id,
+        "workspace_name": ws.name,
+        "status": member.status,
+        "inviter_name": inviter_name,
+        "user": {
+            "telegram_id": member.user.telegram_id if member.user else None,
+            "has_position": bool(member.user and member.user.position),
+            "display_name": member.user.display_name if member.user else None,
+        } if member.user_id else None,
+    }
+
+
+@router.post(
+    "/invites/{mid}/accept",
+    summary="Принять инвайт (пользователь нажал «Принять» в боте)",
+)
+async def accept_invite(
+    mid: int,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_bot_secret),
+) -> dict:
+    """Переводит member.status → active и сбрасывает invite_token."""
+    result = await db.execute(select(WorkspaceMember).where(WorkspaceMember.id == mid))
+    member = result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    if member.status != WorkspaceMemberStatus.pending:
+        raise HTTPException(status_code=400, detail="Invite is not in pending state")
+    member.status = WorkspaceMemberStatus.active
+    member.invite_token = None
+    await db.commit()
+    return {"ok": True, "id": mid}
+
+
+@router.post(
+    "/invites/{mid}/reject",
+    summary="Отклонить инвайт (пользователь нажал «Отказаться» в боте)",
+)
+async def reject_invite(
+    mid: int,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_bot_secret),
+) -> dict:
+    """Удаляет запись member (отказ от инвайта)."""
+    result = await db.execute(select(WorkspaceMember).where(WorkspaceMember.id == mid))
+    member = result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    if member.status != WorkspaceMemberStatus.pending:
+        raise HTTPException(status_code=400, detail="Invite is not in pending state")
+    await db.delete(member)
+    await db.commit()
+    return {"ok": True, "id": mid}
+
+
 # ── Эндпоинты: пользователи ───────────────────────────────────────────────────
 
 @router.post(
@@ -447,7 +601,9 @@ async def ensure_user(
     )
     user = result.scalar_one_or_none()
 
+    created = False
     if not user:
+        created = True
         user = User(
             telegram_id=body.telegram_id,
             first_name=body.first_name,
@@ -458,15 +614,36 @@ async def ensure_user(
             is_active=True,
         )
         db.add(user)
-        await db.commit()
-        return {"ok": True, "created": True, "has_position": False}
+        await db.flush()
 
     # Обновляем username если изменился
-    if body.username and body.username != user.username:
+    elif body.username and body.username != user.username:
         user.username = body.username
-        await db.commit()
 
-    return {"ok": True, "created": False, "has_position": user.position is not None}
+    # Связываем pending_username записи с пользователем (если его пригласили до регистрации)
+    pending_invites: list[dict] = []
+    if body.username:
+        clean_username = body.username.lstrip("@")
+        pm_res = await db.execute(
+            select(WorkspaceMember, Workspace)
+            .join(Workspace, Workspace.id == WorkspaceMember.workspace_id)
+            .where(
+                WorkspaceMember.pending_username == clean_username,
+                WorkspaceMember.user_id.is_(None),
+            )
+        )
+        for member, ws in pm_res.all():
+            member.user_id = user.id
+            member.pending_username = None
+            pending_invites.append({"workspace_id": ws.id, "workspace_name": ws.name, "member_id": member.id})
+
+    await db.commit()
+    return {
+        "ok": True,
+        "created": created,
+        "has_position": user.position is not None,
+        "pending_invites": pending_invites,
+    }
 
 
 @router.get(

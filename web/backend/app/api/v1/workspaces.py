@@ -8,6 +8,7 @@ from sqlalchemy import and_, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.booking import Booking
@@ -430,6 +431,8 @@ async def invite_member(
     user_res = await db.execute(select(User).where(User.username == username))
     target_user = user_res.scalar_one_or_none()
 
+    invite_token = secrets.token_urlsafe(16)
+
     if target_user:
         existing_res = await db.execute(
             select(WorkspaceMember).where(
@@ -444,8 +447,9 @@ async def invite_member(
             workspace_id=ws_id,
             user_id=target_user.id,
             role=WorkspaceMemberRole.member,
-            status=WorkspaceMemberStatus.active,
+            status=WorkspaceMemberStatus.pending,
             invited_by_user_id=current_user.id,
+            invite_token=invite_token,
         )
     else:
         existing_res = await db.execute(
@@ -465,6 +469,7 @@ async def invite_member(
             role=WorkspaceMemberRole.member,
             status=WorkspaceMemberStatus.pending,
             invited_by_user_id=current_user.id,
+            invite_token=invite_token,
         )
 
     db.add(new_member)
@@ -475,7 +480,12 @@ async def invite_member(
         .options(selectinload(WorkspaceMember.user))
         .where(WorkspaceMember.id == new_member.id)
     )
-    return res.scalar_one()
+    member = res.scalar_one()
+    response = WorkspaceMemberResponse.model_validate(member)
+    response.invite_deep_link = (
+        f"https://t.me/{settings.TG_BOT_USERNAME}?start=invite_{invite_token}"
+    )
+    return response
 
 
 @router.patch("/{ws_id}/members/{mid}", response_model=WorkspaceMemberResponse | None)

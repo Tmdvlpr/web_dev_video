@@ -338,6 +338,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 CONSTRAINT uq_rjr_room_ws UNIQUE (room_id, workspace_id)
             )""",
+            # workspace invite deep-link tokens
+            "ALTER TABLE workspace_members ADD COLUMN IF NOT EXISTS invite_notified_at TIMESTAMPTZ",
+            "ALTER TABLE workspace_members ADD COLUMN IF NOT EXISTS invite_token VARCHAR(32)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_wm_invite_token ON workspace_members(invite_token) WHERE invite_token IS NOT NULL",
         ]
         for sql in migrations:
             try:
