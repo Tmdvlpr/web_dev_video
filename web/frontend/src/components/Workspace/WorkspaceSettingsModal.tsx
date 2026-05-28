@@ -703,7 +703,7 @@ function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number; data?: { detail?: string } } })?.response?.status;
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      if (status === 403) {
+      if (status === 403 && !msg) {
         setErr("❌ Подключение по коду отключено для этой комнаты.");
       } else {
         setErr(msg ?? "Не удалось добавить комнату");
@@ -858,6 +858,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
       setLocalJoinMode((updated.room.join_mode ?? "approval") as "open" | "approval" | "closed");
       onRefetch();
     } catch (e: unknown) {
+      setLocalJoinMode(wr.room.join_mode ?? "approval");
       onRefetch();
       setErr("Не удалось сохранить режим подключения");
     } finally {
