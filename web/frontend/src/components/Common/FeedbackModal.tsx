@@ -136,11 +136,11 @@ export function FeedbackModal({ open, onClose, onSuccess, onError, onBack }: Pro
                 {view === "form" && (
                   <button
                     onClick={() => setView("list")}
-                    className="w-7 h-7 flex items-center justify-center rounded transition-all"
-                    style={{ color: "var(--text-muted)", background: isDark ? "rgba(255,255,255,0.06)" : "#f5f5f5" }}
-                    onMouseEnter={e => { e.currentTarget.style.color = "var(--primary)"; }}
+                    className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
+                    style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
+                    onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
                     onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>
-                    ‹
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                   </button>
                 )}
                 <div>
