@@ -38,6 +38,11 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
   const { activeWorkspace, myRooms, refetchWorkspaces, refetchRooms } = useWorkspace();
   const [tab, setTab] = useState<Tab>("general");
 
+  useEffect(() => {
+    if (open) refetchRooms();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   if (!open) return null;
   if (!activeWorkspace) {
     return (
@@ -106,6 +111,7 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
         {tab === "members" && (
           <MembersTab
             workspaceId={activeWorkspace.id}
+            workspaceName={activeWorkspace.name}
             myUserId={user?.id ?? null}
             isAdmin={isAdmin}
             isOwner={isOwner}
@@ -340,13 +346,15 @@ function GeneralTab({
   );
 }
 
-function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: { workspaceId: number; myUserId: number | null; isAdmin: boolean; isOwner: boolean; isSuperadmin: boolean }) {
+function MembersTab({ workspaceId, workspaceName, myUserId, isAdmin, isOwner, isSuperadmin }: { workspaceId: number; workspaceName: string; myUserId: number | null; isAdmin: boolean; isOwner: boolean; isSuperadmin: boolean }) {
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteName, setInviteName] = useState("");
   const [inviting, setInviting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
   const [editMemberId, setEditMemberId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ first_name: "", last_name: "", position: "", role: "member" });
   const [saving, setSaving] = useState(false);
@@ -366,14 +374,18 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
   const pending = members.filter(m => m.status === "pending");
 
   const handleInvite = async () => {
-    setErr(null); setInfo(null);
+    setErr(null); setInfo(null); setInviteLink(null);
     const u = inviteName.trim().replace(/^@/, "");
     if (!u) { setErr("Введите username"); return; }
     setInviting(true);
     try {
-      await workspacesApi.invite(workspaceId, u);
+      const result = await workspacesApi.invite(workspaceId, u);
       setInviteName("");
-      setInfo("Приглашение отправлено");
+      if (result.invite_deep_link) {
+        setInviteLink(result.invite_deep_link);
+      } else {
+        setInfo("Приглашение отправлено");
+      }
       await load();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -422,6 +434,30 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
           </div>
           {err && <p className="text-xs mt-1.5" style={{ color: "#dc2626" }}>{err}</p>}
           {info && <p className="text-xs mt-1.5" style={{ color: "#16a34a" }}>{info}</p>}
+          {inviteLink && (
+            <div className="mt-2 rounded-md p-3 space-y-2" style={{ background: "var(--elevated)", border: "1px solid var(--primary-border)" }}>
+              <p className="text-xs font-semibold" style={{ color: "var(--text-sec)" }}>
+                Скопируйте и отправьте пользователю:
+              </p>
+              <p className="text-xs leading-relaxed" style={{ color: "var(--text)", wordBreak: "break-all" }}>
+                {`Тебя пригласили в пространство «${workspaceName}» в CorpMeet. Открой ссылку, чтобы принять приглашение: ${inviteLink}`}
+              </p>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(
+                    `Тебя пригласили в пространство «${workspaceName}» в CorpMeet. Открой ссылку, чтобы принять приглашение: ${inviteLink}`
+                  ).then(() => { setInviteLinkCopied(true); setTimeout(() => setInviteLinkCopied(false), 2000); });
+                }}
+                className="px-3 py-1 rounded text-xs font-bold transition-all"
+                style={{
+                  background: inviteLinkCopied ? "rgba(34,197,94,0.12)" : "var(--primary-light)",
+                  border: `1px solid ${inviteLinkCopied ? "rgba(34,197,94,0.4)" : "var(--primary-border)"}`,
+                  color: inviteLinkCopied ? "#16a34a" : "var(--primary)",
+                }}>
+                {inviteLinkCopied ? "Скопировано!" : "Копировать сообщение"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
