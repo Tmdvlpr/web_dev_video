@@ -164,22 +164,22 @@ export function ProfileEditModal({ open, user, onClose, onSaved, onBack }: Props
             {/* Meeting settings */}
             <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16, marginBottom: 16 }}>
               <p className="text-xs font-semibold mb-3" style={{ color: "var(--text-sec)" }}>
-                Настройки встреч
+                {t("conf.meetingSettings")}
               </p>
               {[
                 {
                   key: "noise",
                   on: noiseFilter,
                   toggle: toggleNoise,
-                  label: "Шумоподавление (Krisp)",
-                  hint: "Автоматически включается при входе во встречу",
+                  label: t("conf.noiseSuppression"),
+                  hint: t("conf.noiseSuppressionHint"),
                 },
                 {
                   key: "blur",
                   on: bgBlur,
                   toggle: toggleBlur,
-                  label: "Размытие фона",
-                  hint: "Применяется к камере при входе во встречу",
+                  label: t("conf.bgBlur"),
+                  hint: t("conf.bgBlurHint"),
                 },
               ].map(({ key, on, toggle, label, hint }) => (
                 <div

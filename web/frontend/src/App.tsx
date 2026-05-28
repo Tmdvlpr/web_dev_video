@@ -321,7 +321,7 @@ function Dashboard() {
               <div className="flex items-center justify-between px-5 shrink-0"
                 style={{ height: 52, borderBottom: "1px solid var(--border)", background: "var(--header)", backdropFilter: "blur(24px)" }}>
                 <span className="text-xs font-bold tracking-widest uppercase" style={{ color: "var(--text-muted)" }}>
-                  Аккаунт
+                  {t("nav.account")}
                 </span>
                 <button type="button" onClick={closeSidebar}
                   className="w-7 h-7 rounded flex items-center justify-center transition-all"
@@ -373,21 +373,21 @@ function Dashboard() {
               <div className="flex-1 overflow-y-auto py-3 px-3 space-y-3">
 
                 <div>
-                  <SideLabel>Основное</SideLabel>
+                  <SideLabel>{t("nav.sectionMain")}</SideLabel>
                   <SideBtn icon={<IcPerson />}   label={t("nav.profile")}       onClick={() => { setProfileOpen(true);     closeSidebar(); }} />
-                  <SideBtn icon={<IcBell />}     label="Уведомления"             onClick={() => { setNotifOpen(true);       closeSidebar(); }}
+                  <SideBtn icon={<IcBell />}     label={t("nav.notifications")} onClick={() => { setNotifOpen(true);       closeSidebar(); }}
                     rightEl={unreadCount > 0 ? (
                       <span className="flex items-center justify-center rounded-full text-white font-bold"
                         style={{ minWidth: 18, height: 18, fontSize: 10, background: "#ef4444", padding: "0 5px" }}>
                         {unreadCount > 99 ? "99+" : unreadCount}
                       </span>
                     ) : undefined} />
-                  <SideBtn icon={<IcCalendar />} label="Активные встречи"        onClick={() => { setActiveOpen(true);      closeSidebar(); }} />
+                  <SideBtn icon={<IcCalendar />} label={t("nav.activeMeetings")} onClick={() => { setActiveOpen(true);      closeSidebar(); }} />
                 </div>
 
                 {isAdmin && (
                   <div>
-                    <SideLabel>Управление</SideLabel>
+                    <SideLabel>{t("nav.sectionManage")}</SideLabel>
                     <SideBtn icon={<IcShield />} label={t("nav.admin")}          onClick={() => { setAdminOpen(true);       closeSidebar(); }} />
                     {isSuperadmin && (
                       <SideBtn icon={<IcFile />} label={t("submissions.title")} onClick={() => { setSubmissionsOpen(true); closeSidebar(); }} />
@@ -396,10 +396,10 @@ function Dashboard() {
                 )}
 
                 <div>
-                  <SideLabel>Настройки</SideLabel>
+                  <SideLabel>{t("nav.sectionSettings")}</SideLabel>
                   <SideBtn icon={<IcMsg />}   label={t("feedback.button")}               onClick={() => { setFeedbackOpen(true); closeSidebar(); }} />
                   <SideBtn icon={isDark ? <IcSun /> : <IcMoon />}
-                    label={isDark ? "Светлая тема" : "Тёмная тема"}
+                    label={isDark ? t("nav.themeLight") : t("nav.themeDark")}
                     onClick={toggle} />
                   <SideBtn icon={<IcGlobe />}
                     label={locale === "ru" ? "Ўзбекча" : "Русский"}
