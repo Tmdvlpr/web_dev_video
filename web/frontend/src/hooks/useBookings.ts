@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { bookingsApi } from "../api/bookings";
 import { slotsApi } from "../api/slots";
 import { usersApi } from "../api/users";
-import type { AttachmentMeta, Booking, BookingCreate, BookingUpdate } from "../types";
+import { workspacesApi } from "../api/workspaces";
+import type { AttachmentMeta, Booking, BookingCreate, BookingUpdate, User } from "../types";
 
 export function useBookings(date: string | undefined, workspaceId?: number) {
   return useQuery({
@@ -30,6 +31,18 @@ export function useUsers(query: string = "") {
     queryFn: () => usersApi.search(query),
     staleTime: 30_000,
   });
+}
+
+export function useWorkspaceUsers(workspaceId: number | null | undefined): User[] {
+  const { data: members = [] } = useQuery({
+    queryKey: ["workspace-members", workspaceId],
+    queryFn: () => workspacesApi.listMembers(workspaceId!),
+    enabled: !!workspaceId,
+    staleTime: 60_000,
+  });
+  return members
+    .filter(m => m.status === "active" && m.user != null)
+    .map(m => m.user as User);
 }
 
 export function useSlots(date: string | undefined) {

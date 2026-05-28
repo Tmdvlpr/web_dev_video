@@ -2,7 +2,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
-import { useUsers } from "../../hooks/useBookings";
+import { useWorkspaceUsers } from "../../hooks/useBookings";
+import { useWorkspace } from "../../contexts/WorkspaceContext";
+import { useAuth } from "../../hooks/useAuth";
 
 const POSITIONS = ["Начальник департамента/отдела", "PM", "Аналитик", "Программист и др.", "Дизайнер"] as const;
 
@@ -22,7 +24,9 @@ export function GuestInput({
 }: { guests: string[]; setGuests: React.Dispatch<React.SetStateAction<string[]>> }) {
   const { isDark } = useTheme();
   const { t } = useLocale();
-  const { data: allUsers = [] } = useUsers();
+  const { activeWorkspace } = useWorkspace();
+  const { user: currentUser } = useAuth();
+  const allUsers = useWorkspaceUsers(activeWorkspace?.id).filter(u => u.id !== currentUser?.id);
   const [mode, setMode] = useState<GuestMode>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [input, setInput] = useState("");
