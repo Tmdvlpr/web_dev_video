@@ -49,6 +49,14 @@ async def _get_membership(
     if ws_res.scalar_one_or_none() is None:
         raise HTTPException(404, "Workspace not found")
 
+    if user.role == Role.superadmin:
+        return WorkspaceMember(
+            workspace_id=workspace_id,
+            user_id=user.id,
+            role=WorkspaceMemberRole.owner,
+            status=WorkspaceMemberStatus.active,
+        )
+
     mem_res = await db.execute(
         select(WorkspaceMember).where(
             WorkspaceMember.workspace_id == workspace_id,
@@ -362,6 +370,25 @@ async def revoke_share(
 
     await db.delete(wr)
     await db.commit()
+
+
+@router.get("/{room_id}/shared-workspaces")
+async def list_shared_workspaces(
+    room_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict]:
+    """Return workspaces that have this room shared (role=shared). Owner/superadmin only."""
+    await _get_owner_workspace_room(room_id, current_user, db)
+    res = await db.execute(
+        select(WorkspaceRoom.workspace_id, Workspace.name)
+        .join(Workspace, Workspace.id == WorkspaceRoom.workspace_id)
+        .where(
+            WorkspaceRoom.room_id == room_id,
+            WorkspaceRoom.role == WorkspaceRoomRole.shared,
+        )
+    )
+    return [{"workspace_id": row[0], "workspace_name": row[1]} for row in res.all()]
 
 
 @router.get("/{room_id}/join-requests", response_model=list[RoomJoinRequestResponse])

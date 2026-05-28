@@ -8,7 +8,6 @@ import { useLocale } from "../../contexts/LocaleContext";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
 import { useBookings, useSlots, useUpdateBooking } from "../../hooks/useBookings";
 import { bookingsApi } from "../../api/bookings";
-import { roomsApi } from "../../api/rooms";
 import type { Booking, SlotResponse, User } from "../../types";
 import { DayColumn } from "./DayColumn";
 
@@ -312,13 +311,9 @@ function FilterDropdown({
   typeFilter: "all" | "physical" | "virtual" | "hybrid"; onTypeFilter: (v: "all" | "physical" | "virtual" | "hybrid") => void;
 }) {
   const { t } = useLocale();
-  const { myRooms, activeWorkspace, refetchRooms } = useWorkspace();
+  const { myRooms, activeWorkspace } = useWorkspace();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"rooms" | "type">("rooms");
-  const [joinCode, setJoinCode] = useState("");
-  const [joinErr, setJoinErr] = useState<string | null>(null);
-  const [joinInfo, setJoinInfo] = useState<string | null>(null);
-  const [joinBusy, setJoinBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
@@ -337,20 +332,6 @@ function FilterDropdown({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
-
-  const handleJoin = async () => {
-    if (!activeWorkspace || !joinCode.trim()) return;
-    setJoinErr(null); setJoinInfo(null); setJoinBusy(true);
-    try {
-      const result = await roomsApi.join(joinCode.trim(), activeWorkspace.id);
-      if (result.status === 201) { refetchRooms(); setJoinCode(""); }
-      else if (result.status === 202) { setJoinCode(""); setJoinInfo("⏳ Заявка отправлена. Ждём подтверждения."); }
-    } catch (e: unknown) {
-      const status = (e as { response?: { status?: number; data?: { detail?: string } } })?.response?.status;
-      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setJoinErr(status === 403 ? "❌ Подключение по коду отключено." : msg ?? "Комната не найдена");
-    } finally { setJoinBusy(false); }
-  };
 
   const TYPE_OPTS = [
     { key: "all" as const,      label: t("cal.filterAll") },
@@ -444,25 +425,6 @@ function FilterDropdown({
                     {wr.role === "shared" && <span style={{ fontSize: 10, opacity: 0.5, flexShrink: 0 }}>↗</span>}
                   </button>
                 ))}
-              </div>
-              {/* Join by code */}
-              <div className="mt-1 pt-1" style={{ borderTop: "1px solid var(--border)" }}>
-                <div className="flex gap-1">
-                  <input
-                    value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())}
-                    placeholder="Код комнаты"
-                    className="flex-1 rounded px-2 py-1 text-xs outline-none font-mono"
-                    style={{ background: "var(--input-bg)", border: "1px solid var(--border)", color: "var(--text)" }}
-                    onKeyDown={e => { if (e.key === "Enter") handleJoin(); }}
-                  />
-                  <button onClick={handleJoin} disabled={joinBusy || !joinCode.trim()}
-                    className="px-2 py-1 rounded text-xs font-bold text-white disabled:opacity-40"
-                    style={{ background: "var(--primary)", border: "none" }}>
-                    {joinBusy ? "…" : "+"}
-                  </button>
-                </div>
-                {joinErr  && <p className="text-xs mt-1 px-1" style={{ color: "#dc2626" }}>{joinErr}</p>}
-                {joinInfo && <p className="text-xs mt-1 px-1" style={{ color: "var(--text-muted)" }}>{joinInfo}</p>}
               </div>
             </div>
           )}

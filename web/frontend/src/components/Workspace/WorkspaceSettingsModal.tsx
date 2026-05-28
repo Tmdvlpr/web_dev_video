@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { roomsApi } from "../../api/rooms";
 import { workspacesApi } from "../../api/workspaces";
+import { addNotification } from "../Dashboard/NotificationCenter";
 import type { WorkspaceAnalytics } from "../../api/workspaces";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -55,8 +56,8 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
   }
 
   const isOwner = activeWorkspace.my_role === "owner";
-  const isAdmin = isOwner || activeWorkspace.my_role === "admin";
   const isSuperadmin = user?.role === "superadmin";
+  const isAdmin = isOwner || activeWorkspace.my_role === "admin" || isSuperadmin;
 
   return (
     <Overlay isDark={isDark} onClose={onClose}>
@@ -396,6 +397,7 @@ function MembersTab({ workspaceId, workspaceName, myUserId, isAdmin, isOwner, is
   const handleApprove = async (memberId: number, approve: boolean) => {
     try {
       await workspacesApi.updateMember(workspaceId, memberId, { approve });
+      if (approve) addNotification({ id: `member-approved-${memberId}-${Date.now()}`, title: "✅ Участник принят", body: `Заявка на вступление в пространство одобрена`, time: Date.now(), type: "member_joined" });
       await load();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -439,23 +441,34 @@ function MembersTab({ workspaceId, workspaceName, myUserId, isAdmin, isOwner, is
               <p className="text-xs font-semibold" style={{ color: "var(--text-sec)" }}>
                 Скопируйте и отправьте пользователю:
               </p>
-              <p className="text-xs leading-relaxed" style={{ color: "var(--text)", wordBreak: "break-all" }}>
-                {`Тебя пригласили в пространство «${workspaceName}» в CorpMeet. Открой ссылку, чтобы принять приглашение: ${inviteLink}`}
+              <p className="text-xs leading-relaxed font-mono px-2 py-1.5 rounded select-all"
+                style={{ color: "var(--primary)", background: "var(--bg)", border: "1px solid var(--primary-border)", wordBreak: "break-all" }}>
+                {inviteLink}
               </p>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(
-                    `Тебя пригласили в пространство «${workspaceName}» в CorpMeet. Открой ссылку, чтобы принять приглашение: ${inviteLink}`
-                  ).then(() => { setInviteLinkCopied(true); setTimeout(() => setInviteLinkCopied(false), 2000); });
-                }}
-                className="px-3 py-1 rounded text-xs font-bold transition-all"
-                style={{
-                  background: inviteLinkCopied ? "rgba(34,197,94,0.12)" : "var(--primary-light)",
-                  border: `1px solid ${inviteLinkCopied ? "rgba(34,197,94,0.4)" : "var(--primary-border)"}`,
-                  color: inviteLinkCopied ? "#16a34a" : "var(--primary)",
-                }}>
-                {inviteLinkCopied ? "Скопировано!" : "Копировать сообщение"}
-              </button>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(inviteLink!).then(() => { setInviteLinkCopied(true); setTimeout(() => setInviteLinkCopied(false), 2000); });
+                  }}
+                  className="px-3 py-1 rounded text-xs font-bold transition-all"
+                  style={{
+                    background: inviteLinkCopied ? "rgba(34,197,94,0.12)" : "var(--primary-light)",
+                    border: `1px solid ${inviteLinkCopied ? "rgba(34,197,94,0.4)" : "var(--primary-border)"}`,
+                    color: inviteLinkCopied ? "#16a34a" : "var(--primary)",
+                  }}>
+                  {inviteLinkCopied ? "Скопировано!" : "Копировать ссылку"}
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      `Тебя пригласили в пространство «${workspaceName}» в CorpMeet. Открой ссылку, чтобы принять приглашение: ${inviteLink}`
+                    );
+                  }}
+                  className="px-3 py-1 rounded text-xs font-semibold"
+                  style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
+                  Копировать сообщение
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -699,6 +712,7 @@ function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
       } else if (result.status === 202) {
         setJoinCode("");
         setJoinInfo("⏳ Заявка отправлена. Ждём подтверждения от владельца комнаты.");
+        addNotification({ id: `room-req-${Date.now()}`, title: "⏳ Заявка на комнату отправлена", body: `Ожидайте подтверждения от владельца`, time: Date.now(), type: "room_request" });
       }
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number; data?: { detail?: string } } })?.response?.status;
@@ -810,6 +824,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [joinRequests, setJoinRequests] = useState<RoomJoinRequest[]>([]);
+  const [sharedWorkspaces, setSharedWorkspaces] = useState<{ workspace_id: number; workspace_name: string }[]>([]);
   const [localJoinMode, setLocalJoinMode] = useState<"open" | "approval" | "closed">(wr.room.join_mode ?? "approval");
   const [localVis, setLocalVis] = useState<"full" | "busy_only">(wr.visibility ?? "full");
   const [showTransfer, setShowTransfer] = useState(false);
@@ -834,6 +849,22 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
     setLocalJoinMode(wr.room.join_mode ?? "approval");
     setLocalVis(wr.visibility ?? "full");
   }, [wr.room.join_mode, wr.visibility]);
+
+  useEffect(() => {
+    if (!isOwnerRoom) return;
+    roomsApi.listSharedWorkspaces(wr.room.id).then(setSharedWorkspaces).catch(() => {});
+  }, [wr.room.id, isOwnerRoom]);
+
+  const handleRevokeShare = async (targetWsId: number) => {
+    try {
+      await roomsApi.revokeShare(wr.room.id, targetWsId);
+      setSharedWorkspaces(prev => prev.filter(w => w.workspace_id !== targetWsId));
+      onRefetch();
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setErr(msg ?? "Не удалось отозвать доступ");
+    }
+  };
 
   useEffect(() => {
     if (!isOwnerRoom || !isAdmin) return;
@@ -909,6 +940,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
     try {
       await roomsApi.approveJoinRequest(wr.room.id, reqId);
       setJoinRequests(r => r.filter(x => x.id !== reqId));
+      addNotification({ id: `room-approved-${reqId}`, title: "✅ Заявка на комнату принята", body: `Комната «${wr.room.name}» добавлена в пространство`, time: Date.now(), type: "room_approved" });
       onRefetch();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -972,17 +1004,19 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
               Сменить код
             </button>
           ) : (
-            <div className="flex items-center gap-1">
-              <span className="text-xs" style={{ color: "#d97706" }}>Сменить?</span>
+            <div className="flex flex-wrap items-center gap-1 mt-1 w-full">
+              <p className="w-full text-xs mb-1" style={{ color: "var(--text-muted)" }}>
+                Старый код перестанет работать для новых подключений. Существующие пространства, уже добавившие комнату, не затронуты.
+              </p>
               <button onClick={handleRegen} disabled={busy}
                 className="px-2 py-0.5 rounded text-xs font-bold text-white disabled:opacity-50"
                 style={{ background: "linear-gradient(135deg,#d97706,#b45309)" }}>
-                {busy ? "…" : "Да"}
+                {busy ? "…" : "Сменить"}
               </button>
               <button onClick={() => setConfirmRegen(false)}
                 className="px-2 py-0.5 rounded text-xs font-semibold"
                 style={{ background: "var(--elevated)", color: "var(--text-sec)", border: "1px solid var(--border)" }}>
-                Нет
+                Отмена
               </button>
             </div>
           )}
@@ -1059,6 +1093,28 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {isOwnerRoom && sharedWorkspaces.length > 0 && (
+        <div className="mb-2">
+          <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-muted)" }}>Поделён с:</p>
+          <div className="flex flex-wrap gap-1">
+            {sharedWorkspaces.map(ws => (
+              <div key={ws.workspace_id} className="flex items-center gap-1 px-2 py-0.5 rounded"
+                style={{ background: "var(--bg)", border: "1px solid var(--border)" }}>
+                <span className="text-xs" style={{ color: "var(--text-sec)" }}>{ws.workspace_name}</span>
+                <button onClick={() => handleRevokeShare(ws.workspace_id)}
+                  className="text-xs font-bold leading-none transition-all"
+                  style={{ color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", padding: "0 1px" }}
+                  onMouseEnter={e => { e.currentTarget.style.color = "#dc2626"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}
+                  title="Отозвать доступ">
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

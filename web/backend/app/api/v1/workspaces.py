@@ -165,7 +165,7 @@ async def list_my_workspaces(
         )
         my_memberships = {m.workspace_id: m.role for m in mem_res.scalars().all()}
         return [
-            _workspace_to_response(ws, my_memberships.get(ws.id, WorkspaceMemberRole.owner))
+            _workspace_to_response(ws, WorkspaceMemberRole.owner)
             for ws in workspaces
         ]
 

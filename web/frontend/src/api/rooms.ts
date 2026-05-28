@@ -53,4 +53,8 @@ export const roomsApi = {
     const res = await apiClient.post<WorkspaceRoom>(`/api/v1/rooms/${roomId}/transfer-owner`, { target_workspace_id: targetWorkspaceId });
     return res.data;
   },
+  listSharedWorkspaces: async (roomId: number): Promise<{ workspace_id: number; workspace_name: string }[]> => {
+    const res = await apiClient.get(`/api/v1/rooms/${roomId}/shared-workspaces`);
+    return res.data;
+  },
 };

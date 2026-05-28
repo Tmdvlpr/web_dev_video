@@ -153,8 +153,9 @@ export interface NotificationRecord {
   title: string;
   body: string;
   time: number;
-  bookingId: number;
-  reminderMinutes: number;
+  type?: "reminder" | "room_request" | "room_approved" | "room_rejected" | "member_joined" | "member_invited";
+  bookingId?: number;
+  reminderMinutes?: number;
 }
 
 export interface Room {

@@ -11,7 +11,7 @@ import { ProfileEditModal } from "./components/Auth/ProfileEditModal";
 import { Calendar } from "./components/Calendar";
 import { ActiveMeetings } from "./components/Dashboard/BookingsList";
 import { BookingModal } from "./components/Dashboard/BookingModal";
-import { NotificationCenter, addNotification, getReminderMinutes } from "./components/Dashboard/NotificationCenter";
+import { NotificationCenter, addNotification, getReminderMinutes, getUnreadCount } from "./components/Dashboard/NotificationCenter";
 import { AdminPanel } from "./components/Dashboard/AdminPanel";
 import { SubmissionsPanel } from "./components/Dashboard/SubmissionsPanel";
 import { SplashScreen } from "./components/Common/SplashScreen";
@@ -69,6 +69,17 @@ function useWebReminders(isAuthenticated: boolean) {
     const timer = setInterval(check, 60_000);
     return () => clearInterval(timer);
   }, [isAuthenticated]);
+}
+
+// ── Unread notifications count ───────────────────────────────────────────────
+function useUnreadCount() {
+  const [count, setCount] = useState(() => getUnreadCount());
+  useEffect(() => {
+    const handler = () => setCount(getUnreadCount());
+    window.addEventListener("notif-unread", handler);
+    return () => window.removeEventListener("notif-unread", handler);
+  }, []);
+  return count;
 }
 
 // ── Toast ────────────────────────────────────────────────────────────────────
@@ -201,6 +212,7 @@ function Dashboard() {
 
   const isSuperadmin = user?.role === "superadmin";
   const isAdmin    = isSuperadmin;
+  const unreadCount = useUnreadCount();
   const canEdit    = editBooking ? user?.id === editBooking.user_id || isAdmin : false;
 
   const roleLabel  = isSuperadmin ? "Суперадмин" : "Участник";
@@ -236,6 +248,11 @@ function Dashboard() {
         {/* Profile trigger */}
         <div className="flex items-center gap-2">
           {miniApp && <OpenInBrowserButton />}
+          <div className="relative">
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 z-10 w-2.5 h-2.5 rounded-full border-2"
+              style={{ background: "#ef4444", borderColor: "var(--header)" }} />
+          )}
           <button
             onClick={() => setSidebarOpen(v => !v)}
             className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all"
@@ -254,6 +271,7 @@ function Dashboard() {
               <polyline points="6 9 12 15 18 9"/>
             </svg>
           </button>
+          </div>
         </div>
       </header>
 
@@ -357,7 +375,13 @@ function Dashboard() {
                 <div>
                   <SideLabel>Основное</SideLabel>
                   <SideBtn icon={<IcPerson />}   label={t("nav.profile")}       onClick={() => { setProfileOpen(true);     closeSidebar(); }} />
-                  <SideBtn icon={<IcBell />}     label="Уведомления"             onClick={() => { setNotifOpen(true);       closeSidebar(); }} />
+                  <SideBtn icon={<IcBell />}     label="Уведомления"             onClick={() => { setNotifOpen(true);       closeSidebar(); }}
+                    rightEl={unreadCount > 0 ? (
+                      <span className="flex items-center justify-center rounded-full text-white font-bold"
+                        style={{ minWidth: 18, height: 18, fontSize: 10, background: "#ef4444", padding: "0 5px" }}>
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    ) : undefined} />
                   <SideBtn icon={<IcCalendar />} label="Активные встречи"        onClick={() => { setActiveOpen(true);      closeSidebar(); }} />
                 </div>
 

@@ -7,6 +7,7 @@ import type { NotificationRecord } from "../../types";
 const REMINDER_OPTIONS = [5, 15, 30, 60] as const;
 const STORAGE_KEY = "corpmeet_notifications";
 const REMINDER_KEY = "corpmeet_reminder_minutes";
+const UNREAD_KEY = "corpmeet_notif_unread";
 
 export function getStoredNotifications(): NotificationRecord[] {
   try {
@@ -14,10 +15,21 @@ export function getStoredNotifications(): NotificationRecord[] {
   } catch { return []; }
 }
 
+export function getUnreadCount(): number {
+  try { return Number(localStorage.getItem(UNREAD_KEY) || "0"); } catch { return 0; }
+}
+
+export function clearUnreadCount(): void {
+  localStorage.removeItem(UNREAD_KEY);
+  window.dispatchEvent(new CustomEvent("notif-unread"));
+}
+
 export function addNotification(record: NotificationRecord) {
   const existing = getStoredNotifications();
   const updated = [record, ...existing].slice(0, 50);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  localStorage.setItem(UNREAD_KEY, String(getUnreadCount() + 1));
+  window.dispatchEvent(new CustomEvent("notif-unread"));
 }
 
 export function getReminderMinutes(): number[] {
@@ -45,7 +57,10 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
   const [reminderMins, setReminderMins] = useState<number[]>(() => getReminderMinutes());
 
   useEffect(() => {
-    if (isOpen) setNotifications(getStoredNotifications());
+    if (isOpen) {
+      setNotifications(getStoredNotifications());
+      clearUnreadCount();
+    }
   }, [isOpen]);
 
   const timeAgo = (ms: number): string => {
