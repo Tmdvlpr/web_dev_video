@@ -242,12 +242,11 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
                     style={{
                       borderRadius: 999,
                       background: "linear-gradient(135deg, #2563eb, #6366f1)",
-                      boxShadow: "0 2px 12px rgba(99,102,241,0.4)",
                       border: "none",
-                      transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                      transition: "opacity 0.15s ease, transform 0.15s ease",
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.04)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(99,102,241,0.6)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 2px 12px rgba(99,102,241,0.4)"; }}>
+                    onMouseEnter={e => { e.currentTarget.style.opacity = "0.88"; e.currentTarget.style.transform = "scale(1.02)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = ""; }}>
                     {busy ? "…" : "Создать"}
                   </button>
                 </div>
@@ -278,12 +277,11 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
                     style={{
                       borderRadius: 999,
                       background: "linear-gradient(135deg, #2563eb, #6366f1)",
-                      boxShadow: "0 2px 12px rgba(99,102,241,0.4)",
                       border: "none",
-                      transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                      transition: "opacity 0.15s ease, transform 0.15s ease",
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.04)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(99,102,241,0.6)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 2px 12px rgba(99,102,241,0.4)"; }}>
+                    onMouseEnter={e => { e.currentTarget.style.opacity = "0.88"; e.currentTarget.style.transform = "scale(1.02)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = ""; }}>
                     {busy ? "…" : "Войти"}
                   </button>
                 </div>

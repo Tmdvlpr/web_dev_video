@@ -155,14 +155,20 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
                 <div className="space-y-2">
                   {notifications.map(n => (
                     <motion.div key={n.id}
-                      initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ type: "spring", damping: 20, stiffness: 300 }}
-                      className="rounded-xl p-3 flex gap-3"
+                      transition={{ type: "spring", damping: 18, stiffness: 280 }}
+                      className="rounded-2xl p-3.5 flex gap-3"
                       style={{
                         background: "var(--elevated)",
-                        border: "1px solid var(--border)",
-                        boxShadow: "0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05)",
+                        border: "1px solid rgba(255,255,255,0.07)",
+                        boxShadow: [
+                          "0 2px 4px rgba(0,0,0,0.35)",
+                          "0 8px 20px rgba(0,0,0,0.28)",
+                          "0 20px 50px rgba(0,0,0,0.18)",
+                          "0 0 0 1px rgba(255,255,255,0.04)",
+                          "0 30px 80px rgba(79,124,255,0.07)",
+                        ].join(", "),
                       }}>
                       {/* Icon with status badge */}
                       <div style={{ position: "relative", flexShrink: 0, marginTop: 1 }}>
