@@ -331,20 +331,26 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                 {!dateOnly && <div style={{ display: "flex", flexDirection: "column" }}>
                   {/* Time header */}
                   <div className="px-3 pt-3 pb-2 text-center">
-                    <div className="text-lg font-black tracking-tight" style={{
-                      background: "linear-gradient(90deg,#1565a8,#06b6d4)",
-                      WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-                      display: "flex", justifyContent: "center", alignItems: "center",
-                    }}>
+                    <div className="text-lg font-black tracking-tight"
+                      style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
                       <span className="t-digit-group">
                         {pad(sh).split("").map((d, i) => (
-                          <span key={`sh-${i}-${d}`} className="t-digit">{d}</span>
+                          <span key={`sh-${i}-${d}`} className="t-digit" style={{
+                            background: "linear-gradient(90deg,#1565a8,#06b6d4)",
+                            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                          }}>{d}</span>
                         ))}
                       </span>
-                      <span>:</span>
+                      <span style={{
+                        background: "linear-gradient(90deg,#1565a8,#06b6d4)",
+                        WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                      }}>:</span>
                       <span className="t-digit-group">
                         {pad(smin).split("").map((d, i) => (
-                          <span key={`sm-${i}-${d}`} className="t-digit">{d}</span>
+                          <span key={`sm-${i}-${d}`} className="t-digit" style={{
+                            background: "linear-gradient(90deg,#1565a8,#06b6d4)",
+                            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                          }}>{d}</span>
                         ))}
                       </span>
                     </div>
