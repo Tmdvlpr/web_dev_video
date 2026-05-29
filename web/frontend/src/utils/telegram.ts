@@ -34,5 +34,13 @@ export function getInviteParam(): { invite_token?: string; ws_code?: string } | 
   const invite_token = params.get("invite_token") ?? undefined;
   const ws_code = params.get("ws_code") ?? undefined;
   if (invite_token || ws_code) return { invite_token, ws_code };
+
+  // Telegram deep-link: t.me/bot?start=invite_TOKEN or t.me/bot?start=ws_CODE
+  const startParam = tg?.initDataUnsafe?.start_param as string | undefined;
+  if (startParam) {
+    if (startParam.startsWith("invite_")) return { invite_token: startParam.slice("invite_".length) };
+    if (startParam.startsWith("ws_")) return { ws_code: startParam.slice("ws_".length) };
+  }
+
   return null;
 }
