@@ -42,10 +42,6 @@ export const workspacesApi = {
     const res = await apiClient.get<WorkspaceMember[]>(`/api/v1/workspaces/${id}/members`);
     return res.data;
   },
-  invite: async (id: number, username: string): Promise<WorkspaceMember> => {
-    const res = await apiClient.post<WorkspaceMember>(`/api/v1/workspaces/${id}/invite`, { username });
-    return res.data;
-  },
   generateInviteLink: async (id: number): Promise<WorkspaceMember> => {
     const res = await apiClient.post<WorkspaceMember>(`/api/v1/workspaces/${id}/generate-invite-link`);
     return res.data;
@@ -63,6 +59,10 @@ export const workspacesApi = {
   },
   claimInvite: async (invite_token: string): Promise<WorkspaceMember> => {
     const res = await apiClient.post<WorkspaceMember>("/api/v1/workspaces/claim-invite", { invite_token });
+    return res.data;
+  },
+  rebindTelegram: async (id: number, chatId: number | null): Promise<Workspace> => {
+    const res = await apiClient.post<Workspace>(`/api/v1/workspaces/${id}/rebind`, { chat_id: chatId });
     return res.data;
   },
   getAnalytics: async (id: number, periodDays = 30): Promise<WorkspaceAnalytics> => {

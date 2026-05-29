@@ -20,8 +20,8 @@ from app.models.workspace import (
     WorkspaceMemberStatus,
 )
 from app.schemas.workspace import (
-    InviteRequest,
     JoinRequest,
+    RebindRequest,
     WorkspaceCreate,
     WorkspaceDetailResponse,
     WorkspaceMemberResponse,
@@ -335,6 +335,16 @@ async def claim_invite_web(
     return res.scalar_one()
 
 
+def _build_pending_responses(members: list) -> list[WorkspaceMemberResponse]:
+    results = []
+    for m in members:
+        r = WorkspaceMemberResponse.model_validate(m)
+        if settings.TG_BOT_USERNAME and m.invite_token:
+            r.invite_deep_link = f"https://t.me/{settings.TG_BOT_USERNAME}?start=invite_{m.invite_token}"
+        results.append(r)
+    return results
+
+
 @router.get("/{ws_id}", response_model=WorkspaceDetailResponse)
 async def get_workspace(
     ws_id: int,
@@ -363,7 +373,7 @@ async def get_workspace(
     return WorkspaceDetailResponse(
         **base.model_dump(),
         members=[WorkspaceMemberResponse.model_validate(m) for m in active_members],
-        pending_members=[WorkspaceMemberResponse.model_validate(m) for m in pending_members],
+        pending_members=_build_pending_responses(pending_members),
     )
 
 
@@ -388,6 +398,25 @@ async def update_workspace(
     if payload.telegram_chat_id is not None:
         workspace.telegram_chat_id = payload.telegram_chat_id
 
+    await db.commit()
+    await db.refresh(workspace)
+    return _workspace_to_response(workspace, member.role)
+
+
+@router.post("/{ws_id}/rebind", response_model=WorkspaceResponse)
+async def rebind_workspace_telegram(
+    ws_id: int,
+    payload: RebindRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> WorkspaceResponse:
+    """Атомарно перепривязывает или отвязывает воркспейс от TG-чата. Owner/admin."""
+    member = await _get_my_membership(ws_id, current_user, db)
+    _require_admin_or_owner(member)
+
+    ws_res = await db.execute(select(Workspace).where(Workspace.id == ws_id))
+    workspace = ws_res.scalar_one()
+    workspace.telegram_chat_id = payload.chat_id
     await db.commit()
     await db.refresh(workspace)
     return _workspace_to_response(workspace, member.role)
@@ -528,89 +557,6 @@ async def generate_invite_link(
     if settings.TG_BOT_USERNAME:
         r.invite_deep_link = f"https://t.me/{settings.TG_BOT_USERNAME}?start=invite_{invite_token}"
     return r
-
-
-@router.post(
-    "/{ws_id}/invite",
-    response_model=WorkspaceMemberResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-async def invite_member(
-    ws_id: int,
-    payload: InviteRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> WorkspaceMemberResponse:
-    """Invite a user by username (owner/admin only).
-
-    If the user exists in the DB, creates an active member directly.
-    If not, creates a pending member by `pending_username` so they can be linked when registering.
-    """
-    member = await _get_my_membership(ws_id, current_user, db)
-    _require_admin_or_owner(member)
-
-    username = payload.username.strip().lstrip("@")
-    if not username:
-        raise HTTPException(400, "Username cannot be empty")
-
-    user_res = await db.execute(select(User).where(User.username == username))
-    target_user = user_res.scalar_one_or_none()
-
-    invite_token = secrets.token_urlsafe(16)
-
-    if target_user:
-        existing_res = await db.execute(
-            select(WorkspaceMember).where(
-                WorkspaceMember.workspace_id == ws_id,
-                WorkspaceMember.user_id == target_user.id,
-            )
-        )
-        if existing_res.scalar_one_or_none():
-            raise HTTPException(409, "User is already a member or has a pending invitation")
-
-        new_member = WorkspaceMember(
-            workspace_id=ws_id,
-            user_id=target_user.id,
-            role=WorkspaceMemberRole.member,
-            status=WorkspaceMemberStatus.pending,
-            invited_by_user_id=current_user.id,
-            invite_token=invite_token,
-        )
-    else:
-        existing_res = await db.execute(
-            select(WorkspaceMember).where(
-                WorkspaceMember.workspace_id == ws_id,
-                WorkspaceMember.pending_username == username,
-                WorkspaceMember.user_id.is_(None),
-            )
-        )
-        if existing_res.scalar_one_or_none():
-            raise HTTPException(409, "An invitation for this username already exists")
-
-        new_member = WorkspaceMember(
-            workspace_id=ws_id,
-            user_id=None,
-            pending_username=username,
-            role=WorkspaceMemberRole.member,
-            status=WorkspaceMemberStatus.pending,
-            invited_by_user_id=current_user.id,
-            invite_token=invite_token,
-        )
-
-    db.add(new_member)
-    await db.commit()
-
-    res = await db.execute(
-        select(WorkspaceMember)
-        .options(selectinload(WorkspaceMember.user))
-        .where(WorkspaceMember.id == new_member.id)
-    )
-    member = res.scalar_one()
-    response = WorkspaceMemberResponse.model_validate(member)
-    response.invite_deep_link = (
-        f"https://t.me/{settings.TG_BOT_USERNAME}?start=invite_{invite_token}"
-    )
-    return response
 
 
 @router.patch("/{ws_id}/members/{mid}", response_model=WorkspaceMemberResponse | None)

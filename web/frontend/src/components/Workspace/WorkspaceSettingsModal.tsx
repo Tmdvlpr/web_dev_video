@@ -126,6 +126,7 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
               initialTz={activeWorkspace.timezone}
               inviteCode={activeWorkspace.invite_code}
               tgInviteLink={activeWorkspace.tg_invite_link ?? null}
+              initialTgChatId={activeWorkspace.telegram_chat_id}
               isOwner={isOwner}
               isAdmin={isAdmin}
               isSuperadmin={isSuperadmin}
@@ -199,7 +200,7 @@ function roleLabel(role: string | null, t: (k: string) => string): string {
 }
 
 function GeneralTab({
-  workspaceId, initialName, initialTz, inviteCode, tgInviteLink, isOwner, isAdmin, isSuperadmin,
+  workspaceId, initialName, initialTz, inviteCode, tgInviteLink, initialTgChatId, isOwner, isAdmin, isSuperadmin,
   onChanged, onArchived,
 }: {
   workspaceId: number;
@@ -207,6 +208,7 @@ function GeneralTab({
   initialTz: string;
   inviteCode: string;
   tgInviteLink: string | null;
+  initialTgChatId: number | null;
   isOwner: boolean;
   isAdmin: boolean;
   isSuperadmin: boolean;
@@ -226,8 +228,15 @@ function GeneralTab({
   const [archiving, setArch] = useState(false);
   const [confirmArchive, setConfirmArch] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [tgChatInput, setTgChatInput] = useState(initialTgChatId ? String(initialTgChatId) : "");
+  const [bindingTg, setBindingTg] = useState(false);
+  const [tgBindErr, setTgBindErr] = useState<string | null>(null);
 
-  useEffect(() => { setName(initialName); setTz(initialTz); setCode(inviteCode); setTgLink(tgInviteLink); }, [initialName, initialTz, inviteCode, tgInviteLink]);
+  useEffect(() => {
+    setName(initialName); setTz(initialTz); setCode(inviteCode); setTgLink(tgInviteLink);
+    setTgChatInput(initialTgChatId ? String(initialTgChatId) : "");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialName, initialTz, inviteCode, tgInviteLink, initialTgChatId]);
 
   const errRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
@@ -239,6 +248,17 @@ function GeneralTab({
     const id = setTimeout(() => el.classList.remove("is-shaking"), 280);
     return () => clearTimeout(id);
   }, [err]);
+
+  const tgBindErrRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (!tgBindErr || !tgBindErrRef.current) return;
+    const el = tgBindErrRef.current;
+    el.classList.remove("is-shaking");
+    void el.offsetWidth;
+    el.classList.add("is-shaking");
+    const id = setTimeout(() => el.classList.remove("is-shaking"), 280);
+    return () => clearTimeout(id);
+  }, [tgBindErr]);
 
   const saveName = async () => {
     setErr(null);
@@ -296,6 +316,17 @@ function GeneralTab({
       setErr(msg ?? t("ws.archiveFail"));
       setArch(false);
     }
+  };
+
+  const handleRebindTg = async (chatId: number | null) => {
+    setBindingTg(true); setTgBindErr(null);
+    try {
+      await workspacesApi.rebindTelegram(workspaceId, chatId);
+      onChanged();
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setTgBindErr(msg ?? t("ws.tgBindError"));
+    } finally { setBindingTg(false); }
   };
 
   return (
@@ -383,6 +414,92 @@ function GeneralTab({
               {regenerating ? "…" : t("ws.update")}
             </button>
           </div>
+        </div>
+      )}
+
+      {(isOwner || isAdmin) && (
+        <div>
+          <Label>{t("ws.tgGroupBind")}</Label>
+          <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
+            {t("ws.tgGroupBindDesc")}
+          </p>
+          <AnimatePresence>
+            {initialTgChatId && (
+              <motion.p
+                key="tg-current"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                className="text-xs mb-2"
+                style={{ color: "var(--text-sec)" }}
+              >
+                {t("ws.tgGroupCurrent")}: <span className="font-mono">{initialTgChatId}</span>
+              </motion.p>
+            )}
+          </AnimatePresence>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={tgChatInput}
+              onChange={e => setTgChatInput(e.target.value)}
+              placeholder="-100123456789"
+              className="flex-1 rounded-md px-3 py-2 text-xs font-mono outline-none"
+              style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
+            />
+            <button
+              onClick={() => { const id = parseInt(tgChatInput, 10); if (!isNaN(id)) handleRebindTg(id); }}
+              disabled={bindingTg || !tgChatInput.trim()}
+              className="px-4 rounded-md text-xs font-bold text-white disabled:opacity-50 overflow-hidden"
+              style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={bindingTg ? "loading" : "label"}
+                  initial={{ opacity: 0, y: 4, filter: "blur(2px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, y: -4, filter: "blur(2px)" }}
+                  transition={{ duration: 0.15 }}
+                  style={{ display: "block" }}
+                >
+                  {bindingTg ? "…" : t("ws.tgBind")}
+                </motion.span>
+              </AnimatePresence>
+            </button>
+            <AnimatePresence>
+              {initialTgChatId && (
+                <motion.button
+                  key="tg-unbind"
+                  initial={{ opacity: 0, scale: 0.85 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.85 }}
+                  transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+                  onClick={() => handleRebindTg(null)}
+                  disabled={bindingTg}
+                  className="px-3 rounded-md text-xs font-bold disabled:opacity-50"
+                  style={{ background: "var(--elevated)", border: "1.5px solid var(--border)", color: "var(--text-sec)" }}
+                >
+                  {t("ws.tgUnbind")}
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
+          <AnimatePresence>
+            {tgBindErr && (
+              <motion.p
+                key="tg-bind-err"
+                ref={tgBindErrRef}
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.15 }}
+                className="t-shake-target text-xs mt-1"
+                style={{ color: "#dc2626" }}
+              >
+                {tgBindErr}
+              </motion.p>
+            )}
+          </AnimatePresence>
         </div>
       )}
 

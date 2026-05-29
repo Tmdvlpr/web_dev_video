@@ -55,8 +55,8 @@ class JoinRequest(BaseModel):
     invite_code: str
 
 
-class InviteRequest(BaseModel):
-    username: str = Field(..., min_length=1, max_length=255)
+class RebindRequest(BaseModel):
+    chat_id: int | None
 
 
 class UpdateMemberRole(BaseModel):
