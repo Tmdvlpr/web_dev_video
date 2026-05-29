@@ -780,15 +780,24 @@ function ParticipantsPanel({
                     className={`prow__ico prow__ico--btn${!p.isMicrophoneEnabled ? " prow__ico--muted" : ""}`}
                     style={{ background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}
                   >
-                    {p.isMicrophoneEnabled ? <Ic.Mic sz={13} /> : <Ic.MicOff sz={13} />}
+                    <span className="t-icon-swap" data-state={p.isMicrophoneEnabled ? "a" : "b"}>
+                      <span className="t-icon" data-icon="a"><Ic.Mic sz={13} /></span>
+                      <span className="t-icon" data-icon="b"><Ic.MicOff sz={13} /></span>
+                    </span>
                   </button>
                 ) : (
                   <span className={`prow__ico${!p.isMicrophoneEnabled ? " prow__ico--muted" : ""}`}>
-                    {p.isMicrophoneEnabled ? <Ic.Mic sz={13} /> : <Ic.MicOff sz={13} />}
+                    <span className="t-icon-swap" data-state={p.isMicrophoneEnabled ? "a" : "b"}>
+                      <span className="t-icon" data-icon="a"><Ic.Mic sz={13} /></span>
+                      <span className="t-icon" data-icon="b"><Ic.MicOff sz={13} /></span>
+                    </span>
                   </span>
                 )}
                 <span className={`prow__ico${!p.isCameraEnabled ? " prow__ico--muted" : ""}`}>
-                  {p.isCameraEnabled ? <Ic.Cam sz={13} /> : <Ic.CamOff sz={13} />}
+                  <span className="t-icon-swap" data-state={p.isCameraEnabled ? "a" : "b"}>
+                    <span className="t-icon" data-icon="a"><Ic.Cam sz={13} /></span>
+                    <span className="t-icon" data-icon="b"><Ic.CamOff sz={13} /></span>
+                  </span>
                 </span>
               </div>
             </div>
@@ -837,7 +846,10 @@ function ParticipantsPanel({
                     fontSize: 11, fontWeight: 600, cursor: "pointer",
                   }}
                 >
-                  {copied ? <Ic.Check sz={12} /> : <Ic.Copy sz={12} />}
+                  <span className="t-icon-swap" data-state={copied ? "b" : "a"}>
+                    <span className="t-icon" data-icon="a"><Ic.Copy sz={12} /></span>
+                    <span className="t-icon" data-icon="b"><Ic.Check sz={12} /></span>
+                  </span>
                 </button>
               </div>
               <button
@@ -998,7 +1010,10 @@ function MeetingInfoModal({ title, startTime, endTime, participantCount, meeting
           <div className="modal__linkrow">
             <code className="modal__link">{meetingUrl}</code>
             <button className="modal__copybtn" onClick={copy}>
-              {copied ? <Ic.Check sz={13} /> : <Ic.Copy sz={13} />}
+              <span className="t-icon-swap" data-state={copied ? "b" : "a"}>
+                <span className="t-icon" data-icon="a"><Ic.Copy sz={13} /></span>
+                <span className="t-icon" data-icon="b"><Ic.Check sz={13} /></span>
+              </span>
               {copied ? "Скопировано" : "Копировать"}
             </button>
           </div>
@@ -1227,14 +1242,18 @@ function WaitingRoom({ startTime, onLeave, onJoin }: { startTime: string; onLeav
                     <span className="waitroom__csep">:</span>
                   </>
                 )}
-                <div className="waitroom__cblock">
-                  <span className="waitroom__cnum">
-                    <span key={`ht-${hTens}`} className="t-digit-auto">{hTens}</span>
-                    <span key={`ho-${hOnes}`} className="t-digit-auto" data-stagger="1">{hOnes}</span>
-                  </span>
-                  <span className="waitroom__cunit">{h === 1 ? "час" : h < 5 ? "часа" : "часов"}</span>
-                </div>
-                <span className="waitroom__csep">:</span>
+                {(h > 0 || d > 0) && (
+                  <>
+                    <div className="waitroom__cblock">
+                      <span className="waitroom__cnum">
+                        <span key={`ht-${hTens}`} className="t-digit-auto">{hTens}</span>
+                        <span key={`ho-${hOnes}`} className="t-digit-auto" data-stagger="1">{hOnes}</span>
+                      </span>
+                      <span className="waitroom__cunit">{h === 1 ? "час" : h < 5 ? "часа" : "часов"}</span>
+                    </div>
+                    <span className="waitroom__csep">:</span>
+                  </>
+                )}
                 <div className="waitroom__cblock">
                   <span className="waitroom__cnum">
                     <span key={`mt-${mTens}`} className="t-digit-auto">{mTens}</span>

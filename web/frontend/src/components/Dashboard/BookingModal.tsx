@@ -528,10 +528,10 @@ export function BookingModal({
           <div className="fixed inset-0 flex items-center justify-center z-50 px-4 pointer-events-none">
             <motion.div
               key="modal"
-              initial={{ opacity: 0, scale: 0.9, y: 24 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 24 }}
-              transition={{ type: "spring", damping: 22, stiffness: 340 }}
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               ref={cardRef}
               drag
               dragControls={dragControls}

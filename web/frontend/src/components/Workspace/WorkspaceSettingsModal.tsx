@@ -170,12 +170,12 @@ function Overlay({ isDark, onClose, children }: { isDark: boolean; onClose: () =
         onClick={onClose}
       >
         <motion.div
-          initial={{ opacity: 0, y: 12, scale: 0.97 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 12, scale: 0.97 }}
-          transition={{ type: "spring", damping: 22, stiffness: 320 }}
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.96 }}
+          transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
           onClick={e => e.stopPropagation()}
-          className="w-full rounded flex flex-col"
+          className="t-modal w-full rounded flex flex-col"
           style={{
             background: "var(--modal)",
             border: "1px solid var(--border)",
@@ -617,6 +617,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                       )}
                     </div>
                     {editMemberId === m.id && (
+                      <PanelReveal>
                       <div className="mt-1 px-3 py-3 rounded-md space-y-2" style={{ background: "var(--input-bg)", border: "1px solid var(--primary-border)" }}>
                         <div className="grid grid-cols-2 gap-2">
                           <input value={editForm.first_name} onChange={e => setEditForm(f => ({ ...f, first_name: e.target.value }))}
@@ -680,6 +681,7 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                           </button>
                         </div>
                       </div>
+                      </PanelReveal>
                     )}
                   </div>
                 );
@@ -802,6 +804,7 @@ function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
             </div>
           )}
           {creating && (
+            <PanelReveal>
             <div className="space-y-2 rounded-md p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
               <input
                 autoFocus value={newName} onChange={e => setNewName(e.target.value)}
@@ -829,8 +832,10 @@ function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
                 </button>
               </div>
             </div>
+            </PanelReveal>
           )}
           {joining && (
+            <PanelReveal>
             <div className="space-y-2 rounded-md p-3" style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
               <p className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
                 {t("ws.rooms.codeInstruction")}
@@ -857,6 +862,7 @@ function RoomsTab({ workspaceId, rooms, isAdmin, isSuperadmin, onRefetch }:
                 </button>
               </div>
             </div>
+            </PanelReveal>
           )}
         </div>
       )}
@@ -1268,7 +1274,7 @@ function CustomSelect({
   disabled?: boolean;
   size?: "xs" | "sm";
 }) {
-  const [open, setOpen] = useState(false);
+  const [dropState, setDropState] = useState<"closed" | "open" | "closing">("closed");
   const [dropRect, setDropRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const selected = options.find(o => o.value === value)?.label ?? value;
@@ -1276,23 +1282,31 @@ function CustomSelect({
   const fz = size === "xs" ? "text-xs" : "text-sm";
 
   useEffect(() => {
-    if (!open) return;
+    if (dropState !== "open") return;
     const close = (e: MouseEvent) => {
       if (btnRef.current?.contains(e.target as Node)) return;
-      setOpen(false);
+      setDropState("closing");
+      setTimeout(() => setDropState("closed"), 150);
     };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
-  }, [open]);
+  }, [dropState]);
 
   const toggle = () => {
     if (disabled) return;
-    if (!open && btnRef.current) {
-      const r = btnRef.current.getBoundingClientRect();
-      setDropRect({ top: r.bottom + 4, left: r.left, width: r.width });
+    if (dropState === "closed") {
+      if (btnRef.current) {
+        const r = btnRef.current.getBoundingClientRect();
+        setDropRect({ top: r.bottom + 4, left: r.left, width: r.width });
+      }
+      setDropState("open");
+    } else if (dropState === "open") {
+      setDropState("closing");
+      setTimeout(() => setDropState("closed"), 150);
     }
-    setOpen(v => !v);
   };
+
+  const isOpen = dropState !== "closed";
 
   return (
     <div>
@@ -1300,18 +1314,20 @@ function CustomSelect({
         className={`w-full rounded-md ${pad} ${fz} text-left flex items-center justify-between gap-2 outline-none`}
         style={{
           background: "var(--input-bg)", color: "var(--text)",
-          border: `1.5px solid ${open ? "var(--primary)" : "var(--input-border)"}`,
+          border: `1.5px solid ${isOpen ? "var(--primary)" : "var(--input-border)"}`,
           cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.6 : 1,
           transition: "border-color 0.15s",
         }}>
         <span className="truncate min-w-0">{selected}</span>
         <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className="shrink-0"
-          style={{ transform: open ? "rotate(180deg)" : undefined, transition: "transform 0.15s" }}>
+          style={{ transform: isOpen ? "rotate(180deg)" : undefined, transition: "transform 0.15s" }}>
           <path d="M1 1l4 4 4-4" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
-      {open && dropRect && (
+      {isOpen && dropRect && (
         <div onMouseDown={e => e.stopPropagation()}
+          className={"t-dropdown" + (dropState === "open" ? " is-open" : " is-closing")}
+          data-origin="top-left"
           style={{
             position: "fixed", top: dropRect.top, left: dropRect.left, width: dropRect.width,
             zIndex: 9999, background: "var(--modal)", border: "1.5px solid var(--border)",
@@ -1319,7 +1335,7 @@ function CustomSelect({
           }}>
           {options.map(o => (
             <button key={o.value} type="button"
-              onMouseDown={() => { onChange(o.value); setOpen(false); }}
+              onMouseDown={() => { onChange(o.value); setDropState("closing"); setTimeout(() => setDropState("closed"), 150); }}
               className={`w-full ${pad} ${fz} text-left`}
               style={{
                 background: o.value === value ? "var(--primary-light)" : "transparent",
@@ -1337,6 +1353,16 @@ function CustomSelect({
       )}
     </div>
   );
+}
+
+function PanelReveal({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    requestAnimationFrame(() => requestAnimationFrame(() => { el.dataset.open = "true"; }));
+  }, []);
+  return <div ref={ref} className="t-panel-slide" data-open="false">{children}</div>;
 }
 
 function Label({ children }: { children: React.ReactNode }) {

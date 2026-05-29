@@ -625,29 +625,37 @@ function CustomSelect({
   options: Array<{ value: string; label: string }>;
   disabled?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [dropState, setDropState] = useState<"closed" | "open" | "closing">("closed");
   const [dropRect, setDropRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const selected = options.find(o => o.value === value)?.label ?? value;
 
   useEffect(() => {
-    if (!open) return;
+    if (dropState !== "open") return;
     const close = (e: MouseEvent) => {
       if (btnRef.current?.contains(e.target as Node)) return;
-      setOpen(false);
+      setDropState("closing");
+      setTimeout(() => setDropState("closed"), 150);
     };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
-  }, [open]);
+  }, [dropState]);
 
   const toggle = () => {
     if (disabled) return;
-    if (!open && btnRef.current) {
-      const r = btnRef.current.getBoundingClientRect();
-      setDropRect({ top: r.bottom + 4, left: r.left, width: r.width });
+    if (dropState === "closed") {
+      if (btnRef.current) {
+        const r = btnRef.current.getBoundingClientRect();
+        setDropRect({ top: r.bottom + 4, left: r.left, width: r.width });
+      }
+      setDropState("open");
+    } else if (dropState === "open") {
+      setDropState("closing");
+      setTimeout(() => setDropState("closed"), 150);
     }
-    setOpen(v => !v);
   };
+
+  const isOpen = dropState !== "closed";
 
   return (
     <div>
@@ -655,18 +663,20 @@ function CustomSelect({
         className="w-full rounded px-2.5 py-1.5 text-xs text-left flex items-center justify-between gap-2 outline-none"
         style={{
           background: "var(--input-bg)", color: "var(--text)",
-          border: `1.5px solid ${open ? "var(--primary)" : "var(--input-border)"}`,
+          border: `1.5px solid ${isOpen ? "var(--primary)" : "var(--input-border)"}`,
           cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.6 : 1,
           transition: "border-color 0.15s",
         }}>
         <span className="truncate min-w-0">{selected}</span>
         <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className="shrink-0"
-          style={{ transform: open ? "rotate(180deg)" : undefined, transition: "transform 0.15s" }}>
+          style={{ transform: isOpen ? "rotate(180deg)" : undefined, transition: "transform 0.15s" }}>
           <path d="M1 1l4 4 4-4" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
-      {open && dropRect && (
+      {isOpen && dropRect && (
         <div onMouseDown={e => e.stopPropagation()}
+          className={"t-dropdown" + (dropState === "open" ? " is-open" : " is-closing")}
+          data-origin="top-left"
           style={{
             position: "fixed", top: dropRect.top, left: dropRect.left, width: dropRect.width,
             zIndex: 9999, background: "var(--panel)", border: "1.5px solid var(--border)",
@@ -674,7 +684,7 @@ function CustomSelect({
           }}>
           {options.map(o => (
             <button key={o.value} type="button"
-              onMouseDown={() => { onChange(o.value); setOpen(false); }}
+              onMouseDown={() => { onChange(o.value); setDropState("closing"); setTimeout(() => setDropState("closed"), 150); }}
               className="w-full px-2.5 py-1.5 text-xs text-left"
               style={{
                 background: o.value === value ? "var(--primary-light)" : "transparent",

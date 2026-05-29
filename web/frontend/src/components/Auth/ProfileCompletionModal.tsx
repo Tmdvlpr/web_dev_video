@@ -61,12 +61,12 @@ export function ProfileCompletionModal({ open }: Props) {
           style={{ background: "rgba(15,23,42,0.55)", backdropFilter: "blur(8px)" }}
         >
           <motion.form
-            initial={{ opacity: 0, y: 12, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.97 }}
-            transition={{ type: "spring", damping: 22, stiffness: 280 }}
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
             onSubmit={submit}
-            className="w-full max-w-sm p-6 rounded-md"
+            className="t-modal w-full max-w-sm p-6 rounded-md"
             style={{
               background: "var(--card)",
               border: "1px solid var(--border)",

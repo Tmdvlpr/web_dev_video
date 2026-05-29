@@ -33,11 +33,11 @@ export function ConfirmDialog({
             onClick={onCancel}
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 10 }}
-            transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className="fixed z-[9991] inset-0 m-auto w-full max-w-sm h-fit rounded-md p-6"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            className="t-modal fixed z-[9991] inset-0 m-auto w-full max-w-sm h-fit rounded-md p-6"
             style={{
               background: "var(--modal)",
               border: "1px solid var(--border)",
