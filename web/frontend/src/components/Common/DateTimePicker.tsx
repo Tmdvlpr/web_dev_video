@@ -76,14 +76,30 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
     if (sm) setViewMonth(sm - 1);
   }, [sy, sm]);
 
-  const [pos, setPos] = useState({ top: 0, left: 0, above: false });
+  const [pos, setPos] = useState({ top: 0, left: 0, above: false, maxH: 600 });
 
   useLayoutEffect(() => {
     if (!open || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const above = spaceBelow < 310;
-    setPos({ top: above ? rect.top - 4 : rect.bottom + 6, left: rect.left, above });
+    const DROPDOWN_W = 390;
+    const DROPDOWN_H = 370;
+    const MARGIN = 8;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    const spaceBelow = vh - rect.bottom - MARGIN;
+    const spaceAbove = rect.top - MARGIN;
+    const above = spaceBelow < DROPDOWN_H && spaceAbove > spaceBelow;
+
+    let left = rect.left;
+    if (left + DROPDOWN_W > vw - MARGIN) left = vw - DROPDOWN_W - MARGIN;
+    if (left < MARGIN) left = MARGIN;
+
+    const maxH = above
+      ? Math.max(spaceAbove - 4, 200)
+      : Math.max(spaceBelow, 200);
+
+    setPos({ top: above ? rect.top - 4 : rect.bottom + 6, left, above, maxH });
   }, [open]);
 
   useEffect(() => {
@@ -202,6 +218,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                 zIndex: 9999,
                 borderRadius: 6,
                 overflow: "hidden",
+                maxHeight: pos.maxH,
                 display: "flex",
                 flexDirection: "column",
                 background: isDark ? "#1a1625" : "#ffffff",
@@ -317,8 +334,19 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                     <div className="text-lg font-black tracking-tight" style={{
                       background: "linear-gradient(90deg,#1565a8,#06b6d4)",
                       WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                      display: "flex", justifyContent: "center", alignItems: "center",
                     }}>
-                      {pad(sh)}:{pad(smin)}
+                      <span className="t-digit-group">
+                        {pad(sh).split("").map((d, i) => (
+                          <span key={`sh-${i}-${d}`} className="t-digit">{d}</span>
+                        ))}
+                      </span>
+                      <span>:</span>
+                      <span className="t-digit-group">
+                        {pad(smin).split("").map((d, i) => (
+                          <span key={`sm-${i}-${d}`} className="t-digit">{d}</span>
+                        ))}
+                      </span>
                     </div>
                   </div>
 
