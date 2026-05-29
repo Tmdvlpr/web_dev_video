@@ -88,6 +88,13 @@
 }
 .t-digit-group { display: inline-flex; align-items: baseline; }
 .t-digit { display: inline-block; will-change: transform, opacity, filter; }
+/* Auto-plays on mount — use key={value} to replay when digit changes */
+.t-digit-auto {
+  display: inline-block;
+  will-change: transform, opacity, filter;
+  animation: t-digit-pop-in var(--digit-dur) var(--digit-ease) both;
+}
+.t-digit-auto[data-stagger="1"] { animation-delay: var(--digit-stagger); }
 .t-digit-group.is-animating .t-digit {
   animation: t-digit-pop-in var(--digit-dur) var(--digit-ease) both;
 }

@@ -1034,16 +1034,13 @@ function FloatingReaction({ emoji, id, onDone }: { emoji: string; id: number; on
 }
 
 // ─── Waiting room ─────────────────────────────────────────────────────────────
-function WaitingRoom({ startTime, onLeave, onJoin }: { startTime: string; onLeave: () => void; bookingId?: number; onJoin: () => void; localUserId?: number }) {
+function WaitingRoom({ startTime, onLeave, onJoin }: { startTime: string; onLeave: () => void; onJoin: () => void }) {
   const [remaining, setRemaining] = useState(() => Math.max(0, new Date(startTime).getTime() - Date.now()));
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { isDark } = useTheme();
   const isDarkRef = useRef(isDark);
   useEffect(() => { isDarkRef.current = isDark; }, [isDark]);
 
-  const hNumRef = useRef<HTMLSpanElement>(null);
-  const mNumRef = useRef<HTMLSpanElement>(null);
-  const sNumRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1180,19 +1177,17 @@ function WaitingRoom({ startTime, onLeave, onJoin }: { startTime: string; onLeav
     return () => window.removeEventListener("keydown", onKey);
   }, [onLeave]);
 
-  const h = Math.floor(remaining / 3_600_000);
+  const d = Math.floor(remaining / 86_400_000);
+  const h = Math.floor((remaining % 86_400_000) / 3_600_000);
   const m = Math.floor((remaining % 3_600_000) / 60_000);
   const s = Math.floor((remaining % 60_000) / 1_000);
 
-  const replayDigits = (ref: React.RefObject<HTMLSpanElement>) => {
-    const el = ref.current;
-    if (!el) return;
-    el.classList.remove("is-animating");
-    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("is-animating")));
-  };
-  useEffect(() => { replayDigits(sNumRef); }, [s]);
-  useEffect(() => { replayDigits(mNumRef); }, [m]);
-  useEffect(() => { if (h > 0) replayDigits(hNumRef); }, [h]);
+  const dTens = Math.floor(d / 10); const dOnes = d % 10;
+  const hTens = Math.floor(h / 10); const hOnes = h % 10;
+  const mTens = Math.floor(m / 10); const mOnes = m % 10;
+  const sTens = Math.floor(s / 10); const sOnes = s % 10;
+
+  const dUnit = d % 10 === 1 && d !== 11 ? "день" : d % 10 >= 2 && d % 10 <= 4 && !(d >= 12 && d <= 14) ? "дня" : "дней";
 
   const startDate = new Date(startTime);
   const timeStr = fmtTime(startDate);
@@ -1220,33 +1215,38 @@ function WaitingRoom({ startTime, onLeave, onJoin }: { startTime: string; onLeav
             <div className="waitroom__countdown">
               <p className="waitroom__clabel">До начала осталось</p>
               <div className="waitroom__cblocks">
-                {h > 0 && (
+                {d > 0 && (
                   <>
                     <div className="waitroom__cblock">
-                      <span ref={hNumRef} className="waitroom__cnum t-digit-group is-animating">
-                        {String(h).padStart(2, "0").split("").map((ch, i) => (
-                          <span key={i} className="t-digit" data-stagger={i > 0 ? 1 : undefined}>{ch}</span>
-                        ))}
+                      <span className="waitroom__cnum">
+                        <span key={`dt-${dTens}`} className="t-digit-auto">{dTens}</span>
+                        <span key={`do-${dOnes}`} className="t-digit-auto" data-stagger="1">{dOnes}</span>
                       </span>
-                      <span className="waitroom__cunit">{h === 1 ? "час" : h < 5 ? "часа" : "часов"}</span>
+                      <span className="waitroom__cunit">{dUnit}</span>
                     </div>
                     <span className="waitroom__csep">:</span>
                   </>
                 )}
                 <div className="waitroom__cblock">
-                  <span ref={mNumRef} className="waitroom__cnum t-digit-group is-animating">
-                    {String(m).padStart(2, "0").split("").map((ch, i) => (
-                      <span key={i} className="t-digit" data-stagger={i > 0 ? 1 : undefined}>{ch}</span>
-                    ))}
+                  <span className="waitroom__cnum">
+                    <span key={`ht-${hTens}`} className="t-digit-auto">{hTens}</span>
+                    <span key={`ho-${hOnes}`} className="t-digit-auto" data-stagger="1">{hOnes}</span>
+                  </span>
+                  <span className="waitroom__cunit">{h === 1 ? "час" : h < 5 ? "часа" : "часов"}</span>
+                </div>
+                <span className="waitroom__csep">:</span>
+                <div className="waitroom__cblock">
+                  <span className="waitroom__cnum">
+                    <span key={`mt-${mTens}`} className="t-digit-auto">{mTens}</span>
+                    <span key={`mo-${mOnes}`} className="t-digit-auto" data-stagger="1">{mOnes}</span>
                   </span>
                   <span className="waitroom__cunit">минут</span>
                 </div>
                 <span className="waitroom__csep">:</span>
                 <div className="waitroom__cblock">
-                  <span ref={sNumRef} className="waitroom__cnum t-digit-group is-animating">
-                    {String(s).padStart(2, "0").split("").map((ch, i) => (
-                      <span key={i} className="t-digit" data-stagger={i > 0 ? 1 : undefined}>{ch}</span>
-                    ))}
+                  <span className="waitroom__cnum">
+                    <span key={`st-${sTens}`} className="t-digit-auto">{sTens}</span>
+                    <span key={`so-${sOnes}`} className="t-digit-auto" data-stagger="1">{sOnes}</span>
                   </span>
                   <span className="waitroom__cunit">секунд</span>
                 </div>
@@ -2101,8 +2101,7 @@ export function MeetingRoom({
   if (!data) return <FullscreenSpinner text="Подключение к встрече…" />;
 
   if (!isMeetingTime) {
-    const localUserId = parseInt(data.user_identity.replace("user-", ""), 10) || 0;
-    return <WaitingRoom startTime={data.start_time} onLeave={onLeave} bookingId={bookingId} onJoin={() => setIsMeetingTime(true)} localUserId={localUserId} />;
+    return <WaitingRoom startTime={data.start_time} onLeave={onLeave} onJoin={() => setIsMeetingTime(true)} />;
   }
 
   if (lkDisconnected) {
