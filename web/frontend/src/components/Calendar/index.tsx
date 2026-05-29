@@ -312,26 +312,32 @@ function FilterDropdown({
 }) {
   const { t } = useLocale();
   const { myRooms, activeWorkspace } = useWorkspace();
-  const [open, setOpen] = useState(false);
+  const [dropState, setDropState] = useState<"closed" | "open" | "closing">("closed");
   const [tab, setTab] = useState<"rooms" | "type">("rooms");
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const [dropPos, setDropPos] = useState<{ top: number; right: number } | null>(null);
 
+  const closeDropdown = () => {
+    setDropState("closing");
+    setTimeout(() => setDropState("closed"), 150);
+  };
+
   const rooms = myRooms.filter(r => r.workspace_id === activeWorkspace?.id);
   const hasFilter = activeRoomId !== null || typeFilter !== "all";
 
   useEffect(() => {
-    if (!open) return;
+    if (dropState !== "open") return;
     const handler = (e: MouseEvent) => {
       const t = e.target as Node;
       if (ref.current?.contains(t) || dropRef.current?.contains(t)) return;
-      setOpen(false);
+      closeDropdown();
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dropState]);
 
   const TYPE_OPTS = [
     { key: "all" as const,      label: t("cal.filterAll") },
@@ -346,16 +352,16 @@ function FilterDropdown({
       <button
         ref={btnRef}
         onClick={() => {
-          if (open) { setOpen(false); return; }
+          if (dropState !== "closed") { closeDropdown(); return; }
           const r = btnRef.current?.getBoundingClientRect();
           if (r) setDropPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
-          setOpen(true);
+          setDropState("open");
         }}
         className="flex items-center gap-1.5 px-2.5 h-7 text-xs font-semibold rounded transition-all"
         style={{
-          border: open || hasFilter ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
-          background: open || hasFilter ? "var(--primary-light)" : "transparent",
-          color: open || hasFilter ? "var(--primary)" : "var(--text-muted)",
+          border: dropState !== "closed" || hasFilter ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
+          background: dropState !== "closed" || hasFilter ? "var(--primary-light)" : "transparent",
+          color: dropState !== "closed" || hasFilter ? "var(--primary)" : "var(--text-muted)",
         }}
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -368,9 +374,11 @@ function FilterDropdown({
       </button>
 
       {/* Dropdown via portal — escapes toolbar stacking context */}
-      {open && dropPos && createPortal(
+      {dropState !== "closed" && dropPos && createPortal(
         <div
           ref={dropRef}
+          className={"t-dropdown" + (dropState === "open" ? " is-open" : " is-closing")}
+          data-origin="top-right"
           style={{
             position: "fixed", top: dropPos.top, right: dropPos.right,
             zIndex: 9999, width: 240,

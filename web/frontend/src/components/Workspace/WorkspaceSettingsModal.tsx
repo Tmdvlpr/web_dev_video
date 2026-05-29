@@ -1215,6 +1215,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
       </div>
 
       {showShare && isOwnerRoom && (
+        <PanelReveal>
         <div className="mt-2 flex gap-2">
           <input
             autoFocus value={shareCode} onChange={e => setShareCode(e.target.value)}
@@ -1229,9 +1230,11 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
             {busy ? "…" : t("ws.rooms.send")}
           </button>
         </div>
+        </PanelReveal>
       )}
 
       {showTransfer && isSuperadmin && isOwnerRoom && (
+        <PanelReveal>
         <div className="mt-2 space-y-2 rounded-md p-3" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.25)" }}>
           <p className="text-xs font-semibold" style={{ color: "#d97706" }}>{t("ws.rooms.transferTitle")}</p>
           <select
@@ -1258,6 +1261,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
             </button>
           </div>
         </div>
+        </PanelReveal>
       )}
 
       {err && <p className="text-xs mt-2" style={{ color: "#dc2626" }}>{err}</p>}

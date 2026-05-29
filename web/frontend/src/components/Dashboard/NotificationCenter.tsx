@@ -155,9 +155,9 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
                 <div className="space-y-2">
                   {notifications.map(n => (
                     <motion.div key={n.id}
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ type: "spring", damping: 18, stiffness: 280 }}
+                      initial={{ opacity: 0, scale: 0.96 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                       className="rounded-2xl p-3.5 flex gap-3"
                       style={{
                         background: "var(--elevated)",

@@ -129,9 +129,9 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
       style={{ background: overlayBg, backdropFilter: "blur(8px)" }}
     >
       <motion.div
-        initial={{ opacity: 0, y: 18, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: "spring", damping: 22, stiffness: 280 }}
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
         className="w-full max-w-2xl rounded-md"
         style={{
           background: "var(--modal)",

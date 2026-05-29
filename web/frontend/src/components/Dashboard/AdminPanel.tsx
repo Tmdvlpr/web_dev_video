@@ -428,10 +428,10 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
               {selectionMode && tab === "bookings" && selectedIds.size > 0 && (
                 <motion.div
                   key="bulk-bar"
-                  initial={{ y: 80, opacity: 0 }}
+                  initial={{ y: 40, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: 80, opacity: 0 }}
-                  transition={{ type: "spring", damping: 22, stiffness: 320 }}
+                  exit={{ y: 40, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                   className="absolute left-0 right-0 bottom-0 px-4 py-3 flex items-center gap-2"
                   style={{
                     background: "var(--panel)",
