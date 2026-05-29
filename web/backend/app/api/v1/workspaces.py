@@ -114,7 +114,7 @@ def _require_owner(member: WorkspaceMember) -> None:
 def _workspace_to_response(ws: Workspace, my_role: WorkspaceMemberRole | None) -> WorkspaceResponse:
     tg_invite_link = None
     if settings.TG_BOT_USERNAME:
-        tg_invite_link = f"https://t.me/{settings.TG_BOT_USERNAME}?startapp=ws_{ws.invite_code}"
+        tg_invite_link = f"https://t.me/{settings.TG_BOT_USERNAME}?start=ws_{ws.invite_code}"
     return WorkspaceResponse(
         id=ws.id,
         name=ws.name,
@@ -340,7 +340,7 @@ def _build_pending_responses(members: list) -> list[WorkspaceMemberResponse]:
     for m in members:
         r = WorkspaceMemberResponse.model_validate(m)
         if settings.TG_BOT_USERNAME and m.invite_token:
-            r.invite_deep_link = f"https://t.me/{settings.TG_BOT_USERNAME}?startapp=invite_{m.invite_token}"
+            r.invite_deep_link = f"https://t.me/{settings.TG_BOT_USERNAME}?start=invite_{m.invite_token}"
         results.append(r)
     return results
 
@@ -503,7 +503,7 @@ async def list_members(
             continue
         r = WorkspaceMemberResponse.model_validate(m)
         if settings.TG_BOT_USERNAME and m.status == WorkspaceMemberStatus.pending and m.invite_token:
-            r.invite_deep_link = f"https://t.me/{settings.TG_BOT_USERNAME}?startapp=invite_{m.invite_token}"
+            r.invite_deep_link = f"https://t.me/{settings.TG_BOT_USERNAME}?start=invite_{m.invite_token}"
         responses.append(r)
     if deleted_any:
         await db.commit()
@@ -555,7 +555,7 @@ async def generate_invite_link(
 
     r = WorkspaceMemberResponse.model_validate(new_member)
     if settings.TG_BOT_USERNAME:
-        r.invite_deep_link = f"https://t.me/{settings.TG_BOT_USERNAME}?startapp=invite_{invite_token}"
+        r.invite_deep_link = f"https://t.me/{settings.TG_BOT_USERNAME}?start=invite_{invite_token}"
     return r
 
 
