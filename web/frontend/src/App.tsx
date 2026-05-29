@@ -115,8 +115,8 @@ function Toasts({ toasts }: { toasts: Toast[] }) {
           const c = colors[t.type];
           return (
             <motion.div key={t.id}
-              initial={{ opacity: 0, x: 60, scale: 0.9 }} animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 60, scale: 0.9 }} transition={{ type: "spring", damping: 20, stiffness: 300 }}
+              initial={{ opacity: 0, x: 60, scale: 0.96 }} animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 60, scale: 0.96 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               className="px-4 py-3 rounded-md text-sm font-semibold"
               style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.text,
                 boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.5)" : "0 4px 20px rgba(0,0,0,0.1)",
@@ -306,9 +306,9 @@ function Dashboard() {
 
             {/* Panel */}
             <motion.aside key="sb"
-              initial={{ x: 320, opacity: 0.6 }} animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 320, opacity: 0 }}
-              transition={{ type: "spring", damping: 30, stiffness: 320 }}
+              initial={{ x: 300, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 300, opacity: 0 }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               className="fixed top-0 right-0 bottom-0 z-[160] flex flex-col"
               style={{
                 width: 300,

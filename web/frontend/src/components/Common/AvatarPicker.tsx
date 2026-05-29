@@ -36,10 +36,10 @@ export function AvatarPicker({ user, onClose }: Props) {
   return (
     <>
       <motion.div
-        initial={{ opacity: 0, y: -8, scale: 0.95 }}
+        initial={{ opacity: 0, y: -6, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -8, scale: 0.95 }}
-        transition={{ duration: 0.15 }}
+        exit={{ opacity: 0, y: -6, scale: 0.97 }}
+        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
         className="absolute right-0 top-full mt-2 z-50 rounded-md p-4"
         style={{
           width: 224,
@@ -124,7 +124,7 @@ export function AvatarPicker({ user, onClose }: Props) {
               initial={{ scale: 0.7, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.7, opacity: 0 }}
-              transition={{ type: "spring", damping: 20, stiffness: 300 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               src={user.avatar}
               alt={user.display_name}
               className="rounded-md object-contain shadow-2xl"

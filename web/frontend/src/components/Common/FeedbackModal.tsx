@@ -115,10 +115,10 @@ export function FeedbackModal({ open, onClose, onSuccess, onError, onBack }: Pro
           {/* Panel — right-side drawer style */}
           <motion.div
             key="panel"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.16 }}
+            initial={{ x: 300, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 300, opacity: 0 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             className="fixed right-0 top-0 bottom-0 z-[51] flex flex-col"
             style={{
               width: 300,

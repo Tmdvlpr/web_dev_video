@@ -193,7 +193,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
               initial={{ opacity: 0, y: pos.above ? 8 : -8, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: pos.above ? 8 : -8, scale: 0.96 }}
-              transition={{ duration: 0.15, type: "spring", stiffness: 400, damping: 28 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               style={{
                 position: "fixed",
                 top: pos.above ? "auto" : pos.top,

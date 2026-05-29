@@ -91,8 +91,8 @@ export function ProfileEditModal({ open, user, onClose, onSaved, onBack }: Props
             style={{ background: isDark ? "rgba(0,0,0,0.6)" : "rgba(15,23,42,0.3)", backdropFilter: "blur(4px)" }}
             onClick={onBack ?? onClose} />
           <motion.div key="panel"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.16 }}
+            initial={{ x: 300, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 300, opacity: 0 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             className="fixed right-0 top-0 bottom-0 z-[60] w-[300px] flex flex-col"
             style={{
               background: "var(--panel)",

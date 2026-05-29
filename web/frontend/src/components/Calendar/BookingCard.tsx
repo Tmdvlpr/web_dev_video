@@ -91,7 +91,7 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
         initial={{ opacity: 0, y: 6, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -6, scale: 0.97 }}
-        transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
         style={{
           position: "absolute",
           top: `${topPercent}%`,
@@ -149,7 +149,7 @@ export const BookingCard = memo(function BookingCard({ booking, topPercent, heig
       initial={{ opacity: 0, y: 6, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -6, scale: 0.97 }}
-      transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
       onClick={(e) => { e.stopPropagation(); if (!suppressClickRef.current && !suppressCardClickRef.current) onClick(); }}
       whileHover={{ scale: canDrag ? 1.015 : 1.02, zIndex: 10 }}
       draggable={canDrag}
