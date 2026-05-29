@@ -66,7 +66,7 @@ export function ProfileCompletionModal({ open }: Props) {
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
             onSubmit={submit}
-            className="t-modal w-full max-w-sm p-6 rounded-md"
+            className="w-full max-w-sm p-6 rounded-md"
             style={{
               background: "var(--card)",
               border: "1px solid var(--border)",

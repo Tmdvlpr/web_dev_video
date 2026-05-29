@@ -175,7 +175,7 @@ function Overlay({ isDark, onClose, children }: { isDark: boolean; onClose: () =
           exit={{ opacity: 0, scale: 0.96 }}
           transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
           onClick={e => e.stopPropagation()}
-          className="t-modal w-full rounded flex flex-col"
+          className="w-full rounded flex flex-col"
           style={{
             background: "var(--modal)",
             border: "1px solid var(--border)",
