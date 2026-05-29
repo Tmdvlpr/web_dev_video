@@ -109,7 +109,50 @@ async def register_user(
     result = await db.execute(select(User).where(User.telegram_id == telegram_id))
     existing = result.scalar_one_or_none()
     if existing:
-        return None  # Already registered — use /login instead
+        if existing.is_registered:
+            return None  # Already fully registered — use /login instead
+        # Pre-created by bot (is_registered=False) — complete the profile
+        existing.first_name = first_name
+        existing.last_name = last_name
+        existing.name = f"{first_name} {last_name}".strip()
+        if position:
+            existing.position = position
+        existing.is_registered = True
+        if invite_token:
+            member_res = await db.execute(
+                select(WorkspaceMember).where(WorkspaceMember.invite_token == invite_token)
+            )
+            member = member_res.scalar_one_or_none()
+            if member and member.status == WorkspaceMemberStatus.pending:
+                member.user_id = existing.id
+                member.pending_username = None
+                member.status = WorkspaceMemberStatus.active
+                member.invite_token = None
+        elif ws_code:
+            ws_res = await db.execute(
+                select(Workspace).where(
+                    Workspace.invite_code == ws_code,
+                    Workspace.archived_at.is_(None),
+                )
+            )
+            workspace = ws_res.scalar_one_or_none()
+            if workspace:
+                already = await db.execute(
+                    select(WorkspaceMember).where(
+                        WorkspaceMember.workspace_id == workspace.id,
+                        WorkspaceMember.user_id == existing.id,
+                    )
+                )
+                if not already.scalar_one_or_none():
+                    db.add(WorkspaceMember(
+                        workspace_id=workspace.id,
+                        user_id=existing.id,
+                        role=WorkspaceMemberRole.member,
+                        status=WorkspaceMemberStatus.active,
+                    ))
+        await db.commit()
+        await db.refresh(existing)
+        return create_access_token(existing.id)
 
     display_name = f"{first_name} {last_name}".strip()
     user = User(
@@ -172,7 +215,7 @@ async def login_user(init_data: str, db: AsyncSession) -> str | None:
 
     result = await db.execute(select(User).where(User.telegram_id == telegram_id))
     user = result.scalar_one_or_none()
-    if not user:
+    if not user or not user.is_registered:
         return None
 
     # Update username and language_code if changed

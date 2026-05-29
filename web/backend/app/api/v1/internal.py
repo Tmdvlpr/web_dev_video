@@ -768,9 +768,104 @@ async def consume_session_bot(
 ) -> dict:
     """
     Вызывается при /start {token}.
-    Находит сессию, сжигает токен, привязывает telegram_id к пользователю.
-    Браузер забирает JWT отдельно через GET /api/v1/auth/session/{token}.
+    Три режима по префиксу токена:
+      invite_{token} — принять личное приглашение в пространство
+      ws_{code}      — войти в пространство по публичному коду
+      <другое>       — QR/deep-link авторизация в браузере
     """
+    # ── invite_{token}: личное приглашение ───────────────────────────────────
+    if body.token.startswith("invite_"):
+        invite_token = body.token[len("invite_"):]
+        member = await db.scalar(
+            select(WorkspaceMember).where(WorkspaceMember.invite_token == invite_token)
+        )
+        if not member:
+            raise HTTPException(status_code=404, detail="Invite not found or already used")
+        if member.status != WorkspaceMemberStatus.pending:
+            raise HTTPException(status_code=400, detail="Invite already used")
+
+        user = await db.scalar(select(User).where(User.telegram_id == body.telegram_id))
+        if not user:
+            name = (f"{body.first_name or ''} {body.last_name or ''}".strip()
+                    or body.username or str(body.telegram_id))
+            user = User(
+                telegram_id=body.telegram_id,
+                first_name=body.first_name,
+                last_name=body.last_name,
+                name=name,
+                username=body.username,
+                language_code=body.language_code,
+                is_registered=False,
+                is_active=True,
+            )
+            db.add(user)
+            await db.flush()
+
+        existing_member = await db.scalar(
+            select(WorkspaceMember).where(
+                WorkspaceMember.workspace_id == member.workspace_id,
+                WorkspaceMember.user_id == user.id,
+                WorkspaceMember.id != member.id,
+            )
+        )
+        if existing_member:
+            await db.delete(member)
+        else:
+            member.user_id = user.id
+            member.pending_username = None
+            member.status = WorkspaceMemberStatus.active
+            member.invite_token = None
+
+        await db.commit()
+        return {"ok": True}
+
+    # ── ws_{code}: публичный код пространства ────────────────────────────────
+    if body.token.startswith("ws_"):
+        ws_code = body.token[len("ws_"):]
+        workspace = await db.scalar(
+            select(Workspace).where(
+                Workspace.invite_code == ws_code,
+                Workspace.archived_at.is_(None),
+            )
+        )
+        if not workspace:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+
+        user = await db.scalar(select(User).where(User.telegram_id == body.telegram_id))
+        if not user:
+            name = (f"{body.first_name or ''} {body.last_name or ''}".strip()
+                    or body.username or str(body.telegram_id))
+            user = User(
+                telegram_id=body.telegram_id,
+                first_name=body.first_name,
+                last_name=body.last_name,
+                name=name,
+                username=body.username,
+                language_code=body.language_code,
+                is_registered=False,
+                is_active=True,
+            )
+            db.add(user)
+            await db.flush()
+
+        existing_member = await db.scalar(
+            select(WorkspaceMember).where(
+                WorkspaceMember.workspace_id == workspace.id,
+                WorkspaceMember.user_id == user.id,
+            )
+        )
+        if not existing_member:
+            db.add(WorkspaceMember(
+                workspace_id=workspace.id,
+                user_id=user.id,
+                role=WorkspaceMemberRole.member,
+                status=WorkspaceMemberStatus.active,
+            ))
+            await db.commit()
+
+        return {"ok": True}
+
+    # ── QR / browser deep-link session ───────────────────────────────────────
     result = await db.execute(
         select(BrowserSession).where(BrowserSession.token == body.token).with_for_update()
     )
