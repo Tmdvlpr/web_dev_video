@@ -1034,13 +1034,16 @@ function FloatingReaction({ emoji, id, onDone }: { emoji: string; id: number; on
 }
 
 // ─── Waiting room ─────────────────────────────────────────────────────────────
-function WaitingRoom({ startTime, onLeave, bookingId, onJoin, localUserId }: { startTime: string; onLeave: () => void; bookingId: number; onJoin: () => void; localUserId: number }) {
+function WaitingRoom({ startTime, onLeave, onJoin }: { startTime: string; onLeave: () => void; bookingId?: number; onJoin: () => void; localUserId?: number }) {
   const [remaining, setRemaining] = useState(() => Math.max(0, new Date(startTime).getTime() - Date.now()));
-  const [chatOpen, setChatOpen] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { isDark } = useTheme();
   const isDarkRef = useRef(isDark);
   useEffect(() => { isDarkRef.current = isDark; }, [isDark]);
+
+  const hNumRef = useRef<HTMLSpanElement>(null);
+  const mNumRef = useRef<HTMLSpanElement>(null);
+  const sNumRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1181,23 +1184,24 @@ function WaitingRoom({ startTime, onLeave, bookingId, onJoin, localUserId }: { s
   const m = Math.floor((remaining % 3_600_000) / 60_000);
   const s = Math.floor((remaining % 60_000) / 1_000);
 
+  const replayDigits = (ref: React.RefObject<HTMLSpanElement>) => {
+    const el = ref.current;
+    if (!el) return;
+    el.classList.remove("is-animating");
+    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("is-animating")));
+  };
+  useEffect(() => { replayDigits(sNumRef); }, [s]);
+  useEffect(() => { replayDigits(mNumRef); }, [m]);
+  useEffect(() => { if (h > 0) replayDigits(hNumRef); }, [h]);
+
   const startDate = new Date(startTime);
   const timeStr = fmtTime(startDate);
   const dateStr = startDate.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
-
-  const { messages, send, uploadAndSend, uploading } = useMeetingChat(bookingId, chatOpen);
 
   return (
     <div className="conf-root fixed inset-0 z-[9999] flex" style={{ background: "var(--bg)" }}>
       <div className="waitroom">
         <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }} />
-        {/* Chat toggle — top-right */}
-        <button
-          className={`waitroom__chattoggle${chatOpen ? " waitroom__chattoggle--on" : ""}`}
-          onClick={() => setChatOpen((v) => !v)}
-        >
-          <Ic.Chat sz={15} /><span>Чат</span>
-        </button>
 
         <div className="waitroom__content">
           {/* Label with separator lines */}
@@ -1219,19 +1223,31 @@ function WaitingRoom({ startTime, onLeave, bookingId, onJoin, localUserId }: { s
                 {h > 0 && (
                   <>
                     <div className="waitroom__cblock">
-                      <span className="waitroom__cnum">{String(h).padStart(2, "0")}</span>
+                      <span ref={hNumRef} className="waitroom__cnum t-digit-group is-animating">
+                        {String(h).padStart(2, "0").split("").map((ch, i) => (
+                          <span key={i} className="t-digit" data-stagger={i > 0 ? 1 : undefined}>{ch}</span>
+                        ))}
+                      </span>
                       <span className="waitroom__cunit">{h === 1 ? "час" : h < 5 ? "часа" : "часов"}</span>
                     </div>
                     <span className="waitroom__csep">:</span>
                   </>
                 )}
                 <div className="waitroom__cblock">
-                  <span className="waitroom__cnum">{String(m).padStart(2, "0")}</span>
+                  <span ref={mNumRef} className="waitroom__cnum t-digit-group is-animating">
+                    {String(m).padStart(2, "0").split("").map((ch, i) => (
+                      <span key={i} className="t-digit" data-stagger={i > 0 ? 1 : undefined}>{ch}</span>
+                    ))}
+                  </span>
                   <span className="waitroom__cunit">минут</span>
                 </div>
                 <span className="waitroom__csep">:</span>
                 <div className="waitroom__cblock">
-                  <span className="waitroom__cnum">{String(s).padStart(2, "0")}</span>
+                  <span ref={sNumRef} className="waitroom__cnum t-digit-group is-animating">
+                    {String(s).padStart(2, "0").split("").map((ch, i) => (
+                      <span key={i} className="t-digit" data-stagger={i > 0 ? 1 : undefined}>{ch}</span>
+                    ))}
+                  </span>
                   <span className="waitroom__cunit">секунд</span>
                 </div>
               </div>
@@ -1246,21 +1262,6 @@ function WaitingRoom({ startTime, onLeave, bookingId, onJoin, localUserId }: { s
         </div>
       </div>
 
-      {/* Chat sidebar — animated slide in/out */}
-      <div className={`swrap${chatOpen ? " swrap--on" : ""}`}>
-        <div className="sidebar">
-          <div className="sidebar__hd">
-            <span className="sidebar__hdtitle">Чат встречи</span>
-            <button className="sidebar__close" onClick={() => setChatOpen(false)}><Ic.Close sz={14} /></button>
-          </div>
-          <div className="sidebar__body">
-            <ChatPanelInner
-              messages={messages} bookingId={bookingId} localUserId={localUserId}
-              onSend={send} onFile={uploadAndSend} uploading={uploading}
-            />
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
