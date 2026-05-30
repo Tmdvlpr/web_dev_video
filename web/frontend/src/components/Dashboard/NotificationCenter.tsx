@@ -1,9 +1,52 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
 import { bookingsApi } from "../../api/bookings";
 import type { NotificationRecord, GuestRsvpStatus } from "../../types";
+
+// ── RSVP icon animation (success check / decline cross) ──────────────────────
+const RSVP_ANIM_CSS = `
+:root {
+  --rsvp-dur: 520ms;
+  --rsvp-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --rsvp-ease-bob: cubic-bezier(0.34, 1.35, 0.64, 1);
+}
+.t-rsvp-icon { display:inline-flex; align-items:center; justify-content:center;
+  width:36px; height:36px; border-radius:50%;
+  opacity:0; transform-origin:center; will-change:transform,opacity,filter; }
+.t-rsvp-icon svg { display:block; overflow:visible; }
+.t-rsvp-icon svg path { stroke-dasharray:22; stroke-dashoffset:22; }
+.t-rsvp-icon[data-state="check"] {
+  background: rgba(34,197,94,0.18);
+  animation: rsvp-fade var(--rsvp-dur) var(--rsvp-ease-out) forwards,
+             rsvp-rotate var(--rsvp-dur) var(--rsvp-ease-out) forwards,
+             rsvp-blur var(--rsvp-dur) var(--rsvp-ease-out) forwards,
+             rsvp-bob var(--rsvp-dur) var(--rsvp-ease-bob) forwards; }
+.t-rsvp-icon[data-state="cross"] {
+  background: rgba(239,68,68,0.15);
+  animation: rsvp-fade var(--rsvp-dur) var(--rsvp-ease-out) forwards,
+             rsvp-rotate var(--rsvp-dur) var(--rsvp-ease-out) forwards,
+             rsvp-blur var(--rsvp-dur) var(--rsvp-ease-out) forwards,
+             rsvp-bob var(--rsvp-dur) var(--rsvp-ease-bob) forwards; }
+.t-rsvp-icon[data-state="check"] svg path,
+.t-rsvp-icon[data-state="cross"] svg path {
+  animation: rsvp-draw var(--rsvp-dur) var(--rsvp-ease-out) 80ms forwards; }
+@keyframes rsvp-fade   { from{opacity:0} to{opacity:1} }
+@keyframes rsvp-rotate { from{transform:rotate(70deg)} to{transform:rotate(0deg)} }
+@keyframes rsvp-blur   { from{filter:blur(8px)} to{filter:blur(0)} }
+@keyframes rsvp-bob    { from{translate:0 32px} to{translate:0 0} }
+@keyframes rsvp-draw   { to{stroke-dashoffset:0} }
+@media(prefers-reduced-motion:reduce){
+  .t-rsvp-icon{animation:none!important;opacity:1;}
+  .t-rsvp-icon svg path{animation:none!important;stroke-dashoffset:0!important;} }
+`;
+if (typeof document !== "undefined" && !document.getElementById("t-rsvp-styles")) {
+  const s = document.createElement("style");
+  s.id = "t-rsvp-styles";
+  s.textContent = RSVP_ANIM_CSS;
+  document.head.appendChild(s);
+}
 
 const REMINDER_OPTIONS = [5, 15, 30, 60] as const;
 const STORAGE_KEY = "corpmeet_notifications";
@@ -63,6 +106,8 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
   const [notifications, setNotifications] = useState<NotificationRecord[]>(() => getStoredNotifications());
   const [reminderMins, setReminderMins] = useState<number[]>(() => getReminderMinutes());
   const [rsvpLoading, setRsvpLoading] = useState<Record<string, boolean>>({});
+  const [iconAnim, setIconAnim] = useState<Record<string, "check" | "cross">>({});
+  const iconAnimRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
     if (isOpen) {
@@ -70,6 +115,18 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
       clearUnreadCount();
     }
   }, [isOpen]);
+
+  const triggerIconAnim = (id: string, kind: "check" | "cross") => {
+    // reset first so keyframes restart if re-triggered
+    setIconAnim(prev => ({ ...prev, [id]: undefined as unknown as "check" }));
+    requestAnimationFrame(() => {
+      setIconAnim(prev => ({ ...prev, [id]: kind }));
+      clearTimeout(iconAnimRef.current[id]);
+      iconAnimRef.current[id] = setTimeout(() => {
+        setIconAnim(prev => { const n = { ...prev }; delete n[id]; return n; });
+      }, 2000);
+    });
+  };
 
   const handleRsvp = async (notif: NotificationRecord, status: "accepted" | "declined") => {
     if (!notif.bookingId || rsvpLoading[notif.id]) return;
@@ -80,8 +137,9 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
       setNotifications(prev =>
         prev.map(n => n.id === notif.id ? { ...n, rsvpStatus: status } : n)
       );
+      triggerIconAnim(notif.id, status === "accepted" ? "check" : "cross");
     } catch {
-      // silently ignore — user can retry
+      // silently ignore
     } finally {
       setRsvpLoading(prev => ({ ...prev, [notif.id]: false }));
     }
@@ -182,66 +240,67 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
                       initial={{ opacity: 0, scale: 0.96 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                      className="rounded-2xl p-3.5 flex gap-3"
+                      className="rounded-md p-3 flex gap-3"
                       style={{
                         background: "var(--elevated)",
-                        border: "1px solid rgba(255,255,255,0.07)",
-                        boxShadow: [
-                          "0 2px 4px rgba(0,0,0,0.35)",
-                          "0 8px 20px rgba(0,0,0,0.28)",
-                          "0 20px 50px rgba(0,0,0,0.18)",
-                          "0 0 0 1px rgba(255,255,255,0.04)",
-                          "0 30px 80px rgba(79,124,255,0.07)",
-                        ].join(", "),
+                        border: "1px solid var(--border)",
                       }}>
-                      {/* Icon with status badge */}
-                      <div style={{ position: "relative", flexShrink: 0, marginTop: 1 }}>
-                        <div style={{
-                          width: 36, height: 36, borderRadius: "50%",
-                          background: "linear-gradient(135deg, #2563eb, #6366f1)",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                        }}>
-                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </div>
-                        <div style={{
-                          position: "absolute", bottom: 0, right: 0,
-                          width: 13, height: 13, borderRadius: "50%",
-                          background: "#22c55e",
-                          border: "2px solid var(--elevated)",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                        }}>
-                          <svg width="7" height="7" viewBox="0 0 10 10" fill="none">
-                            <path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
-                          </svg>
-                        </div>
+                      {/* Icon — animates to check/cross after RSVP */}
+                      <div style={{ flexShrink: 0, marginTop: 1 }}>
+                        {iconAnim[n.id] ? (
+                          <span
+                            key={`${n.id}-${iconAnim[n.id]}`}
+                            className="t-rsvp-icon"
+                            data-state={iconAnim[n.id]}>
+                            {iconAnim[n.id] === "check" ? (
+                              <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
+                                <path d="M2 7L5.5 10.5L12 3" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            ) : (
+                              <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
+                                <path d="M2 2L12 12M12 2L2 12" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"/>
+                              </svg>
+                            )}
+                          </span>
+                        ) : (
+                          <div style={{
+                            width: 36, height: 36, borderRadius: "50%",
+                            background: "linear-gradient(135deg, #2563eb, #6366f1)",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}>
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </div>
+                        )}
                       </div>
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold mb-0.5" style={{ color: "var(--text)" }}>{n.title}</p>
                         <p className="text-xs leading-relaxed" style={{ color: "var(--text-sec)" }}>{n.body}</p>
-                        <p className="text-xs mt-1.5" style={{ color: "var(--text-muted)" }}>{timeAgo(n.time)}</p>
+                        <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{timeAgo(n.time)}</p>
                         {n.type === "meeting_invited" && n.bookingId && (
-                          <div className="mt-2">
+                          <div className="mt-1.5">
                             {n.rsvpStatus === "accepted" ? (
                               <motion.span
-                                initial={{ opacity: 0, scale: 0.88 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                                className="inline-block text-xs font-semibold px-2 py-0.5 rounded"
-                                style={{ background: "rgba(34,197,94,0.12)", color: "#16a34a", border: "1px solid rgba(34,197,94,0.3)" }}>
-                                ✓ {t("notif.rsvpAccepted")}
+                                initial={{ opacity: 0, y: 4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.18 }}
+                                className="inline-flex items-center gap-1 text-xs font-medium"
+                                style={{ color: "#16a34a" }}>
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#16a34a", display: "inline-block" }} />
+                                {t("notif.rsvpAccepted")}
                               </motion.span>
                             ) : n.rsvpStatus === "declined" ? (
                               <motion.span
-                                initial={{ opacity: 0, scale: 0.88 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                                className="inline-block text-xs font-semibold px-2 py-0.5 rounded"
-                                style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}>
-                                ✗ {t("notif.rsvpDeclined")}
+                                initial={{ opacity: 0, y: 4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.18 }}
+                                className="inline-flex items-center gap-1 text-xs font-medium"
+                                style={{ color: "#ef4444" }}>
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", display: "inline-block" }} />
+                                {t("notif.rsvpDeclined")}
                               </motion.span>
                             ) : (
                               <div className="flex gap-1.5">
