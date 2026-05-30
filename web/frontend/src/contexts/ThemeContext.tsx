@@ -36,6 +36,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const x = origin?.x ?? window.innerWidth / 2;
     const y = origin?.y ?? window.innerHeight / 2;
 
+    html.style.setProperty("--wx", `${x}px`);
+    html.style.setProperty("--wy", `${y}px`);
+
     const endRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),
       Math.max(y, window.innerHeight - y)
@@ -79,10 +82,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (vtTokenRef.current !== token) return;
 
     html.animate(
-      { "--wave": ["0px", `${endRadius + 220}px`] } as unknown as PropertyIndexedKeyframes,
+      { "--wave": ["0px", `${endRadius + 280}px`] } as unknown as PropertyIndexedKeyframes,
       {
-        duration: 850,
-        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+        duration: 880,
+        easing: "cubic-bezier(0.65, 0, 0.35, 1)",
         fill: "forwards",
         pseudoElement: "::view-transition-new(root)",
       }

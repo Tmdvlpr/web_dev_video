@@ -49,7 +49,8 @@
   --card-shadow:     0 2px 8px rgba(17,24,39,0.06), 0 4px 16px rgba(17,24,39,0.03);
   --panel-shadow:    -12px 0 40px rgba(17,24,39,0.10);
   --glass-blur:      12px;
-  --wave-glow:       rgba(21,101,168,0.40);
+  --glint:           rgba(255,255,255,0.9);
+  --halo:            rgba(120,170,255,0.35);
 
   --font-xs:   13px;
   --font-sm:   15px;
@@ -101,7 +102,8 @@
   --card-shadow:     0 2px 10px rgba(0,0,0,0.35);
   --panel-shadow:    -8px 0 40px rgba(0,0,0,0.45);
   --glass-blur:      16px;
-  --wave-glow:       rgba(91,163,223,0.50);
+  --glint:           rgba(220,235,255,0.95);
+  --halo:            rgba(120,170,255,0.55);
 
   --font-xs:   13px;
   --font-sm:   15px;
@@ -152,12 +154,16 @@ html.theme-transitioning *::after {
 
 ::view-transition-new(root) {
   z-index: 2;
-  mask-image: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%),
-    #000            calc(var(--wave) - 220px),
-    rgba(0,0,0,.45) calc(var(--wave) - 90px),
-    transparent     var(--wave));
+  mask-image: radial-gradient(circle at var(--wx, 50%) var(--wy, 50%),
+    #000              calc(var(--wave) - 280px),
+    rgba(0,0,0,.70)   calc(var(--wave) - 170px),
+    rgba(0,0,0,.25)   calc(var(--wave) -  70px),
+    transparent       var(--wave));
   mask-repeat: no-repeat;
-  filter: drop-shadow(0 0 22px var(--wave-glow));
+  filter:
+    drop-shadow(0 0  2px var(--glint))
+    drop-shadow(0 0 16px var(--halo))
+    drop-shadow(0 0 60px var(--halo));
 }
 
 /* Kill all CSS transitions while VT is animating — prevents post-VT color lag */
