@@ -136,13 +136,8 @@ html.theme-transitioning *::after {
     box-shadow 0.25s ease !important;
 }
 
-/* Theme soft wave — View Transition API (Chrome/Edge 111+, Safari 18+) */
-@property --wave {
-  syntax: "<length>";
-  inherits: false;
-  initial-value: 0px;
-}
-
+/* Theme wave — View Transition API (Chrome/Edge 111+, Safari 18+)
+   clip-path:circle is GPU-composited; animation driven by JS */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
@@ -152,22 +147,12 @@ html.theme-transitioning *::after {
 
 ::view-transition-new(root) {
   z-index: 2;
-  --m: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%),
-          #000              calc(var(--wave) - 220px),
-          rgba(0,0,0,.45)   calc(var(--wave) - 90px),
-          transparent       var(--wave));
-  -webkit-mask: var(--m);
-          mask: var(--m);
-  -webkit-mask-repeat: no-repeat;
-          mask-repeat: no-repeat;
-  filter:
-    drop-shadow(0 0 12px var(--wave-glow))
-    drop-shadow(0 0 45px var(--wave-glow));
+  will-change: clip-path;
 }
 
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(root),
-  ::view-transition-new(root) { animation: none; filter: none; -webkit-mask: none; mask: none; }
+  ::view-transition-new(root) { animation: none; }
 }
 
 .text-xs   { font-size: var(--font-xs)   !important; line-height: 1.45; }

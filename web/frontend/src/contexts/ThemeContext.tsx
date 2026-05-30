@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 export type Theme = "light" | "dark";
 
@@ -17,9 +18,11 @@ const ThemeContext = createContext<ThemeContextValue>({
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem("meetaholic_theme") as Theme | null;
-    if (stored) return stored;
-    return "dark";
+    return stored ?? "dark";
   });
+
+  // Tracks the latest transition so rapid clicks don't animate stale pseudo-elements
+  const vtTokenRef = useRef<object | null>(null);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -32,8 +35,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     const x = origin?.x ?? window.innerWidth / 2;
     const y = origin?.y ?? window.innerHeight / 2;
-    html.style.setProperty("--ripple-x", `${x}px`);
-    html.style.setProperty("--ripple-y", `${y}px`);
 
     const endRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),
@@ -41,9 +42,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     );
 
     const applyTheme = () => {
+      // flushSync forces React to re-render synchronously so inline styles
+      // based on isDark are captured correctly in the "after" VT snapshot
       html.setAttribute("data-theme", newTheme);
       localStorage.setItem("meetaholic_theme", newTheme);
-      setTheme(newTheme);
+      flushSync(() => setTheme(newTheme));
     };
 
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -59,13 +62,28 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       startViewTransition: (cb: () => void) => { ready: Promise<void> };
     }).startViewTransition(applyTheme);
 
-    await vt.ready;
+    // Token lets us detect if a newer transition superseded this one
+    const token = {};
+    vtTokenRef.current = token;
+
+    try {
+      await vt.ready;
+    } catch {
+      return;
+    }
+
+    if (vtTokenRef.current !== token) return;
 
     html.animate(
-      { "--wave": ["0px", `${endRadius + 220}px`] } as unknown as PropertyIndexedKeyframes,
       {
-        duration: 850,
-        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+        clipPath: [
+          `circle(0px at ${x}px ${y}px)`,
+          `circle(${endRadius + 50}px at ${x}px ${y}px)`,
+        ],
+      },
+      {
+        duration: 600,
+        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
         fill: "forwards",
         pseudoElement: "::view-transition-new(root)",
       }
