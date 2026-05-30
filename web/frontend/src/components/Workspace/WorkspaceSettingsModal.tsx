@@ -227,6 +227,7 @@ function GeneralTab({
   const [regenerating, setRegen] = useState(false);
   const [archiving, setArch] = useState(false);
   const [confirmArchive, setConfirmArch] = useState(false);
+  const confirmArchiveRef = useRef<HTMLDivElement>(null);
   const [err, setErr] = useState<string | null>(null);
   const [tgChatInput, setTgChatInput] = useState(initialTgChatId ? String(initialTgChatId) : "");
   const [bindingTg, setBindingTg] = useState(false);
@@ -259,6 +260,11 @@ function GeneralTab({
     const id = setTimeout(() => el.classList.remove("is-shaking"), 280);
     return () => clearTimeout(id);
   }, [tgBindErr]);
+
+  useEffect(() => {
+    if (!confirmArchive || !confirmArchiveRef.current) return;
+    confirmArchiveRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [confirmArchive]);
 
   const saveName = async () => {
     setErr(null);
@@ -515,7 +521,7 @@ function GeneralTab({
               {t("ws.archiveBtn")}
             </button>
           ) : (
-            <div className="rounded-md p-3 space-y-2" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.35)" }}>
+            <div ref={confirmArchiveRef} className="rounded-md p-3 space-y-2" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.35)" }}>
               <p className="text-xs font-semibold" style={{ color: "#dc2626" }}>
                 {t("ws.archiveConfirm")}
               </p>
