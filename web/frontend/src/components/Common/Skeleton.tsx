@@ -6,9 +6,17 @@ interface SkeletonProps {
 export function Skeleton({ className = "", style }: SkeletonProps) {
   return (
     <div
-      className={`rounded animate-pulse ${className}`}
+      className={`rounded relative overflow-hidden ${className}`}
       style={{ background: "var(--skeleton, rgba(148,163,184,0.12))", ...style }}
-    />
+    >
+      {/* GPU-composited shimmer — transform-based, no repaint */}
+      <div style={{
+        position: "absolute", inset: 0,
+        background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.07) 50%, transparent 100%)",
+        animation: "skeleton-shimmer 1.6s ease-in-out infinite",
+        willChange: "transform",
+      }} />
+    </div>
   );
 }
 

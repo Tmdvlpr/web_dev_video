@@ -115,7 +115,7 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
               </div>
               <button onClick={onBack ?? onClose}
                 className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
-                style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
+                style={{ color: "var(--text-muted)", background: "var(--elevated)", transition: "color 0.15s ease" }}
                 onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
                 onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>
                 {onBack
@@ -210,7 +210,7 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
               <div className="px-4 py-3" style={{ borderTop: "1px solid var(--border)" }}>
                 <button onClick={clearAll}
                   className="w-full py-2 rounded-md text-xs font-semibold transition-all"
-                  style={{ border: "1px solid var(--border)", color: "var(--text-muted)", background: "var(--elevated)" }}
+                  style={{ border: "1px solid var(--border)", color: "var(--text-muted)", background: "var(--elevated)", transition: "color 0.15s ease, border-color 0.15s ease" }}
                   onMouseEnter={e => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)"; }}
                   onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.borderColor = "var(--border)"; }}>
                   {t("notif.clearAll")}

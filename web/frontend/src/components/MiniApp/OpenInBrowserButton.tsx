@@ -26,9 +26,9 @@ export default function OpenInBrowserButton() {
     <motion.button
       onClick={handleOpen}
       disabled={isLoading}
-      whileHover={{ scale: 1.04 }}
-      whileTap={{ scale: 0.97 }}
-      className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold disabled:opacity-60"
+      whileHover={isLoading ? undefined : { scale: 1.04 }}
+      whileTap={isLoading ? undefined : { scale: 0.97 }}
+      className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
       style={{
         background: "var(--elevated)",
         border: "1px solid var(--border)",

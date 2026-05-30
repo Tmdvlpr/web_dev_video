@@ -52,7 +52,7 @@ export function ConfirmDialog({
               <button
                 onClick={onCancel}
                 className="px-4 py-2 rounded-md text-sm font-medium transition-all cursor-pointer"
-                style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
+                style={{ color: "var(--text-muted)", border: "1px solid var(--border)", transition: "background-color 0.15s ease" }}
                 onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = ""; }}
               >
@@ -66,6 +66,7 @@ export function ConfirmDialog({
                   boxShadow: danger
                     ? (isDark ? "0 2px 12px rgba(252,165,165,0.25)" : "0 2px 12px rgba(239,68,68,0.25)")
                     : (isDark ? "0 2px 12px rgba(165,180,252,0.25)" : "0 2px 12px rgba(79,70,229,0.25)"),
+                  transition: "opacity 0.15s ease",
                 }}
                 onMouseEnter={e => { e.currentTarget.style.opacity = "0.85"; }}
                 onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}

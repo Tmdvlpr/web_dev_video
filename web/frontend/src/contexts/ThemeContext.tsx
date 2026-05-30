@@ -69,9 +69,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const token = {};
     vtTokenRef.current = token;
 
-    // Suppress all CSS transitions while VT is animating to prevent post-VT color lag
+    // Suppress all CSS transitions while VT is animating to prevent post-VT color lag.
+    // Guard with token so a superseded transition doesn't remove the class mid-animation.
     html.classList.add("vt-running");
-    vt.finished.finally(() => html.classList.remove("vt-running"));
+    vt.finished.finally(() => {
+      if (vtTokenRef.current === token) html.classList.remove("vt-running");
+    });
 
     try {
       await vt.ready;

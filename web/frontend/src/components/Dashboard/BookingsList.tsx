@@ -187,7 +187,7 @@ export function ActiveMeetings({ isOpen, onClose, onCardClick, onBack }: Props) 
                 <h3 className="font-bold text-sm" style={{ color: "var(--text)" }}>{t("meetings.title")}</h3>
                 <button onClick={onBack ?? onClose} type="button" aria-label={t("booking.close")}
                   className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
-                  style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
+                  style={{ color: "var(--text-muted)", background: "var(--elevated)", transition: "color 0.15s ease" }}
                   onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}>
                   {onBack
@@ -279,6 +279,7 @@ export function ActiveMeetings({ isOpen, onClose, onCardClick, onBack }: Props) 
                             background: isNow ? `${c}0d` : "var(--elevated)",
                             border: `1px solid ${isNow ? c + "40" : "var(--border)"}`,
                             boxShadow: isNow ? `0 0 20px ${c}15` : "none",
+                            transition: "opacity 0.15s ease",
                           }}>
                           <div className="flex items-start justify-between gap-2 mb-1.5">
                             <p className="text-sm font-bold leading-tight" style={{ color: "var(--text)" }}>{b.title}</p>

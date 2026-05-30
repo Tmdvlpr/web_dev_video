@@ -91,13 +91,13 @@ export function InteractiveStripe({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
     >
-      <motion.div
+      <div
         className={`absolute inset-0 ${edge === "top" ? "rounded-t-2xl" : ""}`}
-        animate={{ backgroundPosition: ["0% 50%", "100% 50%"] }}
-        transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
         style={{
           background: "linear-gradient(90deg, #c4b5fd, #f9a8d4, #fdba74, #fde68a, #86efac, #67e8f9, #93c5fd, #d8b4fe, #fca5a5, #c4b5fd)",
           backgroundSize: "400% 100%",
+          animation: "stripe-flow 18s linear infinite",
+          transition: "box-shadow 0.2s ease",
           boxShadow: dragging
             ? "0 0 16px rgba(196,181,253,0.9), 0 0 32px rgba(249,168,212,0.5)"
             : "0 0 10px rgba(196,181,253,0.6), 0 0 22px rgba(249,168,212,0.3)",
@@ -125,9 +125,9 @@ export function InteractiveStripe({
           <motion.div
             key={pulse.id}
             className="absolute pointer-events-none"
-            style={{ left: `${pulse.x}%`, top: "50%", translateX: "-50%", translateY: "-50%" }}
-            initial={{ width: 0, height: 0, opacity: 0.9 }}
-            animate={{ width: 120, height: 120, opacity: 0 }}
+            style={{ left: `${pulse.x}%`, top: "50%", translateX: "-50%", translateY: "-50%", width: 120, height: 120 }}
+            initial={{ scale: 0, opacity: 0.9 }}
+            animate={{ scale: 1, opacity: 0 }}
             exit={{}}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >

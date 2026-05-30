@@ -107,6 +107,7 @@ export function FeedbackModal({ open, onClose, onSuccess, onError, onBack }: Pro
           <motion.div
             key="bd"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
             onClick={handleClose}
             className="fixed inset-0 z-50"
             style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)" }}
@@ -137,7 +138,7 @@ export function FeedbackModal({ open, onClose, onSuccess, onError, onBack }: Pro
                   <button
                     onClick={() => setView("list")}
                     className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
-                    style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
+                    style={{ color: "var(--text-muted)", background: "var(--elevated)", transition: "color 0.15s ease" }}
                     onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
                     onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
@@ -156,7 +157,7 @@ export function FeedbackModal({ open, onClose, onSuccess, onError, onBack }: Pro
               </div>
               <button onClick={handleClose}
                 className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
-                style={{ color: isDark ? "#64748b" : "#94a3b8", background: isDark ? "rgba(255,255,255,0.06)" : "#f5f5f5" }}
+                style={{ color: isDark ? "#64748b" : "#94a3b8", background: isDark ? "rgba(255,255,255,0.06)" : "#f5f5f5", transition: "color 0.15s ease" }}
                 onMouseEnter={e => { e.currentTarget.style.color = isDark ? "#e2e8f0" : "#0f172a"; }}
                 onMouseLeave={e => { e.currentTarget.style.color = isDark ? "#64748b" : "#94a3b8"; }}>
                 {onBack && view === "list"
@@ -177,6 +178,7 @@ export function FeedbackModal({ open, onClose, onSuccess, onError, onBack }: Pro
                       background: "linear-gradient(135deg,#1565a8,#114e85)",
                       color: "#fff",
                       boxShadow: "0 4px 16px rgba(21,101,168,0.3)",
+                      transition: "box-shadow 0.15s ease",
                     }}
                     onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(21,101,168,0.45)"; }}
                     onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(21,101,168,0.3)"; }}>
@@ -210,6 +212,7 @@ export function FeedbackModal({ open, onClose, onSuccess, onError, onBack }: Pro
                         <motion.div
                           key={s.id}
                           initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                           className="rounded-md p-3.5"
                           style={{
                             background: isDark ? "rgba(255,255,255,0.04)" : "#fafafa",

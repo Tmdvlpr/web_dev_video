@@ -103,14 +103,26 @@ export function ProfileCompletionModal({ open }: Props) {
               style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--text)" }}
             />
 
-            {error && (
-              <p className="text-xs mb-3 font-semibold" style={{ color: "#ef4444" }}>{error}</p>
-            )}
+            <AnimatePresence>
+              {error && (
+                <motion.p
+                  key="completion-error"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                  className="text-xs mb-3 font-semibold"
+                  style={{ color: "#ef4444" }}
+                >
+                  {error}
+                </motion.p>
+              )}
+            </AnimatePresence>
 
             <button
               type="submit"
               disabled={isPending || !first.trim()}
-              className="w-full text-sm py-2.5 rounded font-bold text-white transition-all disabled:opacity-50"
+              className="w-full text-sm py-2.5 rounded font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ background: "var(--primary)" }}
             >
               {isPending ? t("common.loading") : t("common.save")}

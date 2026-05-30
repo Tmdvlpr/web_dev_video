@@ -147,7 +147,13 @@ export function BookingModal({
     document.body.appendChild(canvas);
     canvasRef.current = canvas;
 
-    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    // Cache card rect outside RAF loop — getBoundingClientRect() in RAF = forced layout every frame
+    let cachedCardRect: DOMRect | null = cardRef.current?.getBoundingClientRect() ?? null;
+    const resize = () => {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+      cachedCardRect = cardRef.current?.getBoundingClientRect() ?? null;
+    };
     resize();
     window.addEventListener("resize", resize);
 
@@ -182,10 +188,8 @@ export function BookingModal({
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const W = canvas.width, H = canvas.height;
 
-      const el   = cardRef.current;
-      const rect = el?.getBoundingClientRect();
-      const cx   = rect ? rect.left + rect.width  / 2 : W0 / 2;
-      const cy   = rect ? rect.top  + rect.height / 2 : H0 / 2;
+      const cx = cachedCardRect ? cachedCardRect.left + cachedCardRect.width  / 2 : W0 / 2;
+      const cy = cachedCardRect ? cachedCardRect.top  + cachedCardRect.height / 2 : H0 / 2;
 
       typePulseRef.current *= 0.88;
       const pulse = typePulseRef.current;
@@ -581,7 +585,7 @@ export function BookingModal({
                 <div className="flex items-center gap-1">
                   <button onClick={onClose}
                     className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
-                    style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
+                    style={{ color: "var(--text-muted)", background: "var(--elevated)", transition: "color 0.15s ease" }}
                     onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
                     onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -847,6 +851,7 @@ export function BookingModal({
                                   style={{
                                     background: selectedRoomId === opt.id ? "var(--primary-light)" : "transparent",
                                     color: opt.id === "" ? "var(--text-muted)" : "var(--text)",
+                                    transition: "background-color 0.15s ease",
                                   }}
                                   onMouseEnter={e => { if (selectedRoomId !== opt.id) e.currentTarget.style.background = "var(--elevated)"; }}
                                   onMouseLeave={e => { if (selectedRoomId !== opt.id) e.currentTarget.style.background = "transparent"; }}
@@ -1098,6 +1103,7 @@ export function BookingModal({
                     {isEdit && canDelete && (
                       <motion.button type="button" onClick={() => setView("confirmDelete")}
                         whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                        transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
                         className="py-2.5 px-4 rounded-md text-sm font-semibold"
                         style={{ border: `1.5px solid ${delBorder}`, color: errColor, background: delBg }}>
                         {t("common.delete")}
@@ -1111,6 +1117,7 @@ export function BookingModal({
                     <motion.button type="submit" disabled={isCreating || isUpdating}
                       whileHover={{ scale: 1.02, boxShadow: "0 6px 24px rgba(21,101,168,0.4)" }}
                       whileTap={{ scale: 0.98 }}
+                      transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
                       className="flex-1 py-2.5 rounded-md text-sm font-bold text-white disabled:opacity-50"
                       style={{ background: "linear-gradient(135deg,#1565a8,#114e85)", boxShadow: "0 4px 16px rgba(21,101,168,0.25)" }}>
                       {(isCreating || isUpdating) ? t("booking.saving") : isEdit ? t("common.save") : t("booking.book")}

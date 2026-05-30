@@ -134,7 +134,7 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
         <button
           onClick={() => setOpen(v => !v)}
           className="flex items-center gap-1.5 px-2.5 h-7 text-xs font-semibold transition-all rounded-l"
-          style={{ color: "var(--text)" }}
+          style={{ color: "var(--text)", transition: "background-color 0.15s ease" }}
           onMouseEnter={e => { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)"; }}
           onMouseLeave={e => { e.currentTarget.style.background = ""; }}
         >
@@ -147,7 +147,7 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
             onClick={onSettingsOpen}
             title="Настройки пространства"
             className="flex items-center justify-center h-7 w-7 rounded-r transition-all"
-            style={{ color: "var(--text-muted)", borderLeft: "1px solid var(--border)" }}
+            style={{ color: "var(--text-muted)", borderLeft: "1px solid var(--border)", transition: "color 0.15s ease, background-color 0.15s ease" }}
             onMouseEnter={e => { e.currentTarget.style.color = "var(--primary)"; e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)"; }}
             onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = ""; }}
           >
@@ -160,7 +160,7 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
         {open && (
           <motion.div
             initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.14 }}
+            transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
             className="absolute left-0 top-9 z-50 rounded-md py-2 w-72"
             style={{
               background: isDark ? "#0f172a" : "#ffffff",
@@ -181,7 +181,7 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
                     key={w.id}
                     onClick={() => { setActiveWorkspaceId(w.id); setOpen(false); }}
                     className="w-full flex items-center justify-between px-3 py-2 text-left transition-all"
-                    style={{ background: isActive ? "var(--primary-light)" : "transparent" }}
+                    style={{ background: isActive ? "var(--primary-light)" : "transparent", transition: "background-color 0.15s ease" }}
                     onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "var(--elevated)"; }}
                     onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
                   >
@@ -200,7 +200,7 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
               <div className="px-1.5 pb-1 space-y-0.5">
                 <button onClick={() => { setInline("create"); setError(null); setInfo(null); }}
                   className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-semibold transition-all text-left"
-                  style={{ color: "var(--text-sec)" }}
+                  style={{ color: "var(--text-sec)", transition: "background-color 0.15s ease, color 0.15s ease" }}
                   onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; e.currentTarget.style.color = "var(--primary)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-sec)"; }}
                 >
@@ -209,7 +209,7 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
                 </button>
                 <button onClick={() => { setInline("join"); setError(null); setInfo(null); }}
                   className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-semibold transition-all text-left"
-                  style={{ color: "var(--text-sec)" }}
+                  style={{ color: "var(--text-sec)", transition: "background-color 0.15s ease, color 0.15s ease" }}
                   onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; e.currentTarget.style.color = "var(--primary)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-sec)"; }}
                 >

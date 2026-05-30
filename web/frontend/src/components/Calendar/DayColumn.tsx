@@ -52,7 +52,11 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
   const [hoverSlot, setHoverSlot] = useState<{ startPct: number; heightPct: number; label: string } | null>(null);
   const resizingRef = useRef<{ booking: Booking } | null>(null);
   const [resizingBooking, setResizingBooking] = useState<Booking | null>(null);
-  const [resizePreview, setResizePreview] = useState<{ topPct: number; heightPct: number; endLabel: string } | null>(null);
+  // Resize preview via direct DOM refs — avoids setState on every mousemove
+  const resizePreviewDivRef   = useRef<HTMLDivElement>(null);
+  const resizeTitleDisplayRef = useRef<HTMLParagraphElement>(null);
+  const resizeStartDisplayRef = useRef<HTMLSpanElement>(null);
+  const resizeEndLabelRef     = useRef<HTMLSpanElement>(null);
 
   const computeResize = (clientY: number): { finalEnd: number } | null => {
     if (!resizingRef.current || !gridRef.current) return null;
@@ -82,7 +86,16 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
     const endTopPct = ((finalEnd - DAY_START_HOUR * 60) / totalMinutes) * 100;
     const heightPct = endTopPct - topPct;
     const eh = Math.floor(finalEnd / 60), em = finalEnd % 60;
-    setResizePreview({ topPct, heightPct, endLabel: `${String(eh).padStart(2,"0")}:${String(em).padStart(2,"0")}` });
+    // Direct DOM update — no React re-render on every mousemove
+    if (resizePreviewDivRef.current) {
+      const totalPx = TOTAL_HOURS * HOUR_HEIGHT_PX;
+      resizePreviewDivRef.current.style.transform = `translateY(${(topPct / 100) * totalPx}px)`;
+      resizePreviewDivRef.current.style.height    = `${(heightPct / 100) * totalPx}px`;
+      resizePreviewDivRef.current.style.display   = "block";
+    }
+    if (resizeEndLabelRef.current) {
+      resizeEndLabelRef.current.textContent = `${String(eh).padStart(2,"0")}:${String(em).padStart(2,"0")}`;
+    }
     return { finalEnd };
   };
 
@@ -100,7 +113,7 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
       }
       resizingRef.current = null;
       setResizingBooking(null);
-      setResizePreview(null);
+      if (resizePreviewDivRef.current) resizePreviewDivRef.current.style.display = "none";
     };
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
@@ -143,9 +156,10 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
     const eh = Math.floor(endMinute / 60), em = endMinute % 60;
     const label = `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")} – ${String(eh).padStart(2,"0")}:${String(em).padStart(2,"0")}`;
     if (ghostRef.current) {
-      ghostRef.current.style.display = "block";
-      ghostRef.current.style.top = `${calc.topPct}%`;
-      ghostRef.current.style.height = `${calc.heightPct}%`;
+      const totalPx = TOTAL_HOURS * HOUR_HEIGHT_PX;
+      ghostRef.current.style.display    = "block";
+      ghostRef.current.style.transform  = `translateY(${(calc.topPct / 100) * totalPx}px)`;
+      ghostRef.current.style.height     = `${(calc.heightPct / 100) * totalPx}px`;
     }
     if (ghostTitleRef.current) ghostTitleRef.current.textContent = activeDrag.booking.title;
     if (ghostLabelRef.current) ghostLabelRef.current.textContent = label;
@@ -287,10 +301,12 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
             style={{ top: `${((i + 0.5) / TOTAL_HOURS) * 100}%`, borderTop: "1px dashed var(--hour-dash)" }} />
         ))}
 
-        {/* Drag-and-drop ghost preview */}
+        {/* Drag-and-drop ghost preview — positioned via transform, not top (no layout reflow) */}
         <div ref={ghostRef} className="absolute left-0 right-0 pointer-events-none z-30"
           style={{
             display: "none",
+            top: 0,
+            willChange: "transform",
             background: isDark ? "rgba(21,101,168,0.25)" : "rgba(21,101,168,0.12)",
             border: "2px dashed var(--primary)",
             borderRadius: 6,
@@ -325,7 +341,7 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
             <div className="relative flex items-center">
               <motion.div
                 animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 className="w-2.5 h-2.5 rounded-full shrink-0 -ml-1.5"
                 style={{ background: "#ef4444", boxShadow: "0 0 8px #ef4444" }}
               />
@@ -344,34 +360,38 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
               <BookingCard key={b.id} booking={b} topPercent={top} heightPercent={height}
                 currentUser={currentUser} onClick={() => onCardClick(b)}
                 isResizing={resizingBooking?.id === b.id}
-                onResizeStart={(e) => { e.preventDefault(); resizingRef.current = { booking: b }; setResizingBooking(b); }} />
+                onResizeStart={(e) => {
+                  e.preventDefault();
+                  resizingRef.current = { booking: b };
+                  setResizingBooking(b);
+                  if (resizeTitleDisplayRef.current) resizeTitleDisplayRef.current.textContent = b.title;
+                  if (resizeStartDisplayRef.current) resizeStartDisplayRef.current.textContent =
+                    new Date(b.start_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+                }} />
             );
           })}
         </AnimatePresence>
 
-        {/* Resize preview */}
-        {resizePreview && resizingBooking && (
-          <div className="absolute pointer-events-none z-40"
-            style={{
-              top: `${resizePreview.topPct}%`,
-              height: `${resizePreview.heightPct}%`,
-              left: 4, right: 4,
-              border: "2px solid var(--primary)",
-              borderRadius: 6,
-              background: isDark ? "rgba(21,101,168,0.18)" : "rgba(21,101,168,0.10)",
-              padding: "4px 8px",
-              overflow: "hidden",
-            }}>
-            <p className="text-xs font-bold truncate m-0" style={{ color: "var(--primary)" }}>
-              {resizingBooking.title}
-            </p>
-            <p className="text-xs m-0" style={{ color: "var(--primary)", opacity: 0.75 }}>
-              {new Date(resizingBooking.start_time).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
-              {" – "}
-              {resizePreview.endLabel}
-            </p>
-          </div>
-        )}
+        {/* Resize preview — always in DOM, shown/hidden via style.display for zero-rerender perf */}
+        <div ref={resizePreviewDivRef} className="absolute pointer-events-none z-40"
+          style={{
+            display: "none",
+            top: 0,
+            left: 4, right: 4,
+            border: "2px solid var(--primary)",
+            borderRadius: 6,
+            background: isDark ? "rgba(21,101,168,0.18)" : "rgba(21,101,168,0.10)",
+            padding: "4px 8px",
+            overflow: "hidden",
+            willChange: "transform, height",
+          }}>
+          <p ref={resizeTitleDisplayRef} className="text-xs font-bold truncate m-0" style={{ color: "var(--primary)" }} />
+          <p className="text-xs m-0" style={{ color: "var(--primary)", opacity: 0.75 }}>
+            <span ref={resizeStartDisplayRef} />
+            {" – "}
+            <span ref={resizeEndLabelRef} />
+          </p>
+        </div>
       </div>
       {/* Filler to eliminate whitespace below the time grid */}
       <div className="flex-1" style={{ background: gridBg }} />

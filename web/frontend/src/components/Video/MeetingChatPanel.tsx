@@ -150,6 +150,7 @@ export function MeetingChatPanel({ bookingId, readOnly, onClose, style }: Props)
               color: "#6b7280", fontSize: 18, lineHeight: 1,
               padding: "4px 6px", borderRadius: 6,
               display: "flex", alignItems: "center", justifyContent: "center",
+              transition: "color 0.15s ease",
             }}
             onMouseEnter={e => (e.currentTarget.style.color = "#f9fafb")}
             onMouseLeave={e => (e.currentTarget.style.color = "#6b7280")}
@@ -172,7 +173,7 @@ export function MeetingChatPanel({ bookingId, readOnly, onClose, style }: Props)
           const color = colorFromId(m.user_id);
           const timeStr = fmtTime(new Date(m.created_at));
           return (
-            <div key={m.id} style={{ display: "flex", gap: 8, alignItems: "flex-end", marginTop: isFirstInGroup ? 10 : 2 }}>
+            <div key={m.id} style={{ display: "flex", gap: 8, alignItems: "flex-end", marginTop: isFirstInGroup ? 10 : 2, animation: "conf-msg-in 0.18s cubic-bezier(0.22,1,0.36,1) both" }}>
               {/* Avatar placeholder — keeps alignment for non-first messages */}
               <div style={{ width: 28, flexShrink: 0 }}>
                 {isFirstInGroup ? (
@@ -276,8 +277,8 @@ export function MeetingChatPanel({ bookingId, readOnly, onClose, style }: Props)
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
             title={t("chatpanel.attachTitle")}
-            className="w-7 h-7 flex items-center justify-center rounded text-sm transition-colors disabled:opacity-40"
-            style={{ color: "#9ca3af" }}
+            className="w-7 h-7 flex items-center justify-center rounded text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ color: "#9ca3af", transition: "color 0.15s ease" }}
             onMouseEnter={(e) => (e.currentTarget.style.color = "#f9fafb")}
             onMouseLeave={(e) => (e.currentTarget.style.color = "#9ca3af")}
           >
@@ -286,8 +287,8 @@ export function MeetingChatPanel({ bookingId, readOnly, onClose, style }: Props)
           <button
             onClick={sendMessage}
             disabled={!input.trim() || uploading}
-            className="w-7 h-7 flex items-center justify-center rounded text-sm font-bold transition-colors disabled:opacity-40"
-            style={{ color: "#60a5fa" }}
+            className="w-7 h-7 flex items-center justify-center rounded text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ color: "#60a5fa", transition: "color 0.15s ease" }}
             onMouseEnter={(e) => (e.currentTarget.style.color = "#93c5fd")}
             onMouseLeave={(e) => (e.currentTarget.style.color = "#60a5fa")}
           >

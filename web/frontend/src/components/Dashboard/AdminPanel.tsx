@@ -165,7 +165,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
               </div>
               <button onClick={onBack ?? onClose}
                 className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
-                style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
+                style={{ color: "var(--text-muted)", background: "var(--elevated)", transition: "color 0.15s ease" }}
                 onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
                 onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>
                 {onBack
@@ -208,9 +208,9 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                         whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                         onClick={() => setTab(s.goTo)}
                         className="rounded-md p-4 flex items-center gap-4 cursor-pointer transition-all"
-                        style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}
+                        style={{ background: "var(--elevated)", border: "1px solid var(--border)", transition: "border-color 0.15s ease" }}
                         onMouseEnter={e => { e.currentTarget.style.borderColor = s.color; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; }}>
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; }}
                         <div className="flex-1">
                           <div className="text-2xl font-black" style={{ color: s.color }}>{s.value}</div>
                           <div className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{s.label}</div>
@@ -290,7 +290,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                                 <button
                                   onClick={() => setDeleteBookingTarget({ id: b.id, title: b.title, seriesId: b.recurrence_group_id })}
                                   className="w-6 h-6 flex items-center justify-center rounded transition-all"
-                                  style={{ color: "var(--text-muted)" }}
+                                  style={{ color: "var(--text-muted)", transition: "color 0.15s ease, background-color 0.15s ease" }}
                                   onMouseEnter={e => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.background = "rgba(239,68,68,0.1)"; }}
                                   onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = ""; }}
                                   title={t("admin.deleteBookingTip")}
@@ -333,6 +333,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
 
                     {showAddForm && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                         className="rounded-md p-3 space-y-2"
                         style={{ background: "var(--elevated)", border: "1px solid var(--primary-border)" }}>
                         {inviteResult ? (
@@ -405,7 +406,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                               <button
                                 onClick={() => setDeleteUserTarget({ id: u.id, name: u.display_name })}
                                 className="w-7 h-7 flex items-center justify-center rounded text-xs transition-all"
-                                style={{ color: "var(--text-muted)" }}
+                                style={{ color: "var(--text-muted)", transition: "color 0.15s ease, background-color 0.15s ease" }}
                                 onMouseEnter={e => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.background = "rgba(239,68,68,0.1)"; }}
                                 onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = ""; }}
                                 title={t("admin.deleteUserTip")}
@@ -523,7 +524,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
             <h2 className="font-bold text-base" style={{ color: "var(--text)" }}>{t("ws.analytics.title")}</h2>
             <button onClick={() => setAnalyticsModalOpen(false)}
               className="w-8 h-8 flex items-center justify-center rounded-md transition-all"
-              style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
+              style={{ color: "var(--text-muted)", background: "var(--elevated)", transition: "color 0.15s ease" }}
               onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
               onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -690,7 +691,7 @@ function CustomSelect({
                 background: o.value === value ? "var(--primary-light)" : "transparent",
                 color: o.value === value ? "var(--primary)" : "var(--text)",
                 fontWeight: o.value === value ? "600" : "400",
-                transition: "background 0.1s",
+                transition: "background 0.15s ease",
               }}
               onMouseEnter={e => { if (o.value !== value) e.currentTarget.style.background = "var(--elevated)"; }}
               onMouseLeave={e => { if (o.value !== value) e.currentTarget.style.background = "transparent"; }}

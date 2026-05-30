@@ -92,7 +92,7 @@ export function SubmissionsPanel({ isOpen, onClose, onBack }: Props) {
               <h3 className="font-bold text-sm" style={{ color: "var(--text)" }}>{t("submissions.title")}</h3>
               <button onClick={onBack ?? onClose}
                 className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
-                style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
+                style={{ color: "var(--text-muted)", background: "var(--elevated)", transition: "color 0.15s ease" }}
                 onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
                 onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>
                 {onBack
@@ -173,7 +173,7 @@ export function SubmissionsPanel({ isOpen, onClose, onBack }: Props) {
                         <div className="flex-1" />
                         <button onClick={() => { if (confirm(t("submissions.deleteConfirm"))) del(s.id); }}
                           className="text-xs px-2 py-1 rounded font-semibold transition-all"
-                          style={{ color: "var(--text-muted)" }}
+                          style={{ color: "var(--text-muted)", transition: "color 0.15s ease, background-color 0.15s ease" }}
                           onMouseEnter={e => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.background = "rgba(239,68,68,0.1)"; }}
                           onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = ""; }}>
                           🗑

@@ -82,7 +82,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
     if (!open || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
     const DROPDOWN_W = 390;
-    const DROPDOWN_H = 370;
+    const DROPDOWN_H = 420;
     const MARGIN = 8;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -97,7 +97,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
 
     const maxH = above
       ? Math.max(spaceAbove - 4, 200)
-      : Math.max(spaceBelow, 200);
+      : Math.max(spaceBelow - 12, 200);
 
     setPos({ top: above ? rect.top - 4 : rect.bottom + 6, left, above, maxH });
   }, [open]);
@@ -228,8 +228,6 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                   : "0 16px 48px rgba(0,0,0,0.16), 0 0 0 1px rgba(21,101,168,0.06)",
               }}>
 
-              {/* Gradient top stripe */}
-              <div style={{ height: 2, background: "linear-gradient(90deg,#1565a8,#06b6d4,#114e85)", flexShrink: 0 }} />
 
               <div style={{ display: "flex", alignItems: "stretch" }}>
                 {/* ── Calendar ── */}
@@ -240,7 +238,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                     <button type="button"
                       onClick={() => { if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); } else setViewMonth(m => m - 1); }}
                       className="w-7 h-7 flex items-center justify-center rounded transition-all"
-                      style={{ color: "var(--text-muted)", background: isDark ? "rgba(255,255,255,0.05)" : "#f5f5f5" }}
+                      style={{ color: "var(--text-muted)", background: isDark ? "rgba(255,255,255,0.05)" : "#f5f5f5", transition: "color 0.15s ease, background-color 0.15s ease" }}
                       onMouseEnter={e => { e.currentTarget.style.color = "var(--primary)"; e.currentTarget.style.background = isDark ? "rgba(21,101,168,0.15)" : "#e6f0fa"; }}
                       onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.05)" : "#f5f5f5"; }}>
                       ‹
@@ -258,7 +256,7 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                     <button type="button"
                       onClick={() => { if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); } else setViewMonth(m => m + 1); }}
                       className="w-7 h-7 flex items-center justify-center rounded transition-all"
-                      style={{ color: "var(--text-muted)", background: isDark ? "rgba(255,255,255,0.05)" : "#f5f5f5" }}
+                      style={{ color: "var(--text-muted)", background: isDark ? "rgba(255,255,255,0.05)" : "#f5f5f5", transition: "color 0.15s ease, background-color 0.15s ease" }}
                       onMouseEnter={e => { e.currentTarget.style.color = "var(--primary)"; e.currentTarget.style.background = isDark ? "rgba(21,101,168,0.15)" : "#e6f0fa"; }}
                       onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.05)" : "#f5f5f5"; }}>
                       ›
@@ -312,14 +310,14 @@ export function DateTimePicker({ label, value, onChange, dateOnly }: DateTimePic
                     style={{ borderTop: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid #f0f0f0" }}>
                     <button type="button" onClick={clearDate}
                       className="text-xs font-semibold transition-all"
-                      style={{ color: isDark ? "rgba(239,68,68,0.7)" : "#dc2626" }}
+                      style={{ color: isDark ? "rgba(239,68,68,0.7)" : "#dc2626", transition: "color 0.15s ease" }}
                       onMouseEnter={e => { e.currentTarget.style.color = isDark ? "#f87171" : "#b91c1c"; }}
                       onMouseLeave={e => { e.currentTarget.style.color = isDark ? "rgba(239,68,68,0.7)" : "#dc2626"; }}>
                       {t("cal.delete")}
                     </button>
                     <button type="button" onClick={goToToday}
                       className="text-xs font-semibold transition-all"
-                      style={{ color: "var(--primary)" }}
+                      style={{ color: "var(--primary)", transition: "opacity 0.15s ease" }}
                       onMouseEnter={e => { e.currentTarget.style.opacity = "0.75"; }}
                       onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}>
                       {t("cal.today")}

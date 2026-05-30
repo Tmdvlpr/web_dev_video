@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../../api/auth";
@@ -132,18 +132,28 @@ export default function RegistrationPage() {
             ))}
           </select>
 
-          {error && (
-            <p className="text-sm text-center" style={{ color: "#f87171" }}>
-              {error}
-            </p>
-          )}
+          <AnimatePresence>
+            {error && (
+              <motion.p
+                key="reg-error"
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                className="text-sm text-center"
+                style={{ color: "#f87171" }}
+              >
+                {error}
+              </motion.p>
+            )}
+          </AnimatePresence>
 
           <motion.button
             type="submit"
             disabled={isLoading}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="w-full py-3 rounded-md text-sm font-bold text-white disabled:opacity-60"
+            className="w-full py-3 rounded-md text-sm font-bold text-white disabled:opacity-60 disabled:cursor-not-allowed"
             style={{
               background: "linear-gradient(135deg,#1565a8,#114e85)",
               boxShadow: "0 4px 16px rgba(21,101,168,0.35)",

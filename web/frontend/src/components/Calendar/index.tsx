@@ -148,7 +148,7 @@ function MonthDayCell({ date, isCurrentMonth, isToday, onNavigate, onCardClick, 
         borderRight: "1px solid var(--border-light)",
         borderBottom: "1px solid var(--border-light)",
         display: "flex", flexDirection: "column", gap: 3,
-        transition: "background 0.12s ease",
+        transition: "background 0.12s ease, filter 0.15s ease",
       }}
     >
       {/* Day number — top right */}
@@ -798,21 +798,21 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
         <div className="flex items-center gap-1">
           <button onClick={() => viewMode === "week" ? navTo(new Date()) : setAnchorDate(new Date())}
             className="px-3 h-7 text-xs font-semibold rounded transition-all shrink-0"
-            style={{ border: "1.5px solid var(--primary-border)", color: "var(--primary)", background: "var(--primary-light)" }}
+            style={{ border: "1.5px solid var(--primary-border)", color: "var(--primary)", background: "var(--primary-light)", transition: "background 0.15s ease, color 0.15s ease" }}
             onMouseEnter={(e) => { e.currentTarget.style.background = "var(--primary)"; e.currentTarget.style.color = "#fff"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "var(--primary-light)"; e.currentTarget.style.color = "var(--primary)"; }}>
             {t("cal.today")}
           </button>
           <button onClick={handlePrev}
             className="w-7 h-7 flex items-center justify-center rounded font-semibold transition-all shrink-0 text-base leading-none"
-            style={{ color: "var(--text-muted)" }}
+            style={{ color: "var(--text-muted)", transition: "color 0.15s ease, background-color 0.15s ease" }}
             onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--elevated)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = ""; }}>
             ‹
           </button>
           <button onClick={handleNext}
             className="w-7 h-7 flex items-center justify-center rounded font-semibold transition-all shrink-0 text-base leading-none"
-            style={{ color: "var(--text-muted)" }}
+            style={{ color: "var(--text-muted)", transition: "color 0.15s ease, background-color 0.15s ease" }}
             onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--elevated)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = ""; }}>
             ›
@@ -821,7 +821,7 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
 
         {/* Month label / search */}
         {searchOpen ? (
-          <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 220, opacity: 1 }} style={{ overflow: "hidden" }}>
+          <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 220, opacity: 1 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} style={{ overflow: "hidden" }}>
             <input
               ref={searchRef}
               type="text"

@@ -80,6 +80,10 @@ export function SplashScreen({ onFinish, userName }: SplashScreenProps) {
     // ── Welder sparks canvas (synced with wing stroke draws) ─────────────
     const sparksCanvas = sparksCanvasRef.current;
     if (sparksCanvas) {
+      // Scale canvas to device pixel ratio for sharp rendering on Retina/HiDPI
+      const dpr = window.devicePixelRatio || 1;
+      sparksCanvas.width  = Math.round(220 * dpr);
+      sparksCanvas.height = Math.round(220 * dpr);
       const ctx = sparksCanvas.getContext("2d");
       if (ctx) {
         const CW = sparksCanvas.width;
@@ -214,8 +218,10 @@ export function SplashScreen({ onFinish, userName }: SplashScreenProps) {
     // look cyan/blue. Strokes fade with the fills.
     setTimeout(() => {
       [fp1, fp2].forEach((p) => { p.style.transition = "opacity 0.4s ease-out"; p.style.opacity = "1"; });
-      sp1.style.transition += ", opacity 0.4s ease-out";
-      sp2.style.transition += ", opacity 0.4s ease-out";
+      const cur1 = sp1.style.transition.replace(/,?\s*opacity[^,]*/g, "").replace(/^,\s*/, "");
+      const cur2 = sp2.style.transition.replace(/,?\s*opacity[^,]*/g, "").replace(/^,\s*/, "");
+      sp1.style.transition = (cur1 ? cur1 + ", " : "") + "opacity 0.4s ease-out";
+      sp2.style.transition = (cur2 ? cur2 + ", " : "") + "opacity 0.4s ease-out";
       sp1.style.opacity = "0";
       sp2.style.opacity = "0";
     }, 1450);

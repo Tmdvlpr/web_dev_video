@@ -177,6 +177,13 @@ html.vt-running *::after {
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(root),
   ::view-transition-new(root) { animation: none; filter: none; mask: none; }
+  .stripe-flow { animation: none !important; }
+}
+
+/* GPU-composited stripe gradient — used by InteractiveStripe */
+@keyframes stripe-flow {
+  from { background-position: 0% 50%; }
+  to   { background-position: 100% 50%; }
 }
 
 .text-xs   { font-size: var(--font-xs)   !important; line-height: 1.45; }
@@ -197,3 +204,30 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
 
 ::selection { background: var(--primary-light); color: var(--primary); }
+
+/* ── Skeleton shimmer — GPU-composited via transform ── */
+@keyframes skeleton-shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(200%); }
+}
+
+/* ── Global keyboard focus indicator ──
+   !important needed to beat Tailwind's .outline-none (specificity 0,1,0)
+   on focus-visible pseudo-class (specificity 0,0,1 alone) */
+:focus:not(:focus-visible) { outline: none; }
+
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: 2px !important;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: 0 !important;
+  box-shadow: 0 0 0 3px rgba(21,101,168,0.15) !important;
+}

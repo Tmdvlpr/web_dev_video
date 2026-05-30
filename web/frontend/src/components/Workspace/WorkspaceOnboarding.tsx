@@ -146,7 +146,7 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
             <button
               onClick={() => { setFlow("menu"); resetMessages(); }}
               className="flex items-center gap-1.5 mb-4 px-2.5 py-1.5 rounded text-xs font-semibold transition-all"
-              style={{ color: "var(--text-muted)", background: "var(--elevated)", border: "1px solid var(--border)" }}
+              style={{ color: "var(--text-muted)", background: "var(--elevated)", border: "1px solid var(--border)", transition: "color 0.15s ease" }}
               onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
               onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}
             >
@@ -157,7 +157,7 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
 
           <AnimatePresence mode="wait">
             {flow === "menu" && (
-              <motion.div key="menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <motion.div key="menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}>
                 <div className="text-center mb-7">
                   <h1 className="text-2xl font-bold mb-2" style={{ color: "var(--text)" }}>
                     Добро пожаловать в CorpMeet
@@ -178,6 +178,7 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
             {flow === "create" && (
               <motion.form key="create" onSubmit={handleCreate}
                 initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                 className="space-y-4"
               >
                 <h2 className="text-xl font-bold" style={{ color: "var(--text)" }}>Новое пространство</h2>
@@ -210,6 +211,7 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
             {flow === "join" && (
               <motion.form key="join"
                 initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                 onSubmit={e => { e.preventDefault(); handleJoin(inviteCode); }}
                 className="space-y-4"
               >
@@ -236,6 +238,7 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
             {flow === "search" && (
               <motion.div key="search"
                 initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                 className="space-y-4"
               >
                 <h2 className="text-xl font-bold" style={{ color: "var(--text)" }}>Найти по названию</h2>
@@ -259,7 +262,7 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
                       disabled={busy}
                       onClick={() => handleJoin(w.invite_code)}
                       className="w-full text-left px-4 py-3 rounded-md transition-all disabled:opacity-50"
-                      style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}
+                      style={{ background: "var(--elevated)", border: "1px solid var(--border)", transition: "border-color 0.15s ease" }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--primary)"; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; }}
                     >
@@ -288,6 +291,7 @@ function MenuCard({ label, desc, Icon, onClick }: { label: string; desc: string;
       type="button"
       whileHover={{ y: -3 }}
       whileTap={{ scale: 0.97 }}
+      transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
       onClick={onClick}
       className="text-left p-5 rounded-md transition-all flex flex-col items-start gap-3"
       style={{
@@ -295,6 +299,7 @@ function MenuCard({ label, desc, Icon, onClick }: { label: string; desc: string;
         border: "1.5px solid var(--border)",
         color: "var(--text)",
         minHeight: 160,
+        transition: "border-color 0.15s ease, box-shadow 0.15s ease",
       }}
       onMouseEnter={e => {
         e.currentTarget.style.borderColor = "var(--primary)";

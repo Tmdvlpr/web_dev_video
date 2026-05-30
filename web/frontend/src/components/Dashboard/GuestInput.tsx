@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
 import { useWorkspaceUsers } from "../../hooks/useBookings";
@@ -47,7 +47,7 @@ export function GuestInput({
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!focused || !wrapRef.current) return;
     const rect = wrapRef.current.getBoundingClientRect();
     setDropUp(window.innerHeight - rect.bottom < 300);
@@ -97,7 +97,7 @@ export function GuestInput({
           onClick={() => setFocused(true)}
         >
           {guests.map(g => (
-            <motion.span key={g} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            <motion.span key={g} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
               className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold"
               style={{ background: "var(--primary-light)", border: "1px solid var(--primary-border)", color: "var(--primary)" }}>
               @{g}
@@ -117,7 +117,7 @@ export function GuestInput({
           {focused && (
             <motion.div
               initial={{ opacity: 0, y: dropUp ? 4 : -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: dropUp ? 4 : -4 }}
-              transition={{ duration: 0.12 }}
+              transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
               className={`absolute z-50 left-0 right-0 rounded-md overflow-hidden ${dropUp ? "bottom-full mb-1" : "mt-1"}`}
               style={{ background: isDark ? "#0f172a" : "#ffffff", border: "1px solid var(--border)", boxShadow: dropShadow, maxHeight: 300, overflowY: "auto" }}
               onPointerDown={e => e.stopPropagation()}>
@@ -132,6 +132,7 @@ export function GuestInput({
                     <button key={opt.key} type="button"
                       onClick={e => { e.stopPropagation(); setMode(opt.key); if (opt.key === "username") setTimeout(() => inputRef.current?.focus(), 30); }}
                       className="flex items-center gap-3 w-full px-3 py-2.5 rounded text-left transition-all"
+                      style={{ transition: "background-color 0.15s ease" }}
                       onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; }}
                       onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
                       <span className="text-base leading-none">{opt.emoji}</span>
@@ -150,7 +151,7 @@ export function GuestInput({
                   <button type="button"
                     onClick={e => { e.stopPropagation(); setMode(null); }}
                     className="flex items-center gap-1.5 px-3 py-2 w-full text-xs font-semibold transition-all"
-                    style={{ color: "var(--text-sec)", borderBottom: "1px solid var(--border)" }}
+                    style={{ color: "var(--text-sec)", borderBottom: "1px solid var(--border)", transition: "background-color 0.15s ease" }}
                     onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
                     ← {t("booking.guestsBack")}
@@ -189,7 +190,7 @@ export function GuestInput({
                           <button type="button"
                             onClick={e => { e.stopPropagation(); toggleExpanded(pos); }}
                             className="flex items-center gap-2 flex-1 pr-3 py-2 text-xs font-semibold transition-all"
-                            style={{ color: "var(--text)" }}
+                            style={{ color: "var(--text)", transition: "background-color 0.15s ease" }}
                             onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; }}
                             onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
                             <span style={{ width: 12, display: "inline-block", opacity: 0.5, fontSize: 11 }}>
@@ -205,7 +206,7 @@ export function GuestInput({
                             <button key={u.id} type="button"
                               onClick={e => { e.stopPropagation(); toggleGuest(u.username!); }}
                               className="flex items-center gap-2 w-full pl-10 pr-3 py-1.5 text-left text-xs transition-all"
-                              style={{ color: "var(--text)" }}
+                              style={{ color: "var(--text)", transition: "background-color 0.15s ease" }}
                               onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; }}
                               onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
                               <div className="w-4 h-4 rounded flex items-center justify-center shrink-0"
@@ -243,7 +244,7 @@ export function GuestInput({
                     <button type="button"
                       onClick={e => { e.stopPropagation(); setMode(null); setInput(""); }}
                       className="px-3 py-2 text-xs font-semibold shrink-0 transition-all"
-                      style={{ color: "var(--text-sec)" }}
+                      style={{ color: "var(--text-sec)", transition: "color 0.15s ease" }}
                       onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
                       onMouseLeave={e => { e.currentTarget.style.color = "var(--text-sec)"; }}>
                       ←
@@ -264,7 +265,7 @@ export function GuestInput({
                       <button key={u.id} type="button"
                         onClick={e => { e.stopPropagation(); toggleGuest(u.username!); }}
                         className="flex items-center gap-2 w-full px-3 py-2 text-left text-xs transition-all"
-                        style={{ color: "var(--text)" }}
+                        style={{ color: "var(--text)", transition: "background-color 0.15s ease" }}
                         onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; }}
                         onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
                         {u.avatar ? (

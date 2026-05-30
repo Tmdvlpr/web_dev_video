@@ -13,6 +13,7 @@ export default function LoadingSpinner() {
         style={{
           borderColor: "var(--primary)",
           borderTopColor: "transparent",
+          willChange: "transform",
         }}
       />
     </div>

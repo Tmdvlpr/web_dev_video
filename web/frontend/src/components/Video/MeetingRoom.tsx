@@ -457,9 +457,13 @@ function CtrlBtn({
       setDisplayLabel(label);
       el.classList.remove("is-exit");
       el.classList.add("is-enter-start");
-      void el.offsetWidth;
-      el.classList.remove("is-enter-start");
-      busyRef.current = false;
+      // double-rAF replaces void el.offsetWidth — no forced synchronous layout
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          el.classList.remove("is-enter-start");
+          busyRef.current = false;
+        });
+      });
     }, 150);
     return () => clearTimeout(id);
   }, [label, displayLabel]);
@@ -770,7 +774,9 @@ function ParticipantsPanel({
                   <button
                     onClick={() => onGrantRecord?.(p.identity)}
                     title="Передать право записи"
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: "0 2px", lineHeight: 1 }}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: "0 2px", lineHeight: 1, transition: "opacity 0.15s ease" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.7"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
                   >🎬</button>
                 )}
                 {isOrganizer && !isLocal ? (
@@ -817,7 +823,10 @@ function ParticipantsPanel({
                 width: "100%", padding: "8px 12px", borderRadius: 6,
                 background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)",
                 color: "#60a5fa", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                transition: "background-color 0.15s ease, border-color 0.15s ease",
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(59,130,246,0.22)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(59,130,246,0.12)"; }}
             >
               {inviteLoading ? t("conf.inviteCreating") : t("conf.inviteGuest")}
             </button>
@@ -844,6 +853,7 @@ function ParticipantsPanel({
                     background: copied ? "rgba(34,197,94,0.15)" : "rgba(59,130,246,0.15)",
                     border: "none", color: copied ? "#4ade80" : "#60a5fa",
                     fontSize: 11, fontWeight: 600, cursor: "pointer",
+                    transition: "background-color 0.2s ease, color 0.2s ease",
                   }}
                 >
                   <span className="t-icon-swap" data-state={copied ? "b" : "a"}>
@@ -858,7 +868,10 @@ function ParticipantsPanel({
                   marginTop: 6, width: "100%", padding: "6px", borderRadius: 6,
                   background: "transparent", border: "1px solid var(--brd)",
                   color: "var(--tx3)", fontSize: 11, cursor: "pointer",
+                  transition: "background-color 0.15s ease, color 0.15s ease",
                 }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg)"; e.currentTarget.style.color = "var(--tx2)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--tx3)"; }}
               >
                 {t("conf.inviteNewLink")}
               </button>
@@ -1080,14 +1093,17 @@ function WaitingRoom({ startTime, onLeave, onJoin }: { startTime: string; onLeav
       });
     };
 
-    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; buildNodes(); };
+    let cachedCanvasRect = { left: 0, top: 0 };
+    const resize = () => {
+      canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; buildNodes();
+      cachedCanvasRect = canvas.getBoundingClientRect();
+    };
     resize();
 
     const onMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
       const dx = e.clientX - lastMX, dy = e.clientY - lastMY;
       vel.v = Math.min(Math.sqrt(dx * dx + dy * dy) / 20, 4);
-      mouse.x = e.clientX - rect.left; mouse.y = e.clientY - rect.top;
+      mouse.x = e.clientX - cachedCanvasRect.left; mouse.y = e.clientY - cachedCanvasRect.top;
       lastMX = e.clientX; lastMY = e.clientY;
     };
     window.addEventListener("mousemove", onMove);
@@ -1311,10 +1327,12 @@ function SettingsPanel({ bookingId, noiseOn, blurOn, onNoise, onBlur }: {
     border: "1px solid var(--brd)", marginBottom: 8,
   };
   const knobStyle = (on: boolean): React.CSSProperties => ({
-    position: "absolute", top: "50%", transform: "translateY(-50%)",
-    left: on ? 21 : 2, width: 16, height: 16,
+    position: "absolute", top: "50%", left: 2,
+    transform: on ? "translate(19px, -50%)" : "translateY(-50%)",
+    width: 16, height: 16,
     borderRadius: "50%", background: "#fff",
-    transition: "left 0.2s",
+    transition: "transform 0.2s ease-in-out",
+    willChange: "transform",
   });
   const trackStyle = (on: boolean): React.CSSProperties => ({
     position: "relative", width: 40, height: 22, borderRadius: 11, flexShrink: 0,
@@ -1826,6 +1844,7 @@ function ConferenceUI({
           background: "rgba(239,68,68,0.9)", color: "#fff", padding: "10px 20px",
           borderRadius: 6, fontSize: 13, fontWeight: 600, zIndex: 10001,
           boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+          animation: "conf-toast-in 0.2s cubic-bezier(0.22,1,0.36,1) both",
         }}>
           ⚠️ {recordingError || uploadError}
         </div>
@@ -1862,6 +1881,7 @@ function ConferenceUI({
                 borderRadius: 6, padding: "14px 16px",
                 boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
                 backdropFilter: "blur(20px)",
+                animation: "conf-card-in 0.22s cubic-bezier(0.22,1,0.36,1) both",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
@@ -1889,7 +1909,10 @@ function ConferenceUI({
                     flex: 1, padding: "8px", borderRadius: 6, border: "none",
                     background: "linear-gradient(135deg,#16a34a,#22c55e)",
                     color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                    transition: "opacity 0.15s ease",
                   }}
+                  onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
                 >
                   ✓ Разрешить
                 </button>
@@ -1899,7 +1922,10 @@ function ConferenceUI({
                     flex: 1, padding: "8px", borderRadius: 6,
                     background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)",
                     color: "#f87171", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                    transition: "background-color 0.15s ease",
                   } as React.CSSProperties}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.28)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.15)"; }}
                 >
                   ✕ Отклонить
                 </button>

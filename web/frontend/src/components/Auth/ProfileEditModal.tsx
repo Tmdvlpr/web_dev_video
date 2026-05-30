@@ -105,7 +105,7 @@ export function ProfileEditModal({ open, user, onClose, onSaved, onBack }: Props
               </h3>
               <button type="button" onClick={onBack ?? onClose}
                 className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
-                style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
+                style={{ color: "var(--text-muted)", background: "var(--elevated)", transition: "color 0.15s ease" }}
                 onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
                 onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>
                 {onBack
@@ -199,17 +199,18 @@ export function ProfileEditModal({ open, user, onClose, onSaved, onBack }: Props
                       background: on ? "var(--primary)" : "var(--elevated)",
                       border: `1.5px solid ${on ? "var(--primary)" : "var(--border)"}`,
                       position: "relative",
-                      transition: "background 0.2s, border-color 0.2s",
+                      transition: "background-color 0.2s ease-in-out, border-color 0.2s ease-in-out",
                     }}
                   >
                     <div style={{
                       position: "absolute",
-                      top: "50%", transform: "translateY(-50%)",
-                      left: on ? 21 : 2,
+                      top: "50%", left: 2,
+                      transform: on ? "translate(19px, -50%)" : "translateY(-50%)",
                       width: 14, height: 14,
                       borderRadius: "50%",
                       background: "#fff",
-                      transition: "left 0.2s",
+                      transition: "transform 0.2s ease-in-out",
+                      willChange: "transform",
                       boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
                     }} />
                   </div>
@@ -217,14 +218,26 @@ export function ProfileEditModal({ open, user, onClose, onSaved, onBack }: Props
               ))}
             </div>
 
-            {error && (
-              <p className="text-xs mb-3 font-semibold" style={{ color: "#ef4444" }}>{error}</p>
-            )}
+            <AnimatePresence>
+              {error && (
+                <motion.p
+                  key="edit-error"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                  className="text-xs mb-3 font-semibold"
+                  style={{ color: "#ef4444" }}
+                >
+                  {error}
+                </motion.p>
+              )}
+            </AnimatePresence>
 
             <button
               type="submit"
               disabled={isPending || !first.trim()}
-              className="w-full text-sm py-2.5 rounded font-bold text-white transition-all disabled:opacity-50"
+              className="w-full text-sm py-2.5 rounded font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ background: "var(--primary)" }}
             >
               {isPending ? t("common.loading") : t("common.save")}

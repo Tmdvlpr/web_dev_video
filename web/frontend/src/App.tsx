@@ -156,7 +156,7 @@ function SideBtn({ label, icon, onClick, danger, rightEl }: {
   return (
     <button type="button" onClick={onClick}
       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all"
-      style={{ color: base, background: "transparent" }}
+      style={{ color: base, background: "transparent", transition: "color 0.15s ease, background-color 0.15s ease" }}
       onMouseEnter={e => { e.currentTarget.style.background = hover; e.currentTarget.style.color = danger ? base : "var(--text)"; }}
       onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = base; }}>
       <span className="w-5 h-5 flex items-center justify-center shrink-0" style={{ opacity: 0.75 }}>{icon}</span>
@@ -260,6 +260,7 @@ function Dashboard() {
               background: sidebarOpen ? "var(--elevated)" : "transparent",
               border: `1px solid ${sidebarOpen ? "var(--border)" : "transparent"}`,
               color: sidebarOpen ? "var(--text)" : "var(--text-sec)",
+              transition: "color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease",
             }}
             onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.borderColor = "var(--border)"; }}
             onMouseLeave={e => { if (!sidebarOpen) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-sec)"; e.currentTarget.style.borderColor = "transparent"; } }}
@@ -325,7 +326,7 @@ function Dashboard() {
                 </span>
                 <button type="button" onClick={closeSidebar}
                   className="w-7 h-7 rounded flex items-center justify-center transition-all"
-                  style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
+                  style={{ color: "var(--text-muted)", background: "var(--elevated)", transition: "color 0.15s ease, background-color 0.15s ease" }}
                   onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--border)"; }}
                   onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "var(--elevated)"; }}>
                   <IcClose />

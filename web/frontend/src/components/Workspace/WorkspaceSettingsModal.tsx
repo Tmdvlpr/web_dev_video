@@ -94,7 +94,7 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
         </div>
         <button onClick={onClose}
           className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
-          style={{ color: "var(--text-muted)", background: "var(--elevated)" }}
+          style={{ color: "var(--text-muted)", background: "var(--elevated)", transition: "color 0.15s ease" }}
           onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; }}
           onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -465,7 +465,7 @@ function GeneralTab({
                   initial={{ opacity: 0, y: 4, filter: "blur(2px)" }}
                   animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                   exit={{ opacity: 0, y: -4, filter: "blur(2px)" }}
-                  transition={{ duration: 0.15 }}
+                  transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
                   style={{ display: "block" }}
                 >
                   {bindingTg ? "…" : t("ws.tgBind")}
@@ -498,7 +498,7 @@ function GeneralTab({
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.15 }}
+                transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
                 className="t-shake-target text-xs mt-1"
                 style={{ color: "#dc2626" }}
               >
@@ -1287,7 +1287,7 @@ function RoomRow({ wr, workspaceId, isAdmin, isSuperadmin, onRefetch }:
                 <span className="text-xs" style={{ color: "var(--text-sec)" }}>{ws.workspace_name}</span>
                 <button onClick={() => handleRevokeShare(ws.workspace_id)}
                   className="text-xs font-bold leading-none transition-all"
-                  style={{ color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", padding: "0 1px" }}
+                  style={{ color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", padding: "0 1px", transition: "color 0.15s ease" }}
                   onMouseEnter={e => { e.currentTarget.style.color = "#dc2626"; }}
                   onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; }}
                   title={t("ws.rooms.revokeAccess")}>
@@ -1468,7 +1468,7 @@ function CustomSelect({
                 background: o.value === value ? "var(--primary-light)" : "transparent",
                 color: o.value === value ? "var(--primary)" : "var(--text)",
                 fontWeight: o.value === value ? "600" : "400",
-                transition: "background 0.1s",
+                transition: "background-color 0.15s ease",
               }}
               onMouseEnter={e => { if (o.value !== value) e.currentTarget.style.background = "var(--elevated)"; }}
               onMouseLeave={e => { if (o.value !== value) e.currentTarget.style.background = "transparent"; }}
