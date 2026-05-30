@@ -55,7 +55,20 @@ const UNREAD_KEY = "corpmeet_notif_unread";
 
 export function getStoredNotifications(): NotificationRecord[] {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const all: NotificationRecord[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    // Migrate old meeting_invited entries that have translated text stored as title
+    // (they had Russian text; now title stores raw booking name)
+    const migrated = all.filter(n =>
+      n.type !== "meeting_invited" ||
+      // keep only if title looks like a raw booking name (not a translated phrase)
+      (!n.title.startsWith("Приглашение") && !n.title.startsWith("Taklif") && !n.title.startsWith("Таклиф"))
+    );
+    if (migrated.length !== all.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+      // also reset seen-ids so they get re-generated with new format
+      localStorage.removeItem("corpmeet_invited_seen");
+    }
+    return migrated;
   } catch { return []; }
 }
 
@@ -245,40 +258,54 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
                         background: "var(--elevated)",
                         border: "1px solid var(--border)",
                       }}>
-                      {/* Icon — animates to check/cross after RSVP */}
-                      <div style={{ flexShrink: 0, marginTop: 1 }}>
-                        {iconAnim[n.id] ? (
-                          <span
-                            key={`${n.id}-${iconAnim[n.id]}`}
-                            className="t-rsvp-icon"
-                            data-state={iconAnim[n.id]}>
-                            {iconAnim[n.id] === "check" ? (
-                              <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
-                                <path d="M2 7L5.5 10.5L12 3" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      {/* Icon — animates to check/cross after RSVP, fades back to bell */}
+                      <div style={{ flexShrink: 0, marginTop: 1, width: 36, height: 36, position: "relative" }}>
+                        <AnimatePresence mode="wait">
+                          {iconAnim[n.id] ? (
+                            <motion.span
+                              key={`anim-${n.id}-${iconAnim[n.id]}`}
+                              className="t-rsvp-icon"
+                              data-state={iconAnim[n.id]}
+                              exit={{ opacity: 0, scale: 0.7, filter: "blur(6px)", transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } }}
+                              style={{ position: "absolute", inset: 0 }}>
+                              {iconAnim[n.id] === "check" ? (
+                                <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
+                                  <path d="M2 7L5.5 10.5L12 3" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              ) : (
+                                <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
+                                  <path d="M2 2L12 12M12 2L2 12" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"/>
+                                </svg>
+                              )}
+                            </motion.span>
+                          ) : (
+                            <motion.div
+                              key={`bell-${n.id}`}
+                              initial={{ opacity: 0, scale: 0.7, filter: "blur(6px)" }}
+                              animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                              style={{
+                                position: "absolute", inset: 0,
+                                width: 36, height: 36, borderRadius: "50%",
+                                background: "linear-gradient(135deg, #2563eb, #6366f1)",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                              }}>
+                              <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                               </svg>
-                            ) : (
-                              <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
-                                <path d="M2 2L12 12M12 2L2 12" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"/>
-                              </svg>
-                            )}
-                          </span>
-                        ) : (
-                          <div style={{
-                            width: 36, height: 36, borderRadius: "50%",
-                            background: "linear-gradient(135deg, #2563eb, #6366f1)",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                          }}>
-                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                              <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </div>
-                        )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                       {/* Content */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold mb-0.5" style={{ color: "var(--text)" }}>{n.title}</p>
-                        <p className="text-xs leading-relaxed" style={{ color: "var(--text-sec)" }}>{n.body}</p>
+                        <p className="text-xs font-bold mb-0.5" style={{ color: "var(--text)" }}>
+                          {n.type === "meeting_invited" ? t("notif.meetingInvited") : n.title}
+                        </p>
+                        <p className="text-xs leading-relaxed" style={{ color: "var(--text-sec)" }}>
+                          {n.type === "meeting_invited" ? t("notif.meetingInvitedBody", { title: n.title }) : n.body}
+                        </p>
                         <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{timeAgo(n.time)}</p>
                         {n.type === "meeting_invited" && n.bookingId && (
                           <div className="mt-1.5">
