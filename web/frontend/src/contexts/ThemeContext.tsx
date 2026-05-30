@@ -59,12 +59,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
 
     const vt = (document as Document & {
-      startViewTransition: (cb: () => void) => { ready: Promise<void> };
+      startViewTransition: (cb: () => void) => { ready: Promise<void>; finished: Promise<void> };
     }).startViewTransition(applyTheme);
 
     // Token lets us detect if a newer transition superseded this one
     const token = {};
     vtTokenRef.current = token;
+
+    // Suppress all CSS transitions while VT is animating to prevent post-VT color lag
+    html.classList.add("vt-running");
+    vt.finished.finally(() => html.classList.remove("vt-running"));
 
     try {
       await vt.ready;
@@ -75,15 +79,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (vtTokenRef.current !== token) return;
 
     html.animate(
+      { "--wave": ["0px", `${endRadius + 220}px`] } as unknown as PropertyIndexedKeyframes,
       {
-        clipPath: [
-          `circle(0px at ${x}px ${y}px)`,
-          `circle(${endRadius + 50}px at ${x}px ${y}px)`,
-        ],
-      },
-      {
-        duration: 600,
-        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+        duration: 850,
+        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
         fill: "forwards",
         pseudoElement: "::view-transition-new(root)",
       }

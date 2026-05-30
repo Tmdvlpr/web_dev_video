@@ -136,8 +136,13 @@ html.theme-transitioning *::after {
     box-shadow 0.25s ease !important;
 }
 
-/* Theme wave — View Transition API (Chrome/Edge 111+, Safari 18+)
-   clip-path:circle is GPU-composited; animation driven by JS */
+/* Theme soft wave — View Transition API (Chrome/Edge 111+, Safari 18+) */
+@property --wave {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
@@ -147,12 +152,25 @@ html.theme-transitioning *::after {
 
 ::view-transition-new(root) {
   z-index: 2;
-  will-change: clip-path;
+  mask-image: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%),
+    #000            calc(var(--wave) - 220px),
+    rgba(0,0,0,.45) calc(var(--wave) - 90px),
+    transparent     var(--wave));
+  mask-repeat: no-repeat;
+  filter: drop-shadow(0 0 22px var(--wave-glow));
+}
+
+/* Kill all CSS transitions while VT is animating — prevents post-VT color lag */
+html.vt-running *,
+html.vt-running *::before,
+html.vt-running *::after {
+  transition: none !important;
+  animation: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(root),
-  ::view-transition-new(root) { animation: none; }
+  ::view-transition-new(root) { animation: none; filter: none; mask: none; }
 }
 
 .text-xs   { font-size: var(--font-xs)   !important; line-height: 1.45; }
