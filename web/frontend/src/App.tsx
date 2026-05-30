@@ -146,7 +146,7 @@ const IcCamera  = () => <svg width="10" height="10" viewBox="0 0 24 24" fill="no
 
 // ── Sidebar nav button ────────────────────────────────────────────────────────
 function SideBtn({ label, icon, onClick, danger, rightEl }: {
-  label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; rightEl?: React.ReactNode;
+  label: string; icon: React.ReactNode; onClick: (e: React.MouseEvent<HTMLButtonElement>) => void; danger?: boolean; rightEl?: React.ReactNode;
 }) {
   const { isDark } = useTheme();
   const base = danger ? (isDark ? "#f87171" : "#dc2626") : "var(--text-sec)";
@@ -400,7 +400,7 @@ function Dashboard() {
                   <SideBtn icon={<IcMsg />}   label={t("feedback.button")}               onClick={() => { setFeedbackOpen(true); closeSidebar(); }} />
                   <SideBtn icon={isDark ? <IcSun /> : <IcMoon />}
                     label={isDark ? t("nav.themeLight") : t("nav.themeDark")}
-                    onClick={toggle} />
+                    onClick={(e) => toggle({ x: e.clientX, y: e.clientY })} />
                   <SideBtn icon={<IcGlobe />}
                     label={locale === "ru" ? "Ўзбекча" : "Русский"}
                     onClick={() => setLocale(locale === "ru" ? "uz" : "ru")} />
