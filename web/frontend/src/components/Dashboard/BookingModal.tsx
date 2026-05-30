@@ -1000,6 +1000,76 @@ export function BookingModal({
                   {/* Guests */}
                   <GuestInput guests={guests} setGuests={setGuests} />
 
+                  {/* Guest status panel — only when editing an existing booking with guests */}
+                  {isEdit && editBooking && guests.length > 0 && (
+                    <div className="space-y-1.5">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!showGuestStatus) {
+                            setGuestStatusLoading(true);
+                            try {
+                              const statuses = await bookingsApi.getGuestStatuses(editBooking.id);
+                              setGuestStatuses(statuses);
+                            } catch { /* ignore */ }
+                            finally { setGuestStatusLoading(false); }
+                          }
+                          setShowGuestStatus(v => !v);
+                        }}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold transition-all"
+                        style={{
+                          background: showGuestStatus ? "var(--primary)" : "var(--elevated)",
+                          border: `1px solid ${showGuestStatus ? "var(--primary)" : "var(--border)"}`,
+                          color: showGuestStatus ? "#fff" : "var(--text-sec)",
+                        }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                          <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                        </svg>
+                        {t("guests.status.title")}
+                      </button>
+                      <AnimatePresence>
+                        {showGuestStatus && (
+                          <motion.div
+                            key="guest-status-edit"
+                            initial={{ opacity: 0, height: 0, y: -4 }}
+                            animate={{ opacity: 1, height: "auto", y: 0 }}
+                            exit={{ opacity: 0, height: 0, y: -4 }}
+                            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                            style={{ overflow: "hidden" }}>
+                            <div className="rounded-lg p-2.5 space-y-1.5"
+                              style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+                              {guestStatusLoading ? (
+                                <p className="text-xs text-center py-1" style={{ color: "var(--text-muted)" }}>…</p>
+                              ) : guestStatuses.map(gs => {
+                                const isAccepted = gs.status === "accepted";
+                                const isDeclined = gs.status === "declined";
+                                return (
+                                  <motion.div key={gs.name}
+                                    initial={{ opacity: 0, x: -6 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.18 }}
+                                    className="flex items-center justify-between gap-2">
+                                    <span className="text-xs font-medium truncate" style={{ color: "var(--text-sec)" }}>
+                                      {gs.name.startsWith("@") ? gs.name : `@${gs.name}`}
+                                    </span>
+                                    <span className="shrink-0 text-xs font-semibold px-1.5 py-0.5 rounded"
+                                      style={{
+                                        background: isAccepted ? "rgba(34,197,94,0.12)" : isDeclined ? "rgba(239,68,68,0.1)" : "rgba(148,163,184,0.1)",
+                                        color: isAccepted ? "#16a34a" : isDeclined ? "#ef4444" : "#94a3b8",
+                                        border: `1px solid ${isAccepted ? "rgba(34,197,94,0.3)" : isDeclined ? "rgba(239,68,68,0.25)" : "rgba(148,163,184,0.2)"}`,
+                                      }}>
+                                      {isAccepted ? `✓ ${t("guests.status.accepted")}` : isDeclined ? `✗ ${t("guests.status.declined")}` : t("guests.status.pending")}
+                                    </span>
+                                  </motion.div>
+                                );
+                              })}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+
                   {/* Recurrence (only on create) */}
                   {!isEdit && (
                     <div className="space-y-2">

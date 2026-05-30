@@ -15,7 +15,7 @@ import { ProfileEditModal } from "./components/Auth/ProfileEditModal";
 import { Calendar } from "./components/Calendar";
 import { ActiveMeetings } from "./components/Dashboard/BookingsList";
 import { BookingModal } from "./components/Dashboard/BookingModal";
-import { NotificationCenter, addNotification, getReminderMinutes, getUnreadCount } from "./components/Dashboard/NotificationCenter";
+import { NotificationCenter, addNotification, getReminderMinutes, getUnreadCount, getStoredNotifications } from "./components/Dashboard/NotificationCenter";
 const AdminPanel = React.lazy(() =>
   import("./components/Dashboard/AdminPanel").then((m) => ({ default: m.AdminPanel }))
 );
@@ -86,6 +86,48 @@ function useUnreadCount() {
     return () => window.removeEventListener("notif-unread", handler);
   }, []);
   return count;
+}
+
+// ── Invite notifications (background, runs on app load) ──────────────────────
+const INVITED_SEEN_KEY = "corpmeet_invited_seen";
+function getSeenInviteIds(): Set<number> {
+  try { return new Set(JSON.parse(localStorage.getItem(INVITED_SEEN_KEY) || "[]")); }
+  catch { return new Set(); }
+}
+
+function useInviteNotifications(userId: number | undefined) {
+  useEffect(() => {
+    if (!userId) return;
+    const check = async () => {
+      try {
+        const bookings = await bookingsApi.getActive();
+        const invited = bookings.filter(b => b.user_id !== userId);
+        if (!invited.length) return;
+        const seen = getSeenInviteIds();
+        const existingIds = new Set(
+          getStoredNotifications()
+            .filter(n => n.type === "meeting_invited" && n.bookingId != null)
+            .map(n => n.bookingId!)
+        );
+        for (const b of invited) {
+          if (seen.has(b.id) || existingIds.has(b.id)) continue;
+          addNotification({
+            id: `invite-${b.id}-${b.created_at}`,
+            title: "Приглашение на встречу",
+            body: `Вас пригласили на: ${b.title}`,
+            time: new Date(b.created_at).getTime(),
+            type: "meeting_invited",
+            bookingId: b.id,
+          });
+          seen.add(b.id);
+        }
+        localStorage.setItem(INVITED_SEEN_KEY, JSON.stringify([...seen]));
+      } catch { /* ignore */ }
+    };
+    check();
+    const timer = setInterval(check, 60_000);
+    return () => clearInterval(timer);
+  }, [userId]);
 }
 
 // ── Toast ────────────────────────────────────────────────────────────────────
@@ -187,6 +229,7 @@ function Dashboard() {
   const { user, logout } = useAuth();
   const { isMiniApp: miniApp } = useTelegram();
   const { isDark, toggle } = useTheme();
+  useInviteNotifications(user?.id);
   const { t, locale, setLocale } = useLocale();
   const { toasts, add: addToast } = useToasts();
   const { workspaces, isLoading: wsLoading, wsFetched } = useWorkspace();
