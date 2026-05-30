@@ -49,6 +49,7 @@
   --card-shadow:     0 2px 8px rgba(17,24,39,0.06), 0 4px 16px rgba(17,24,39,0.03);
   --panel-shadow:    -12px 0 40px rgba(17,24,39,0.10);
   --glass-blur:      12px;
+  --wave-glow:       rgba(21,101,168,0.40);
 
   --font-xs:   13px;
   --font-sm:   15px;
@@ -100,6 +101,7 @@
   --card-shadow:     0 2px 10px rgba(0,0,0,0.35);
   --panel-shadow:    -8px 0 40px rgba(0,0,0,0.45);
   --glass-blur:      16px;
+  --wave-glow:       rgba(91,163,223,0.50);
 
   --font-xs:   13px;
   --font-sm:   15px;
@@ -134,24 +136,38 @@ html.theme-transitioning *::after {
     box-shadow 0.25s ease !important;
 }
 
-/* Theme ripple — View Transition API (Chrome/Edge 111+, Safari 18+) */
-::view-transition-old(root) {
+/* Theme soft wave — View Transition API (Chrome/Edge 111+, Safari 18+) */
+@property --wave {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
 }
+::view-transition-old(root) { z-index: 1; }
 
 ::view-transition-new(root) {
-  clip-path: circle(0px at var(--ripple-x, 50%) var(--ripple-y, 50%));
-  animation: theme-ripple 500ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-@keyframes theme-ripple {
-  to { clip-path: circle(150vmax at var(--ripple-x, 50%) var(--ripple-y, 50%)); }
+  z-index: 2;
+  --m: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%),
+          #000              calc(var(--wave) - 220px),
+          rgba(0,0,0,.45)   calc(var(--wave) - 90px),
+          transparent       var(--wave));
+  -webkit-mask: var(--m);
+          mask: var(--m);
+  -webkit-mask-repeat: no-repeat;
+          mask-repeat: no-repeat;
+  filter:
+    drop-shadow(0 0 12px var(--wave-glow))
+    drop-shadow(0 0 45px var(--wave-glow));
 }
 
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(root),
-  ::view-transition-new(root) { animation: none; }
+  ::view-transition-new(root) { animation: none; filter: none; -webkit-mask: none; mask: none; }
 }
 
 .text-xs   { font-size: var(--font-xs)   !important; line-height: 1.45; }
