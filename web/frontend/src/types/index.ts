@@ -21,6 +21,7 @@ export interface Booking {
   user: User;
   created_at: string;
   guests: string[];
+  guest_statuses?: GuestStatusItem[];
   recurrence: "none" | "daily" | "weekly" | "custom";
   recurrence_until: string | null;
   recurrence_group_id: number | null;
@@ -148,14 +149,22 @@ export interface AttachmentMeta {
   expired: boolean;
 }
 
+export type GuestRsvpStatus = "pending" | "accepted" | "declined";
+
+export interface GuestStatusItem {
+  name: string;
+  status: GuestRsvpStatus;
+}
+
 export interface NotificationRecord {
   id: string;
   title: string;
   body: string;
   time: number;
-  type?: "reminder" | "room_request" | "room_approved" | "room_rejected" | "member_joined" | "member_invited";
+  type?: "reminder" | "room_request" | "room_approved" | "room_rejected" | "member_joined" | "member_invited" | "meeting_invited";
   bookingId?: number;
   reminderMinutes?: number;
+  rsvpStatus?: GuestRsvpStatus;
 }
 
 export interface Room {

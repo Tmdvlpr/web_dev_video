@@ -7,6 +7,11 @@ from app.models.booking import BookingType
 from app.schemas.user import UserPublicResponse
 
 
+class GuestStatusItem(BaseModel):
+    name: str
+    status: str = "pending"  # "pending" | "accepted" | "declined"
+
+
 class BookingCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: str | None = Field(None, max_length=2000)
@@ -76,6 +81,7 @@ class BookingResponse(BaseModel):
     user: UserPublicResponse
     created_at: datetime
     guests: list[str] = []
+    guest_statuses: list[GuestStatusItem] = []
     recurrence: str = "none"
     recurrence_until: date | None = None
     recurrence_group_id: int | None = None
@@ -92,7 +98,28 @@ class BookingResponse(BaseModel):
     def coerce_guests(cls, v: object) -> list[str]:
         if v is None:
             return []
-        return [str(g) for g in v]
+        result = []
+        for g in v:
+            if isinstance(g, dict):
+                name = str(g.get("name", ""))
+            else:
+                name = str(g)
+            if name:
+                result.append(name)
+        return result
+
+    @field_validator("guest_statuses", mode="before")
+    @classmethod
+    def coerce_guest_statuses(cls, v: object) -> list[dict]:
+        if v is None:
+            return []
+        result = []
+        for g in v:
+            if isinstance(g, dict) and "name" in g:
+                result.append({"name": str(g.get("name", "")), "status": str(g.get("status", "pending"))})
+            elif isinstance(g, str):
+                result.append({"name": g, "status": "pending"})
+        return result
 
     @field_validator("recurrence_days", mode="before")
     @classmethod

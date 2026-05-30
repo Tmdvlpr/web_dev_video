@@ -166,10 +166,18 @@ async def _resolve_guests(db: AsyncSession, names: list[str]) -> dict[str, tuple
     return {n: lookup.get(n.lstrip("@").lower(), (None, None)) for n in names}
 
 
-def _make_guests(raw: list[str], lookup: dict[str, tuple[int | None, str | None]]) -> list[GuestInfo]:
+def _guest_name_internal(g: object) -> str:
+    """Extract name string from a guest entry (dict or plain string)."""
+    if isinstance(g, dict):
+        return str(g.get("name", ""))
+    return str(g)
+
+
+def _make_guests(raw: list, lookup: dict[str, tuple[int | None, str | None]]) -> list[GuestInfo]:
+    names = [_guest_name_internal(g) for g in raw]
     return [
         GuestInfo(name=n, telegram_id=lookup.get(n, (None, None))[0], display_name=lookup.get(n, (None, None))[1] or n)
-        for n in raw
+        for n in names if n
     ]
 
 
@@ -230,7 +238,7 @@ async def bookings_since(
     bookings = result.scalars().all()
 
     # Resolve guests before commit (expire_on_commit would break attribute access after)
-    all_names = list({n for b in bookings for n in b.guests})
+    all_names = list({_guest_name_internal(g) for b in bookings for g in b.guests if _guest_name_internal(g)})
     lookup = await _resolve_guests(db, all_names)
     with_atts = await _bookings_with_attachments(db, [b.id for b in bookings])
     ws_ids = list({b.workspace_id for b in bookings if b.workspace_id})
@@ -314,7 +322,7 @@ async def bookings_for_reminder(
         if now - timedelta(seconds=30) <= trigger_time <= now + timedelta(minutes=2):
             due.append(b)
 
-    all_names = list({n for b in due for n in b.guests})
+    all_names = list({_guest_name_internal(g) for b in due for g in b.guests if _guest_name_internal(g)})
     lookup = await _resolve_guests(db, all_names)
     with_atts = await _bookings_with_attachments(db, [b.id for b in due])
     ws_ids = list({b.workspace_id for b in due if b.workspace_id})
@@ -395,7 +403,7 @@ async def bookings_deleted_since(
     bookings = result.scalars().all()
 
     # Build response BEFORE commit — same expire_on_commit issue as /bookings/since
-    all_names = list({n for b in bookings for n in b.guests})
+    all_names = list({_guest_name_internal(g) for b in bookings for g in b.guests if _guest_name_internal(g)})
     lookup = await _resolve_guests(db, all_names)
     with_atts = await _bookings_with_attachments(db, [b.id for b in bookings])
     ws_ids = list({b.workspace_id for b in bookings if b.workspace_id})

@@ -121,6 +121,18 @@ export const T: Dict = {
   "notif.empty":          { ru: "Пока тихо",                     uz: "Ҳозирча тинч" },
   "notif.emptyHint":      { ru: "Здесь появятся напоминания о встречах", uz: "Бу ерда йиғилиш эслатмалари пайдо бўлади" },
   "notif.clearAll":       { ru: "Очистить историю",              uz: "Тарихни тозалаш" },
+  "notif.meetingInvited": { ru: "Приглашение на встречу",        uz: "Учрашувга таклиф" },
+  "notif.meetingInvitedBody": { ru: "Вас пригласили на: {title}", uz: "Сизни таклиф қилишди: {title}" },
+  "notif.rsvpAccepted":   { ru: "Вы приняли приглашение",        uz: "Сиз таклифни қабул қилдингиз" },
+  "notif.rsvpDeclined":   { ru: "Вы отказались от встречи",      uz: "Сиз учрашувдан бош тортдингиз" },
+  "notif.accept":         { ru: "Принять",                       uz: "Қабул қилиш" },
+  "notif.decline":        { ru: "Отказаться",                    uz: "Рад этиш" },
+
+  // ── Guest RSVP status ────────────────────────────────────────────────────
+  "guests.status.title":   { ru: "Статус гостей",                uz: "Меҳмонлар статуси" },
+  "guests.status.pending": { ru: "Ожидает",                      uz: "Кутмоқда" },
+  "guests.status.accepted":{ ru: "Принял",                       uz: "Қабул қилди" },
+  "guests.status.declined":{ ru: "Отказался",                    uz: "Рад этди" },
 
   "feedback.tabNew":           { ru: "Новое", uz: "Янги" },
   "feedback.tabMy":            { ru: "Мои обращения", uz: "Мурожаатларим" },

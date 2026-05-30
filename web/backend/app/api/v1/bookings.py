@@ -23,7 +23,7 @@ from app.models.room import RoomVisibility, WorkspaceRoom, WorkspaceRoomRole
 from app.models.user import Role, User
 from app.models.workspace import WorkspaceMember, WorkspaceMemberRole, WorkspaceMemberStatus
 from pydantic import BaseModel
-from app.schemas.booking import BookingCreate, BookingResponse, BookingUpdate
+from app.schemas.booking import BookingCreate, BookingResponse, BookingUpdate, GuestStatusItem
 from app.schemas.user import UserPublicResponse
 from app.services.video import ensure_room_exists, generate_room_name
 
@@ -68,7 +68,7 @@ async def public_ical_feed(
         f"X-PUBLISHED-TTL:PT15M",
     ]
     for b in bookings:
-        guests_note = ("\\nГости: " + ", ".join(f"@{g}" for g in b.guests)) if b.guests else ""
+        guests_note = ("\\nГости: " + ", ".join(f"@{_guest_name(g)}" for g in b.guests)) if b.guests else ""
         desc = (_ical_escape(b.description or "") + guests_note).strip()
         video_url = f"{settings.FRONTEND_URL}/meeting/{b.id}" if b.video_enabled else None
         if video_url:
@@ -95,6 +95,13 @@ async def public_ical_feed(
 
 
 ADMIN_ROLES = {Role.superadmin}
+
+
+def _guest_name(g: object) -> str:
+    """Extract name string from a guest entry (dict with 'name' key or plain string)."""
+    if isinstance(g, dict):
+        return str(g.get("name", ""))
+    return str(g)
 
 
 @router.get("/admin/all", response_model=list[BookingResponse])
@@ -145,7 +152,7 @@ async def export_bookings(
         "PRODID:-//CorpMeet//RU", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
     ]
     for b in bookings:
-        guests_note = ("\\nГости: " + ", ".join(f"@{g}" for g in b.guests)) if b.guests else ""
+        guests_note = ("\\nГости: " + ", ".join(f"@{_guest_name(g)}" for g in b.guests)) if b.guests else ""
         desc = (_ical_escape(b.description or "") + guests_note).strip()
         video_url = f"{settings.FRONTEND_URL}/meeting/{b.id}" if b.video_enabled else None
         if video_url:
@@ -458,10 +465,11 @@ async def create_booking(
             )
             if ov.scalar_one_or_none():
                 continue
+        guests_with_status = [{"name": g, "status": "pending"} for g in payload.guests]
         b = Booking(
             title=payload.title, description=payload.description,
             start_time=s, end_time=e, user_id=current_user.id,
-            guests=payload.guests, recurrence=payload.recurrence,
+            guests=guests_with_status, recurrence=payload.recurrence,
             recurrence_until=effective_until, recurrence_group_id=group_id,
             recurrence_days=payload.recurrence_days,
             reminder_minutes=payload.reminder_minutes,
@@ -611,7 +619,22 @@ async def _update_booking_impl(
     if payload.end_time is not None:
         booking.end_time = payload.end_time
     if payload.guests is not None:
-        booking.guests = payload.guests
+        # Preserve existing RSVP statuses for guests that remain in the list
+        existing_map: dict[str, dict] = {}
+        for g in (booking.guests or []):
+            name = _guest_name(g)
+            if name:
+                existing_map[name.lower().lstrip("@")] = g if isinstance(g, dict) else {"name": name, "status": "pending"}
+                existing_map[name.lower()] = existing_map[name.lower().lstrip("@")]
+        new_guests = []
+        for raw_name in payload.guests:
+            key = raw_name.lower().lstrip("@")
+            existing = existing_map.get(key) or existing_map.get(raw_name.lower())
+            if existing:
+                new_guests.append(existing)
+            else:
+                new_guests.append({"name": raw_name, "status": "pending"})
+        booking.guests = new_guests
     if "reminder_minutes" in payload.model_fields_set:
         booking.reminder_minutes = payload.reminder_minutes
     if payload.video_enabled is True and not booking.video_room_name:
@@ -675,6 +698,89 @@ async def delete_booking(
     await db.commit()
 
 
+# ── Гости: статус RSVP ───────────────────────────────────────────────────────
+
+class GuestRsvpPayload(BaseModel):
+    status: str  # "accepted" | "declined"
+
+
+def _find_guest_key(booking: Booking, user: User) -> str | None:
+    """Return the name string used in booking.guests that matches this user, or None."""
+    if user.username:
+        uname = user.username.lower()
+        for g in (booking.guests or []):
+            name = _guest_name(g)
+            if name.lower().lstrip("@") == uname:
+                return name
+    full_name = f"{user.first_name or ''} {user.last_name or ''}".strip().lower()
+    if full_name:
+        for g in (booking.guests or []):
+            name = _guest_name(g)
+            if name.lower() == full_name:
+                return name
+    return None
+
+
+@router.get("/{booking_id}/guests", response_model=list[GuestStatusItem])
+async def get_guest_statuses(
+    booking_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[GuestStatusItem]:
+    """Return guest RSVP statuses. Accessible to the organizer, admins, and guests themselves."""
+    booking = await _get_booking_or_404(booking_id, db)
+    if not _can_access(booking, current_user):
+        raise HTTPException(403, "Нет доступа")
+    return [
+        GuestStatusItem(
+            name=_guest_name(g),
+            status=g.get("status", "pending") if isinstance(g, dict) else "pending",
+        )
+        for g in (booking.guests or [])
+        if _guest_name(g)
+    ]
+
+
+@router.patch("/{booking_id}/guests/me", response_model=BookingResponse)
+async def rsvp_guest(
+    booking_id: int,
+    payload: GuestRsvpPayload,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> BookingResponse:
+    """Guest accepts or declines a meeting invitation."""
+    if payload.status not in ("accepted", "declined"):
+        raise HTTPException(400, "status must be 'accepted' or 'declined'")
+
+    result = await db.execute(
+        select(Booking).options(selectinload(Booking.user)).where(
+            Booking.id == booking_id, Booking.deleted_at.is_(None)
+        )
+    )
+    booking = result.scalar_one_or_none()
+    if not booking:
+        raise HTTPException(404, "Booking not found")
+
+    user_key = _find_guest_key(booking, current_user)
+    if not user_key:
+        raise HTTPException(403, "Вы не являетесь гостем этой встречи")
+
+    new_guests = []
+    for g in (booking.guests or []):
+        name = _guest_name(g)
+        if name == user_key:
+            new_guests.append({"name": name, "status": payload.status})
+        else:
+            new_guests.append(g if isinstance(g, dict) else {"name": name, "status": "pending"})
+    booking.guests = new_guests
+    await db.commit()
+
+    result2 = await db.execute(
+        select(Booking).options(selectinload(Booking.user)).where(Booking.id == booking_id)
+    )
+    return result2.scalar_one()
+
+
 # ── Вложения ─────────────────────────────────────────────────────────────────
 
 _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
@@ -704,13 +810,13 @@ class AttachmentMeta(BaseModel):
 
 
 def _is_guest(booking: Booking, user: User) -> bool:
-    guests = [str(g).lower() for g in (booking.guests or [])]
+    guests_lower = [_guest_name(g).lower() for g in (booking.guests or [])]
     if user.username:
         uname = user.username.lower()
-        if uname in guests or f"@{uname}" in guests:
+        if uname in guests_lower or f"@{uname}" in guests_lower:
             return True
     name = f"{user.first_name or ''} {user.last_name or ''}".strip().lower()
-    return bool(name and name in guests)
+    return bool(name and name in guests_lower)
 
 
 def _can_access(booking: Booking, user: User) -> bool:

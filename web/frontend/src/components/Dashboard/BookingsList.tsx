@@ -1,13 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MeetingListSkeleton } from "../Common/Skeleton";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
 import { useAuth } from "../../hooks/useAuth";
 import { bookingsApi } from "../../api/bookings";
 import { usersApi } from "../../api/users";
+import { addNotification, getStoredNotifications } from "./NotificationCenter";
 import type { Booking } from "../../types";
+
+const INVITED_SEEN_KEY = "corpmeet_invited_seen";
+
+function getSeenInviteIds(): Set<number> {
+  try { return new Set(JSON.parse(localStorage.getItem(INVITED_SEEN_KEY) || "[]")); }
+  catch { return new Set(); }
+}
+
+function markInviteSeen(bookingId: number) {
+  const seen = getSeenInviteIds();
+  seen.add(bookingId);
+  localStorage.setItem(INVITED_SEEN_KEY, JSON.stringify([...seen]));
+}
 
 type Tab = "mine" | "invited";
 
@@ -152,6 +166,29 @@ export function ActiveMeetings({ isOpen, onClose, onCardClick, onBack }: Props) 
   const mine    = bookings.filter(b => b.user_id === user?.id);
   const invited = bookings.filter(b => b.user_id !== user?.id);
   const visible = tab === "mine" ? mine : invited;
+
+  // Generate meeting_invited notifications for new invitations
+  useEffect(() => {
+    if (!invited.length) return;
+    const seen = getSeenInviteIds();
+    const existingIds = new Set(
+      getStoredNotifications()
+        .filter(n => n.type === "meeting_invited" && n.bookingId != null)
+        .map(n => n.bookingId!)
+    );
+    for (const b of invited) {
+      if (seen.has(b.id) || existingIds.has(b.id)) continue;
+      addNotification({
+        id: `invite-${b.id}-${b.created_at}`,
+        title: t("notif.meetingInvited"),
+        body: t("notif.meetingInvitedBody", { title: b.title }),
+        time: new Date(b.created_at).getTime(),
+        type: "meeting_invited",
+        bookingId: b.id,
+      });
+      markInviteSeen(b.id);
+    }
+  }, [invited.map(b => b.id).join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const groups: DayGroup[] = [];
   for (const b of visible) {

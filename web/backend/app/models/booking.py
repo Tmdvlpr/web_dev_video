@@ -50,3 +50,8 @@ class Booking(Base):
     user: Mapped["User"] = relationship("User", back_populates="bookings")  # noqa: F821
     workspace: Mapped["Workspace | None"] = relationship("Workspace")  # noqa: F821
     room: Mapped["Room | None"] = relationship("Room")  # noqa: F821
+
+    @property
+    def guest_statuses(self) -> list:
+        """Alias for guests – lets BookingResponse read dict entries via from_attributes."""
+        return self.guests or []

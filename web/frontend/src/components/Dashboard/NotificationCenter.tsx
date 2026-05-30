@@ -2,7 +2,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
-import type { NotificationRecord } from "../../types";
+import { bookingsApi } from "../../api/bookings";
+import type { NotificationRecord, GuestRsvpStatus } from "../../types";
 
 const REMINDER_OPTIONS = [5, 15, 30, 60] as const;
 const STORAGE_KEY = "corpmeet_notifications";
@@ -32,6 +33,12 @@ export function addNotification(record: NotificationRecord) {
   window.dispatchEvent(new CustomEvent("notif-unread"));
 }
 
+export function updateNotificationRsvp(notifId: string, rsvpStatus: GuestRsvpStatus) {
+  const existing = getStoredNotifications();
+  const updated = existing.map(n => n.id === notifId ? { ...n, rsvpStatus } : n);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+}
+
 export function getReminderMinutes(): number[] {
   try {
     const stored = localStorage.getItem(REMINDER_KEY);
@@ -55,6 +62,7 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
   const { t } = useLocale();
   const [notifications, setNotifications] = useState<NotificationRecord[]>(() => getStoredNotifications());
   const [reminderMins, setReminderMins] = useState<number[]>(() => getReminderMinutes());
+  const [rsvpLoading, setRsvpLoading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (isOpen) {
@@ -62,6 +70,22 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
       clearUnreadCount();
     }
   }, [isOpen]);
+
+  const handleRsvp = async (notif: NotificationRecord, status: "accepted" | "declined") => {
+    if (!notif.bookingId || rsvpLoading[notif.id]) return;
+    setRsvpLoading(prev => ({ ...prev, [notif.id]: true }));
+    try {
+      await bookingsApi.rsvp(notif.bookingId, status);
+      updateNotificationRsvp(notif.id, status);
+      setNotifications(prev =>
+        prev.map(n => n.id === notif.id ? { ...n, rsvpStatus: status } : n)
+      );
+    } catch {
+      // silently ignore — user can retry
+    } finally {
+      setRsvpLoading(prev => ({ ...prev, [notif.id]: false }));
+    }
+  };
 
   const timeAgo = (ms: number): string => {
     const diff = Math.round((Date.now() - ms) / 60_000);
@@ -199,6 +223,52 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
                         <p className="text-xs font-bold mb-0.5" style={{ color: "var(--text)" }}>{n.title}</p>
                         <p className="text-xs leading-relaxed" style={{ color: "var(--text-sec)" }}>{n.body}</p>
                         <p className="text-xs mt-1.5" style={{ color: "var(--text-muted)" }}>{timeAgo(n.time)}</p>
+                        {n.type === "meeting_invited" && n.bookingId && (
+                          <div className="mt-2">
+                            {n.rsvpStatus === "accepted" ? (
+                              <motion.span
+                                initial={{ opacity: 0, scale: 0.88 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                                className="inline-block text-xs font-semibold px-2 py-0.5 rounded"
+                                style={{ background: "rgba(34,197,94,0.12)", color: "#16a34a", border: "1px solid rgba(34,197,94,0.3)" }}>
+                                ✓ {t("notif.rsvpAccepted")}
+                              </motion.span>
+                            ) : n.rsvpStatus === "declined" ? (
+                              <motion.span
+                                initial={{ opacity: 0, scale: 0.88 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                                className="inline-block text-xs font-semibold px-2 py-0.5 rounded"
+                                style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}>
+                                ✗ {t("notif.rsvpDeclined")}
+                              </motion.span>
+                            ) : (
+                              <div className="flex gap-1.5">
+                                <motion.button
+                                  disabled={rsvpLoading[n.id]}
+                                  onClick={() => handleRsvp(n, "accepted")}
+                                  whileHover={{ scale: 1.03, backgroundColor: "rgba(34,197,94,0.22)" }}
+                                  whileTap={{ scale: 0.96 }}
+                                  transition={{ duration: 0.14, ease: "easeOut" }}
+                                  className="flex-1 py-1 rounded text-xs font-bold disabled:opacity-50"
+                                  style={{ background: "rgba(34,197,94,0.12)", color: "#16a34a", border: "1px solid rgba(34,197,94,0.3)" }}>
+                                  {rsvpLoading[n.id] ? "…" : t("notif.accept")}
+                                </motion.button>
+                                <motion.button
+                                  disabled={rsvpLoading[n.id]}
+                                  onClick={() => handleRsvp(n, "declined")}
+                                  whileHover={{ scale: 1.03, backgroundColor: "rgba(239,68,68,0.15)" }}
+                                  whileTap={{ scale: 0.96 }}
+                                  transition={{ duration: 0.14, ease: "easeOut" }}
+                                  className="flex-1 py-1 rounded text-xs font-bold disabled:opacity-50"
+                                  style={{ background: "rgba(239,68,68,0.07)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.22)" }}>
+                                  {rsvpLoading[n.id] ? "…" : t("notif.decline")}
+                                </motion.button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </motion.div>
                   ))}

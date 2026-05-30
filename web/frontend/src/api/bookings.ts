@@ -1,5 +1,5 @@
 import { apiClient } from "./axios";
-import type { AttachmentMeta, Booking, BookingCreate, BookingUpdate } from "../types";
+import type { AttachmentMeta, Booking, BookingCreate, BookingUpdate, GuestStatusItem } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
@@ -77,6 +77,16 @@ export const bookingsApi = {
 
   getAttachmentUrl: (bookingId: number, attachmentId: number): string =>
     `${API_BASE}/api/v1/bookings/${bookingId}/attachments/${attachmentId}`,
+
+  getGuestStatuses: async (bookingId: number): Promise<GuestStatusItem[]> => {
+    const res = await apiClient.get<GuestStatusItem[]>(`/api/v1/bookings/${bookingId}/guests`);
+    return res.data;
+  },
+
+  rsvp: async (bookingId: number, status: "accepted" | "declined"): Promise<Booking> => {
+    const res = await apiClient.patch<Booking>(`/api/v1/bookings/${bookingId}/guests/me`, { status });
+    return res.data;
+  },
 
   downloadAttachmentBlob: async (bookingId: number, attachmentId: number, filename: string): Promise<void> => {
     const res = await apiClient.get(
