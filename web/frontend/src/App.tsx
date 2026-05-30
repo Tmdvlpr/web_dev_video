@@ -96,7 +96,6 @@ function getSeenInviteIds(): Set<number> {
 }
 
 function useInviteNotifications(userId: number | undefined) {
-  const { t } = useLocale();
   useEffect(() => {
     if (!userId) return;
     const check = async () => {
