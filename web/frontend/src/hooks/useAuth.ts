@@ -6,7 +6,7 @@ import type { User } from "../types";
 export function useAuth() {
   const queryClient = useQueryClient();
 
-  const { data: user, isLoading } = useQuery<User>({
+  const { data: user, isLoading } = useQuery<User | null>({
     queryKey: ["me"],
     queryFn: authApi.getMe,
     // Always enabled: supports both Bearer (localStorage, Telegram Mini App)
@@ -24,7 +24,12 @@ export function useAuth() {
   const logout = () => {
     storage.removeToken();
     authApi.logout().catch(() => {});  // clear httpOnly cookie server-side
-    queryClient.clear();
+    // Set ["me"] to null immediately so isAuthenticated becomes false without
+    // triggering a refetch — queryClient.clear() would re-fire GET /me while the
+    // httpOnly cookie is still valid (logout POST is async), causing a 2-second
+    // flash where the user appears still logged in.
+    queryClient.setQueryData<User | null>(["me"], null);
+    queryClient.removeQueries({ predicate: q => q.queryKey[0] !== "me" });
   };
 
   return {
