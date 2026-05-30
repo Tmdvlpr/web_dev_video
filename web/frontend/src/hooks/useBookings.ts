@@ -38,7 +38,7 @@ export function useWorkspaceUsers(workspaceId: number | null | undefined): User[
     queryKey: ["workspace-members", workspaceId],
     queryFn: () => workspacesApi.listMembers(workspaceId!),
     enabled: !!workspaceId,
-    staleTime: 60_000,
+    staleTime: 10_000,
   });
   return members
     .filter(m => m.status === "active" && m.user != null)

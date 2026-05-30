@@ -53,26 +53,27 @@ export function GuestInput({
     setDropUp(window.innerHeight - rect.bottom < 300);
   }, [focused, mode]);
 
+  const userKey = (u: { username: string | null; display_name: string }) =>
+    u.username ? u.username.trim().toLowerCase() : u.display_name.trim().toLowerCase();
+
   const byPosition = POSITIONS.reduce<Record<string, typeof allUsers>>((acc, pos) => {
-    acc[pos] = allUsers.filter(u => u.username && u.position === pos);
+    acc[pos] = allUsers.filter(u => u.position === pos);
     return acc;
   }, {} as Record<string, typeof allUsers>);
 
   const suggestions = mode === "username" ? allUsers.filter(u =>
-    u.username && (
-      input.length === 0 ||
-      u.username.toLowerCase().includes(input.toLowerCase()) ||
-      u.display_name.toLowerCase().includes(input.toLowerCase())
-    )
+    input.length === 0 ||
+    (u.username?.toLowerCase().includes(input.toLowerCase())) ||
+    u.display_name.toLowerCase().includes(input.toLowerCase())
   ).slice(0, 8) : [];
 
-  const isGuest = (username: string) =>
-    guests.includes(username.trim().toLowerCase().replace(/^@/, ""));
+  const isGuest = (u: { username: string | null; display_name: string }) =>
+    guests.includes(userKey(u));
 
-  const toggleGuest = (username: string) => {
-    const u = username.trim().toLowerCase().replace(/^@/, "");
-    if (!u) return;
-    setGuests(gs => gs.includes(u) ? gs.filter(x => x !== u) : [...gs, u]);
+  const toggleGuest = (u: { username: string | null; display_name: string }) => {
+    const k = userKey(u);
+    if (!k) return;
+    setGuests(gs => gs.includes(k) ? gs.filter(x => x !== k) : [...gs, k]);
   };
 
   const toggleExpanded = (pos: string) =>
@@ -100,7 +101,7 @@ export function GuestInput({
             <motion.span key={g} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
               className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold"
               style={{ background: "var(--primary-light)", border: "1px solid var(--primary-border)", color: "var(--primary)" }}>
-              @{g}
+              {g.includes(" ") ? g : `@${g}`}
               <button type="button"
                 onClick={e => { e.stopPropagation(); setGuests(gs => gs.filter(x => x !== g)); }}
                 className="opacity-60 hover:opacity-100 leading-none" style={{ fontSize: 13 }}>×</button>
@@ -159,8 +160,8 @@ export function GuestInput({
                   {POSITIONS.map(pos => {
                     const members = byPosition[pos] ?? [];
                     const open = expanded.has(pos);
-                    const allChecked = members.length > 0 && members.every(u => isGuest(u.username!));
-                    const someChecked = !allChecked && members.some(u => isGuest(u.username!));
+                    const allChecked = members.length > 0 && members.every(u => isGuest(u));
+                    const someChecked = !allChecked && members.some(u => isGuest(u));
                     return (
                       <div key={pos}>
                         <div className="flex items-center w-full">
@@ -169,8 +170,8 @@ export function GuestInput({
                             onClick={e => {
                               e.stopPropagation();
                               if (members.length === 0) return;
-                              if (allChecked) members.forEach(u => toggleGuest(u.username!));
-                              else members.filter(u => !isGuest(u.username!)).forEach(u => toggleGuest(u.username!));
+                              if (allChecked) members.forEach(u => toggleGuest(u));
+                              else members.filter(u => !isGuest(u)).forEach(u => toggleGuest(u));
                             }}
                             className="pl-3 pr-2 py-2 shrink-0 flex items-center"
                             style={{ cursor: members.length === 0 ? "default" : "pointer" }}>
@@ -201,10 +202,10 @@ export function GuestInput({
                           </button>
                         </div>
                         {open && members.map(u => {
-                          const checked = isGuest(u.username!);
+                          const checked = isGuest(u);
                           return (
                             <button key={u.id} type="button"
-                              onClick={e => { e.stopPropagation(); toggleGuest(u.username!); }}
+                              onClick={e => { e.stopPropagation(); toggleGuest(u); }}
                               className="flex items-center gap-2 w-full pl-10 pr-3 py-1.5 text-left text-xs transition-all"
                               style={{ color: "var(--text)", transition: "background-color 0.15s ease" }}
                               onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; }}
@@ -260,10 +261,10 @@ export function GuestInput({
                     />
                   </div>
                   {suggestions.map(u => {
-                    const checked = isGuest(u.username!);
+                    const checked = isGuest(u);
                     return (
                       <button key={u.id} type="button"
-                        onClick={e => { e.stopPropagation(); toggleGuest(u.username!); }}
+                        onClick={e => { e.stopPropagation(); toggleGuest(u); }}
                         className="flex items-center gap-2 w-full px-3 py-2 text-left text-xs transition-all"
                         style={{ color: "var(--text)", transition: "background-color 0.15s ease" }}
                         onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; }}
