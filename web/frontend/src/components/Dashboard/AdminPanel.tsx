@@ -211,6 +211,7 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                         style={{ background: "var(--elevated)", border: "1px solid var(--border)", transition: "border-color 0.15s ease" }}
                         onMouseEnter={e => { e.currentTarget.style.borderColor = s.color; }}
                         onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; }}
+                      >
                         <div className="flex-1">
                           <div className="text-2xl font-black" style={{ color: s.color }}>{s.value}</div>
                           <div className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{s.label}</div>
