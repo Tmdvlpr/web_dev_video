@@ -11,6 +11,26 @@ interface WorkspaceOnboardingProps {
 
 type Flow = "menu" | "create" | "join" | "search";
 
+// --- Framer Motion animation constants (stable references, no per-render allocation) ---
+const MODAL_INITIAL = { opacity: 0, scale: 0.96 } as const;
+const MODAL_ANIMATE = { opacity: 1, scale: 1 } as const;
+const MODAL_TRANSITION = { duration: 0.25, ease: [0.22, 1, 0.36, 1] as const } as const;
+
+const FADE_INITIAL = { opacity: 0 } as const;
+const FADE_ANIMATE = { opacity: 1 } as const;
+const FADE_EXIT = { opacity: 0 } as const;
+const FADE_TRANSITION = { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const } as const;
+
+const SLIDE_INITIAL = { opacity: 0, x: 10 } as const;
+const SLIDE_ANIMATE = { opacity: 1, x: 0 } as const;
+const SLIDE_EXIT = { opacity: 0, x: -10 } as const;
+const SLIDE_TRANSITION = { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const } as const;
+
+const CARD_HOVER = { y: -3 } as const;
+const CARD_TAP = { scale: 0.97 } as const;
+const CARD_TRANSITION = { duration: 0.15, ease: [0.22, 1, 0.36, 1] as const } as const;
+// ---------------------------------------------------------------------------------
+
 const TIMEZONES = [
   { value: "UTC", label: "UTC" },
   { value: "Europe/Moscow", label: "Europe/Moscow (МСК)" },
@@ -129,9 +149,9 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
       style={{ background: overlayBg, backdropFilter: "blur(8px)" }}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+        initial={MODAL_INITIAL}
+        animate={MODAL_ANIMATE}
+        transition={MODAL_TRANSITION}
         className="w-full max-w-2xl rounded-md"
         style={{
           background: "var(--modal)",
@@ -157,7 +177,7 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
 
           <AnimatePresence mode="wait">
             {flow === "menu" && (
-              <motion.div key="menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}>
+              <motion.div key="menu" initial={FADE_INITIAL} animate={FADE_ANIMATE} exit={FADE_EXIT} transition={FADE_TRANSITION}>
                 <div className="text-center mb-7">
                   <h1 className="text-2xl font-bold mb-2" style={{ color: "var(--text)" }}>
                     Добро пожаловать в CorpMeet
@@ -177,8 +197,8 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
 
             {flow === "create" && (
               <motion.form key="create" onSubmit={handleCreate}
-                initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                initial={SLIDE_INITIAL} animate={SLIDE_ANIMATE} exit={SLIDE_EXIT}
+                transition={SLIDE_TRANSITION}
                 className="space-y-4"
               >
                 <h2 className="text-xl font-bold" style={{ color: "var(--text)" }}>Новое пространство</h2>
@@ -210,8 +230,8 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
 
             {flow === "join" && (
               <motion.form key="join"
-                initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                initial={SLIDE_INITIAL} animate={SLIDE_ANIMATE} exit={SLIDE_EXIT}
+                transition={SLIDE_TRANSITION}
                 onSubmit={e => { e.preventDefault(); handleJoin(inviteCode); }}
                 className="space-y-4"
               >
@@ -237,8 +257,8 @@ export function WorkspaceOnboarding({ onCreated }: WorkspaceOnboardingProps) {
 
             {flow === "search" && (
               <motion.div key="search"
-                initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                initial={SLIDE_INITIAL} animate={SLIDE_ANIMATE} exit={SLIDE_EXIT}
+                transition={SLIDE_TRANSITION}
                 className="space-y-4"
               >
                 <h2 className="text-xl font-bold" style={{ color: "var(--text)" }}>Найти по названию</h2>
@@ -289,9 +309,9 @@ function MenuCard({ label, desc, Icon, onClick }: { label: string; desc: string;
   return (
     <motion.button
       type="button"
-      whileHover={{ y: -3 }}
-      whileTap={{ scale: 0.97 }}
-      transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={CARD_HOVER}
+      whileTap={CARD_TAP}
+      transition={CARD_TRANSITION}
       onClick={onClick}
       className="text-left p-5 rounded-md transition-all flex flex-col items-start gap-3"
       style={{

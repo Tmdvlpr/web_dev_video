@@ -69,6 +69,9 @@ const WEEKDAYS = [
 
 type View = "form" | "confirmDelete";
 
+const PRESET_HOVER = { scale: 1.05 } as const;
+const PRESET_TAP   = { scale: 0.95 } as const;
+
 interface ConstellationNode {
   x: number; y: number;
   vx: number; vy: number;
@@ -135,7 +138,10 @@ export function BookingModal({
   const nodesRef     = useRef<ConstellationNode[]>([]);
   const rafRef       = useRef<number>(0);
   const typePulseRef = useRef<number>(0);
+  const themeRef     = useRef(isDark);
   const dragControls = useDragControls();
+
+  useEffect(() => { themeRef.current = isDark; }, [isDark]);
 
   /* ── Constellation animation ── */
   useEffect(() => {
@@ -144,6 +150,7 @@ export function BookingModal({
     const canvas = document.createElement("canvas");
     canvas.style.cssText =
       "position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:45";
+    canvas.style.willChange = "transform";
     document.body.appendChild(canvas);
     canvasRef.current = canvas;
 
@@ -158,7 +165,7 @@ export function BookingModal({
     window.addEventListener("resize", resize);
 
     const W0 = window.innerWidth, H0 = window.innerHeight;
-    const N_NODES   = 120;
+    const N_NODES   = 60;
     const MAX_CONN  = 220;
     const HL_RADIUS = 380;
 
@@ -194,7 +201,7 @@ export function BookingModal({
       typePulseRef.current *= 0.88;
       const pulse = typePulseRef.current;
 
-      const dark = document.documentElement.getAttribute("data-theme") !== "light";
+      const dark = themeRef.current;
 
       const nodes = nodesRef.current;
 
@@ -293,9 +300,12 @@ export function BookingModal({
       ctx.globalAlpha = 1;
       rafRef.current = requestAnimationFrame(loop);
     };
-    rafRef.current = requestAnimationFrame(loop);
+    const startTimeout = setTimeout(() => {
+      rafRef.current = requestAnimationFrame(loop);
+    }, 200);
 
     return () => {
+      clearTimeout(startTimeout);
       cancelAnimationFrame(rafRef.current);
       window.removeEventListener("resize", resize);
       document.removeEventListener("keydown", onType);
@@ -324,6 +334,9 @@ export function BookingModal({
   const [formReady,   setFormReady] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [easterMsg, setEasterMsg] = useState<string | null>(null);
+  const [showGuestStatus, setShowGuestStatus] = useState(false);
+  const [guestStatuses, setGuestStatuses] = useState<GuestStatusItem[]>([]);
+  const [guestStatusLoading, setGuestStatusLoading] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const longMeetingShown = useRef(false);
   const weekendShown = useRef(false);
@@ -881,24 +894,26 @@ export function BookingModal({
                     {fieldErrors.time && (
                       <p className="text-xs font-medium" style={{ color: "#ef4444" }}>{fieldErrors.time}</p>
                     )}
-                    {!isEdit && conflicts.length > 0 && !fieldErrors.time && (
-                      <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-                        className="rounded-md px-3 py-2 space-y-1"
-                        style={{ background: isDark ? "rgba(239,68,68,0.08)" : "#fff1f2", border: "1px solid rgba(239,68,68,0.25)" }}>
-                        <p className="text-xs font-semibold" style={{ color: "#ef4444" }}>⚠️ {t("booking.conflictsWith", { n: conflicts.length })}</p>
-                        {conflicts.map(c => (
-                          <p key={c.id} className="text-xs" style={{ color: isDark ? "#fca5a5" : "#dc2626" }}>
-                            • {c.title} ({fmtHM(c.start_time)}–{fmtHM(c.end_time)})
-                          </p>
-                        ))}
-                      </motion.div>
-                    )}
+                    <AnimatePresence>
+                      {!isEdit && conflicts.length > 0 && !fieldErrors.time && (
+                        <motion.div key="conflict-warning" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                          className="rounded-md px-3 py-2 space-y-1"
+                          style={{ background: isDark ? "rgba(239,68,68,0.08)" : "#fff1f2", border: "1px solid rgba(239,68,68,0.25)" }}>
+                          <p className="text-xs font-semibold" style={{ color: "#ef4444" }}>⚠️ {t("booking.conflictsWith", { n: conflicts.length })}</p>
+                          {conflicts.map(c => (
+                            <p key={c.id} className="text-xs" style={{ color: isDark ? "#fca5a5" : "#dc2626" }}>
+                              • {c.title} ({fmtHM(c.start_time)}–{fmtHM(c.end_time)})
+                            </p>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                     <div className="flex gap-1.5">
                       {PRESETS.map(p => {
                         const active = currentDurationMins === p.minutes;
                         return (
                           <motion.button key={p.key} type="button" onClick={() => applyPreset(p.minutes)}
-                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                            whileHover={PRESET_HOVER} whileTap={PRESET_TAP}
                             className="flex-1 py-1.5 rounded text-xs font-bold transition-all"
                             style={{
                               background: active ? "var(--primary)" : "var(--primary-light)",

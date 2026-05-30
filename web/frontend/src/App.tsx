@@ -1,8 +1,12 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import { Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
-import { MeetingRoom } from "./components/Video/MeetingRoom";
-import { GuestJoinPage } from "./components/Video/GuestJoinPage";
+const MeetingRoom = React.lazy(() =>
+  import("./components/Video/MeetingRoom").then((m) => ({ default: m.MeetingRoom }))
+);
+const GuestJoinPage = React.lazy(() =>
+  import("./components/Video/GuestJoinPage").then((m) => ({ default: m.GuestJoinPage }))
+);
 import { bookingsApi } from "./api/bookings";
 import LoginPage from "./components/Auth/LoginPage";
 import RegistrationPage from "./components/Auth/RegistrationPage";
@@ -12,7 +16,9 @@ import { Calendar } from "./components/Calendar";
 import { ActiveMeetings } from "./components/Dashboard/BookingsList";
 import { BookingModal } from "./components/Dashboard/BookingModal";
 import { NotificationCenter, addNotification, getReminderMinutes, getUnreadCount } from "./components/Dashboard/NotificationCenter";
-import { AdminPanel } from "./components/Dashboard/AdminPanel";
+const AdminPanel = React.lazy(() =>
+  import("./components/Dashboard/AdminPanel").then((m) => ({ default: m.AdminPanel }))
+);
 import { SubmissionsPanel } from "./components/Dashboard/SubmissionsPanel";
 import { SplashScreen } from "./components/Common/SplashScreen";
 import { FeedbackModal } from "./components/Common/FeedbackModal";
@@ -482,6 +488,26 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// ── Error boundary ──────────────────────────────────────────────────────────
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: any) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error) { console.error("[ErrorBoundary]", error); }
+  render() {
+    if (this.state.hasError)
+      return this.props.fallback ?? (
+        <div style={{ padding: 24, textAlign: "center" }}>
+          <p>Что-то пошло не так.</p>
+          <button onClick={() => window.location.reload()}>Обновить страницу</button>
+        </div>
+      );
+    return this.props.children as React.ReactElement;
+  }
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
   const { isAuthenticated, user } = useAuth();
@@ -516,23 +542,27 @@ export default function App() {
   return (
     <>
       {!splashDone && <SplashScreen onFinish={() => setSplashDone(true)} userName={user?.display_name} />}
-      <Routes>
-        <Route path="/login"   element={<LoginPage />} />
-        <Route path="/register" element={<RegistrationPage />} />
-        <Route path="/auth/session/:sessionToken" element={<SessionAuthPage />} />
-        <Route path="/bookings" element={
-          <ProtectedRoute>
-            <WorkspaceProvider enabled={isAuthenticated}>
-              <Dashboard />
-            </WorkspaceProvider>
-          </ProtectedRoute>
-        } />
-        <Route path="/meeting/:bookingId" element={
-          <ProtectedRoute><MeetingRoomPage /></ProtectedRoute>
-        } />
-        <Route path="/meeting/guest/:inviteToken" element={<GuestJoinPageRoute />} />
-        <Route path="/" element={<Navigate to={isAuthenticated ? "/bookings" : "/login"} replace />} />
-      </Routes>
+      <Suspense fallback={<div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh" }}>Загрузка…</div>}>
+        <Routes>
+          <Route path="/login"   element={<LoginPage />} />
+          <Route path="/register" element={<RegistrationPage />} />
+          <Route path="/auth/session/:sessionToken" element={<SessionAuthPage />} />
+          <Route path="/bookings" element={
+            <ProtectedRoute>
+              <WorkspaceProvider enabled={isAuthenticated}>
+                <ErrorBoundary>
+                  <Dashboard />
+                </ErrorBoundary>
+              </WorkspaceProvider>
+            </ProtectedRoute>
+          } />
+          <Route path="/meeting/:bookingId" element={
+            <ProtectedRoute><MeetingRoomPage /></ProtectedRoute>
+          } />
+          <Route path="/meeting/guest/:inviteToken" element={<GuestJoinPageRoute />} />
+          <Route path="/" element={<Navigate to={isAuthenticated ? "/bookings" : "/login"} replace />} />
+        </Routes>
+      </Suspense>
     </>
   );
 }

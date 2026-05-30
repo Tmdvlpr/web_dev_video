@@ -134,8 +134,7 @@ html.theme-transitioning *::after {
     color 0.25s ease,
     border-color 0.25s ease,
     fill 0.25s ease,
-    stroke 0.25s ease,
-    box-shadow 0.25s ease !important;
+    stroke 0.25s ease !important;
 }
 
 /* Theme soft wave — View Transition API (Chrome/Edge 111+, Safari 18+) */
@@ -222,6 +221,7 @@ a:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid var(--primary) !important;
   outline-offset: 2px !important;
+  transition: outline-offset 120ms ease, box-shadow 120ms ease;
 }
 
 input:focus-visible,
@@ -230,4 +230,5 @@ select:focus-visible {
   outline: 2px solid var(--primary) !important;
   outline-offset: 0 !important;
   box-shadow: 0 0 0 3px rgba(21,101,168,0.15) !important;
+  transition: outline-offset 120ms ease, box-shadow 120ms ease;
 }

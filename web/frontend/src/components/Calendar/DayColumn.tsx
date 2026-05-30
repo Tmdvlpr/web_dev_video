@@ -1,11 +1,11 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { activeDragRef, suppressCardClickRef, useCalendarDrag } from "../../contexts/CalendarDragContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
 import type { Booking, SlotResponse, User } from "../../types";
 import { BookingCard } from "./BookingCard";
-import { HOUR_HEIGHT_PX, DAY_START_HOUR, DAY_END_HOUR, TOTAL_HOURS } from "./index";
+import { HOUR_HEIGHT_PX, DAY_START_HOUR, DAY_END_HOUR, TOTAL_HOURS } from "./constants";
 
 interface DayColumnProps {
   date: Date;
@@ -31,6 +31,10 @@ function nowPercent(): number {
   return ((hours - DAY_START_HOUR) / TOTAL_HOURS) * 100;
 }
 
+// Stable animation constants — defined at module level to avoid per-render allocations
+const TIME_DOT_ANIMATE = { scale: [1, 1.5, 1], opacity: [1, 0.4, 1] };
+const TIME_DOT_TRANSITION = { duration: 2, repeat: Infinity, ease: "easeInOut" };
+
 // Sun-indexed (getDay() returns 0=Sun)
 const DOW_LONG_KEYS = [
   "cal.dow.sun.long", "cal.dow.mon.long", "cal.dow.tue.long", "cal.dow.wed.long",
@@ -40,6 +44,7 @@ const DOW_LONG_KEYS = [
 export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotClick, onCardClick, onBookingDrop, onBookingResize, isToday }: DayColumnProps) {
   const { isDark } = useTheme();
   const { t } = useLocale();
+  const prefersReducedMotion = useReducedMotion();
   const { drag, setDrag } = useCalendarDrag();
   const gridRef = useRef<HTMLDivElement>(null);
   const ghostRef = useRef<HTMLDivElement>(null);
@@ -340,8 +345,8 @@ export function DayColumn({ date, bookings, freeSlots = [], currentUser, onSlotC
           <div className="absolute left-0 right-0 z-20 pointer-events-none" style={{ top: `${nowPct}%` }}>
             <div className="relative flex items-center">
               <motion.div
-                animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                animate={prefersReducedMotion ? {} : TIME_DOT_ANIMATE}
+                transition={prefersReducedMotion ? { repeat: 0 } : TIME_DOT_TRANSITION}
                 className="w-2.5 h-2.5 rounded-full shrink-0 -ml-1.5"
                 style={{ background: "#ef4444", boxShadow: "0 0 8px #ef4444" }}
               />

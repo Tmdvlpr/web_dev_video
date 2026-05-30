@@ -10,6 +10,13 @@ export default defineConfig({
           "vendor-react": ["react", "react-dom", "react-router-dom"],
           "vendor-motion": ["framer-motion"],
           "vendor-query": ["@tanstack/react-query"],
+          "vendor-livekit": [
+            "livekit-client",
+            "@livekit/components-react",
+            "@livekit/components-styles",
+            "@livekit/krisp-noise-filter",
+            "@livekit/track-processors",
+          ],
         },
       },
     },

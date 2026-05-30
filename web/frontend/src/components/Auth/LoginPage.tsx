@@ -538,7 +538,7 @@ export default function LoginPage() {
 
               {/* Logo */}
               <div className="flex flex-col items-center mb-7 gap-3">
-                <img src="/logo.png" alt="UZINFOCOM" className="h-24 w-24 object-contain" />
+                <img src="/logo.png" alt="UZINFOCOM" width={96} height={96} className="h-24 w-24 object-contain" />
                 <div className="flex items-center gap-2.5">
                   <div className="h-px w-10" style={{ background: isDark ? "linear-gradient(90deg, transparent, rgba(96,165,250,0.35))" : "linear-gradient(90deg, transparent, rgba(37,99,235,0.35))" }} />
                   <span style={{ color: isDark ? "rgba(96,165,250,0.9)" : "rgba(37,99,235,0.9)", fontSize: 16, letterSpacing: "0.18em", fontFamily: "Gilroy, sans-serif", fontWeight: 800 }}>CORPMEET</span>

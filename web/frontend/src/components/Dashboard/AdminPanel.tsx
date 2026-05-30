@@ -20,6 +20,11 @@ interface Props {
 
 type Tab = "stats" | "bookings" | "users" | "analytics";
 
+const STAT_CARD_INITIAL = { opacity: 0, y: 8 } as const;
+const STAT_CARD_ANIMATE = { opacity: 1, y: 0 } as const;
+const STAT_CARD_HOVER = { scale: 1.02 } as const;
+const STAT_CARD_TAP = { scale: 0.98 } as const;
+
 const PALETTES = ["#7c3aed","#0891b2","#16a34a","#d97706","#e11d48","#c026d3","#4f46e5","#ea580c"];
 function color(uid: number) { return PALETTES[uid % PALETTES.length]; }
 
@@ -204,8 +209,8 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
                   <div className="space-y-3">
                     {statCards.map(s => (
                       <motion.div key={s.label}
-                        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                        initial={STAT_CARD_INITIAL} animate={STAT_CARD_ANIMATE}
+                        whileHover={STAT_CARD_HOVER} whileTap={STAT_CARD_TAP}
                         onClick={() => setTab(s.goTo)}
                         className="rounded-md p-4 flex items-center gap-4 cursor-pointer transition-all"
                         style={{ background: "var(--elevated)", border: "1px solid var(--border)", transition: "border-color 0.15s ease" }}
@@ -459,50 +464,66 @@ export function AdminPanel({ isOpen, onClose, onBack }: Props) {
         </>
       )}
 
-      <ConfirmDialog
-        open={!!deleteUserTarget}
-        title={t("admin.deleteUserTitle")}
-        message={t("admin.deleteUserConfirm", { name: deleteUserTarget?.name ?? "" })}
-        confirmText={t("common.delete")}
-        cancelText={t("common.cancel")}
-        danger
-        onConfirm={() => { if (deleteUserTarget) deleteUser(deleteUserTarget.id); setDeleteUserTarget(null); }}
-        onCancel={() => setDeleteUserTarget(null)}
-      />
+    </AnimatePresence>
 
-      <ConfirmDialog
-        open={bulkDeleteOpen}
-        title={t("admin.bulkDeleteTitle")}
-        message={t("admin.bulkDeleteConfirm", { n: selectedIds.size })}
-        confirmText={t("common.delete")}
-        cancelText={t("common.cancel")}
-        danger
-        onConfirm={() => bulkDelete(Array.from(selectedIds))}
-        onCancel={() => setBulkDeleteOpen(false)}
-      />
+    <AnimatePresence>
+      {!!deleteUserTarget && (
+        <ConfirmDialog
+          key="del-user"
+          open={!!deleteUserTarget}
+          title={t("admin.deleteUserTitle")}
+          message={t("admin.deleteUserConfirm", { name: deleteUserTarget?.name ?? "" })}
+          confirmText={t("common.delete")}
+          cancelText={t("common.cancel")}
+          danger
+          onConfirm={() => { if (deleteUserTarget) deleteUser(deleteUserTarget.id); setDeleteUserTarget(null); }}
+          onCancel={() => setDeleteUserTarget(null)}
+        />
+      )}
+    </AnimatePresence>
 
-      <ConfirmDialog
-        open={!!deleteBookingTarget}
-        title={deleteBookingTarget?.seriesId ? t("admin.deleteSeriesTitle") : t("admin.deleteBookingTitle")}
-        message={
-          deleteBookingTarget?.seriesId
-            ? t("admin.deleteSeriesConfirm", { title: deleteBookingTarget?.title ?? "" })
-            : t("admin.deleteBookingConfirm", { title: deleteBookingTarget?.title ?? "" })
-        }
-        confirmText={t("common.delete")}
-        cancelText={t("common.cancel")}
-        danger
-        onConfirm={() => {
-          if (deleteBookingTarget) {
-            deleteBooking({
-              id: deleteBookingTarget.id,
-              deleteSeries: !!deleteBookingTarget.seriesId,
-            });
+    <AnimatePresence>
+      {bulkDeleteOpen && (
+        <ConfirmDialog
+          key="del-bulk"
+          open={bulkDeleteOpen}
+          title={t("admin.bulkDeleteTitle")}
+          message={t("admin.bulkDeleteConfirm", { n: selectedIds.size })}
+          confirmText={t("common.delete")}
+          cancelText={t("common.cancel")}
+          danger
+          onConfirm={() => bulkDelete(Array.from(selectedIds))}
+          onCancel={() => setBulkDeleteOpen(false)}
+        />
+      )}
+    </AnimatePresence>
+
+    <AnimatePresence>
+      {!!deleteBookingTarget && (
+        <ConfirmDialog
+          key="del-booking"
+          open={!!deleteBookingTarget}
+          title={deleteBookingTarget?.seriesId ? t("admin.deleteSeriesTitle") : t("admin.deleteBookingTitle")}
+          message={
+            deleteBookingTarget?.seriesId
+              ? t("admin.deleteSeriesConfirm", { title: deleteBookingTarget?.title ?? "" })
+              : t("admin.deleteBookingConfirm", { title: deleteBookingTarget?.title ?? "" })
           }
-          setDeleteBookingTarget(null);
-        }}
-        onCancel={() => setDeleteBookingTarget(null)}
-      />
+          confirmText={t("common.delete")}
+          cancelText={t("common.cancel")}
+          danger
+          onConfirm={() => {
+            if (deleteBookingTarget) {
+              deleteBooking({
+                id: deleteBookingTarget.id,
+                deleteSeries: !!deleteBookingTarget.seriesId,
+              });
+            }
+            setDeleteBookingTarget(null);
+          }}
+          onCancel={() => setDeleteBookingTarget(null)}
+        />
+      )}
     </AnimatePresence>
 
     {/* Analytics full-screen modal */}

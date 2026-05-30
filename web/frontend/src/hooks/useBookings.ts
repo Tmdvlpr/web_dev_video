@@ -166,6 +166,20 @@ export function useDeleteBooking() {
   return useMutation({
     mutationFn: ({ id, deleteSeries }: { id: number; deleteSeries?: boolean }) =>
       bookingsApi.delete(id, deleteSeries),
+    onMutate: async ({ id }) => {
+      await queryClient.cancelQueries({ queryKey: ["bookings"] });
+      const previousData = queryClient.getQueriesData({ queryKey: ["bookings"] });
+      queryClient.setQueriesData({ queryKey: ["bookings"] }, (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.filter((b: any) => b.id !== id);
+      });
+      return { previousData };
+    },
+    onError: (_err: any, _vars: any, context: any) => {
+      context?.previousData?.forEach(([queryKey, data]: [any, any]) => {
+        queryClient.setQueryData(queryKey, data);
+      });
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["bookings"] }),
   });
 }
@@ -174,6 +188,7 @@ export function useAdminBookings() {
   return useQuery({
     queryKey: ["admin", "bookings"],
     queryFn: bookingsApi.adminListAll,
+    staleTime: 120000,
   });
 }
 
@@ -181,6 +196,7 @@ export function useAdminUsers() {
   return useQuery({
     queryKey: ["admin", "users"],
     queryFn: usersApi.adminListUsers,
+    staleTime: 120000,
   });
 }
 
@@ -188,6 +204,7 @@ export function useAdminStats() {
   return useQuery({
     queryKey: ["admin", "stats"],
     queryFn: usersApi.adminStats,
+    staleTime: 120000,
     refetchInterval: 30_000,
   });
 }

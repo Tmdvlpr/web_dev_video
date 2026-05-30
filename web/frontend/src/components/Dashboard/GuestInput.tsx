@@ -219,7 +219,7 @@ export function GuestInput({
                                 {checked && "✓"}
                               </div>
                               {u.avatar ? (
-                                <img src={u.avatar} alt={u.display_name} className="w-6 h-6 rounded-full object-cover shrink-0" />
+                                <img loading="lazy" src={u.avatar} alt={u.display_name} className="w-6 h-6 rounded-full object-cover shrink-0" />
                               ) : (
                                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                                   style={{ background: "var(--primary-light)", color: "var(--primary)" }}>
@@ -269,7 +269,7 @@ export function GuestInput({
                         onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; }}
                         onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
                         {u.avatar ? (
-                          <img src={u.avatar} alt={u.display_name} className="w-6 h-6 rounded-full object-cover shrink-0" />
+                          <img loading="lazy" src={u.avatar} alt={u.display_name} className="w-6 h-6 rounded-full object-cover shrink-0" />
                         ) : (
                           <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                             style={{ background: "var(--primary-light)", color: "var(--primary)" }}>

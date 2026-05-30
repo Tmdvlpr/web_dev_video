@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import type { TargetAndTransition, Transition } from "framer-motion";
 import { createPortal } from "react-dom";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { HOUR_HEIGHT_PX, DAY_START_HOUR, HOURS } from "./constants";
 import { CalendarDragProvider } from "../../contexts/CalendarDragContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
@@ -30,20 +32,20 @@ interface DayContainerProps {
   typeFilter?: "all" | "physical" | "virtual" | "hybrid";
 }
 
-function DayContainer({ date, dateStr, currentUser, onSlotClick, onCardClick, isToday, searchQuery, workspaceId, roomId, typeFilter = "all" }: DayContainerProps) {
+const DayContainer = memo(function DayContainer({ date, dateStr, currentUser, onSlotClick, onCardClick, isToday, searchQuery, workspaceId, roomId, typeFilter = "all" }: DayContainerProps) {
   const { data: bookings = [] } = useBookings(dateStr, workspaceId);
   const { data: slots = [] } = useSlots(dateStr);
   const { mutate: updateBooking } = useUpdateBooking();
 
-  const handleBookingDrop = (booking: Booking, newStart: Date) => {
+  const handleBookingDrop = useCallback((booking: Booking, newStart: Date) => {
     const durationMs = new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime();
     const newEnd = new Date(newStart.getTime() + durationMs);
     updateBooking({ id: booking.id, payload: { start_time: newStart.toISOString(), end_time: newEnd.toISOString() } });
-  };
+  }, [updateBooking]);
 
-  const handleBookingResize = (booking: Booking, newEnd: Date) => {
+  const handleBookingResize = useCallback((booking: Booking, newEnd: Date) => {
     updateBooking({ id: booking.id, payload: { end_time: newEnd.toISOString() } });
-  };
+  }, [updateBooking]);
 
   // Virtual meetings have no physical room — always show them regardless of room filter
   const byRoom = roomId
@@ -62,7 +64,7 @@ function DayContainer({ date, dateStr, currentUser, onSlotClick, onCardClick, is
       onSlotClick={onSlotClick} onCardClick={onCardClick} onBookingDrop={handleBookingDrop}
       onBookingResize={handleBookingResize} isToday={isToday} />
   );
-}
+});
 
 
 function getMonthDays(anchor: Date): Date[] {
@@ -95,11 +97,7 @@ const MONTH_DOW_KEYS = [
   "cal.dow.fri", "cal.dow.sat", "cal.dow.sun",
 ] as const;
 
-export const HOUR_HEIGHT_PX  = 64;
-export const DAY_START_HOUR  = 7;
-export const DAY_END_HOUR    = 22;
-export const TOTAL_HOURS     = DAY_END_HOUR - DAY_START_HOUR;
-export const HOURS           = Array.from({ length: TOTAL_HOURS }, (_, i) => i + DAY_START_HOUR);
+export { HOUR_HEIGHT_PX, DAY_START_HOUR, DAY_END_HOUR, TOTAL_HOURS, HOURS } from "./constants";
 
 /* ── Month view cell ── */
 interface MonthDayCellProps {
@@ -111,7 +109,7 @@ interface MonthDayCellProps {
   searchQuery: string;
 }
 
-function MonthDayCell({ date, isCurrentMonth, isToday, onNavigate, onCardClick, searchQuery }: MonthDayCellProps) {
+const MonthDayCell = memo(function MonthDayCell({ date, isCurrentMonth, isToday, onNavigate, onCardClick, searchQuery }: MonthDayCellProps) {
   const { t } = useLocale();
   const today = new Date();
   const isPast = toLocalDate(date) < toLocalDate(today);
@@ -206,7 +204,7 @@ function MonthDayCell({ date, isCurrentMonth, isToday, onNavigate, onCardClick, 
       </div>
     </div>
   );
-}
+});
 
 /* ── Month view ── */
 interface MonthViewProps {
@@ -464,9 +462,15 @@ function FilterDropdown({
 }
 
 /* ── Room status widget ── */
+const BUSY_DOT_ANIMATE: TargetAndTransition = { scale: [1, 1.5, 1], opacity: [1, 0.4, 1] };
+const FREE_DOT_ANIMATE: TargetAndTransition = { scale: [1, 1.3, 1] };
+const BUSY_DOT_TRANSITION: Transition = { duration: 1.5, repeat: Infinity, ease: 'easeInOut' };
+const FREE_DOT_TRANSITION: Transition = { duration: 2, repeat: Infinity, ease: 'easeInOut' };
+
 function RoomStatus({ roomId, workspaceId }: { roomId?: number | null; workspaceId?: number | null }) {
   const { isDark } = useTheme();
   const { t } = useLocale();
+  const prefersReducedMotion = useReducedMotion();
   const [popupOpen, setPopupOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -540,8 +544,8 @@ function RoomStatus({ roomId, workspaceId }: { roomId?: number | null; workspace
           onClick={() => setPopupOpen((v) => !v)}
           className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-semibold"
           style={{ background: isDark ? "rgba(239,68,68,0.1)" : "#fff1f2", border: "1px solid #fecdd3", color: "#dc2626", cursor: "pointer" }}>
-          <motion.div animate={{ scale: [1, 1.4, 1], opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }}
-            className="w-2 h-2 rounded-full" style={{ background: "#ef4444" }} />
+          <motion.div animate={prefersReducedMotion ? {} : BUSY_DOT_ANIMATE} transition={BUSY_DOT_TRANSITION}
+            className="w-2 h-2 rounded-full" style={{ background: "#ef4444", willChange: "transform" }} />
           <span>{t("status.busyUntil", { time: endTime })}</span>
         </button>
         {popupOpen && renderPopup(current)}
@@ -571,8 +575,8 @@ function RoomStatus({ roomId, workspaceId }: { roomId?: number | null; workspace
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-semibold"
       style={{ background: isDark ? "rgba(22,163,74,0.1)" : "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d" }}>
-      <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 2, repeat: Infinity }}
-        className="w-2 h-2 rounded-full" style={{ background: "#22c55e" }} />
+      <motion.div animate={prefersReducedMotion ? {} : FREE_DOT_ANIMATE} transition={FREE_DOT_TRANSITION}
+        className="w-2 h-2 rounded-full" style={{ background: "#22c55e", willChange: "transform" }} />
       <span>{t("status.free")}</span>
     </div>
   );
@@ -593,11 +597,11 @@ export function Calendar({ currentUser, onSlotClick, onCardClick }: CalendarProp
 
   const BUFFER     = 5; // extra columns pre-rendered on each side for swipe buffer
 // Extended dates: BUFFER columns before + 7 visible + BUFFER columns after
-  const extDates   = Array.from({ length: 7 + BUFFER * 2 }, (_, i) => {
+  const extDates   = useMemo(() => Array.from({ length: 7 + BUFFER * 2 }, (_, i) => {
     const d = new Date(anchorDate);
     d.setDate(d.getDate() + i - BUFFER);
     return d;
-  });
+  }), [anchorDate]);
   const today      = new Date();
   const gridRef    = useRef<HTMLDivElement>(null);
   const timeRef    = useRef<HTMLDivElement>(null);

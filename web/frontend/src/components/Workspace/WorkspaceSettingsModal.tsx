@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { roomsApi } from "../../api/rooms";
 import { workspacesApi } from "../../api/workspaces";
@@ -51,6 +51,12 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
   const TAB_KEYS: Tab[] = ["general", "members", "rooms", "analytics"];
   const prevTabRef = useRef<Tab>("general");
   const tabDirRef = useRef<1 | -1>(1);
+  const tabs = useMemo<[Tab, string][]>(() => [
+    ["general", t("ws.tabGeneral")],
+    ["members", t("ws.tabMembers")],
+    ["rooms", t("ws.tabRooms")],
+    ["analytics", t("ws.tabAnalytics")],
+  ], [t]);
 
   const handleTabChange = (newTab: Tab) => {
     const oldIdx = TAB_KEYS.indexOf(prevTabRef.current);
@@ -104,7 +110,7 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
       </div>
 
       <div className="flex gap-1 px-6 pt-3" style={{ borderBottom: "1px solid var(--border)" }}>
-        {([["general", t("ws.tabGeneral")], ["members", t("ws.tabMembers")], ["rooms", t("ws.tabRooms")], ["analytics", t("ws.tabAnalytics")]] as [Tab, string][]).map(([k, label]) => (
+        {tabs.map(([k, label]) => (
           <button key={k} onClick={() => handleTabChange(k)}
             className="px-3 py-2 text-xs font-semibold transition-all"
             style={{
@@ -1404,6 +1410,7 @@ function CustomSelect({
   const [dropState, setDropState] = useState<"closed" | "open" | "closing">("closed");
   const [dropRect, setDropRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const selected = options.find(o => o.value === value)?.label ?? value;
   const pad = size === "xs" ? "px-2.5 py-1.5" : "px-3 py-2";
   const fz = size === "xs" ? "text-xs" : "text-sm";
@@ -1413,7 +1420,8 @@ function CustomSelect({
     const close = (e: MouseEvent) => {
       if (btnRef.current?.contains(e.target as Node)) return;
       setDropState("closing");
-      setTimeout(() => setDropState("closed"), 150);
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = setTimeout(() => setDropState("closed"), 150);
     };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
@@ -1422,6 +1430,7 @@ function CustomSelect({
   const toggle = () => {
     if (disabled) return;
     if (dropState === "closed") {
+      clearTimeout(closeTimerRef.current);
       if (btnRef.current) {
         const r = btnRef.current.getBoundingClientRect();
         setDropRect({ top: r.bottom + 4, left: r.left, width: r.width });
@@ -1429,7 +1438,8 @@ function CustomSelect({
       setDropState("open");
     } else if (dropState === "open") {
       setDropState("closing");
-      setTimeout(() => setDropState("closed"), 150);
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = setTimeout(() => setDropState("closed"), 150);
     }
   };
 
@@ -1462,7 +1472,7 @@ function CustomSelect({
           }}>
           {options.map(o => (
             <button key={o.value} type="button"
-              onMouseDown={() => { onChange(o.value); setDropState("closing"); setTimeout(() => setDropState("closed"), 150); }}
+              onMouseDown={() => { onChange(o.value); setDropState("closing"); clearTimeout(closeTimerRef.current); closeTimerRef.current = setTimeout(() => setDropState("closed"), 150); }}
               className={`w-full ${pad} ${fz} text-left`}
               style={{
                 background: o.value === value ? "var(--primary-light)" : "transparent",

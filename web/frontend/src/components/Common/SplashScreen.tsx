@@ -12,6 +12,21 @@ const WORD = "CORPMEET";
 const ACCENT_FROM = 4;
 const BRAND = "#1565a8";
 
+// ── Framer Motion constants (module-level to prevent recreation on every render) ──
+
+const LETTER_HIDDEN = { opacity: 0, y: 14 } as const;
+const LETTER_VISIBLE = { opacity: 1, y: 0 } as const;
+const LETTER_TRANSITION = { duration: 0.32, ease: [0.25, 0.46, 0.45, 0.94] } as const;
+
+const GREETING_HIDDEN = { opacity: 0, y: 8 } as const;
+const GREETING_VISIBLE = { opacity: 1, y: 0 } as const;
+const GREETING_TRANSITION = { duration: 0.45, delay: 0.15, ease: [0.25, 0.46, 0.45, 0.94] } as const;
+
+const SPLASH_INITIAL = { opacity: 1 } as const;
+const SPLASH_VISIBLE = { opacity: 1 } as const;
+const SPLASH_FADING = { opacity: 0 } as const;
+const SPLASH_TRANSITION = { duration: 0.7, ease: "easeInOut" } as const;
+
 // Square with straight top-right corner, rx=24 on the other three corners
 // Using SVG arc commands (A) instead of quadratic beziers (Q) for pixel-perfect circular corners
 const BG_PATH =
@@ -265,9 +280,9 @@ export function SplashScreen({ onFinish, userName }: SplashScreenProps) {
       {visible && (
         <motion.div
           role="status" aria-live="polite" aria-label={t("common.loading")}
-          initial={{ opacity: 1 }}
-          animate={{ opacity: fading ? 0 : 1 }}
-          transition={{ duration: 0.7, ease: "easeInOut" }}
+          initial={SPLASH_INITIAL}
+          animate={fading ? SPLASH_FADING : SPLASH_VISIBLE}
+          transition={SPLASH_TRANSITION}
           className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
           style={{ background: isDark ? "#07070d" : "#f1f5f9" }}
         >
@@ -343,9 +358,9 @@ export function SplashScreen({ onFinish, userName }: SplashScreenProps) {
             {WORD.split("").map((ch, i) => (
               <motion.span
                 key={i}
-                initial={{ opacity: 0, y: 14 }}
-                animate={i < revealed ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
-                transition={{ duration: 0.32, ease: [0.25, 0.46, 0.45, 0.94] }}
+                initial={LETTER_HIDDEN}
+                animate={i < revealed ? LETTER_VISIBLE : LETTER_HIDDEN}
+                transition={LETTER_TRANSITION}
                 style={{
                   color: i < ACCENT_FROM ? (isDark ? "#f8fafc" : "#1a1a1a") : BRAND,
                   display: "inline-block",
@@ -359,9 +374,9 @@ export function SplashScreen({ onFinish, userName }: SplashScreenProps) {
           {/* Personal greeting */}
           {userName && (
             <motion.p
-              initial={{ opacity: 0, y: 8 }}
-              animate={revealed >= WORD.length ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
-              transition={{ duration: 0.45, delay: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
+              initial={GREETING_HIDDEN}
+              animate={revealed >= WORD.length ? GREETING_VISIBLE : GREETING_HIDDEN}
+              transition={GREETING_TRANSITION}
               style={{
                 marginTop: 24,
                 fontFamily: "Gilroy, sans-serif",

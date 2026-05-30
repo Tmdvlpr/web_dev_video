@@ -139,7 +139,7 @@ export function SubmissionsPanel({ isOpen, onClose, onBack }: Props) {
 
                       {s.photo_b64 && (
                         <a href={s.photo_b64} target="_blank" rel="noreferrer">
-                          <img src={s.photo_b64} alt="attachment"
+                          <img loading="lazy" src={s.photo_b64} alt="attachment"
                             className="w-full max-h-64 object-contain rounded"
                             style={{ background: "var(--card)", border: "1px solid var(--border)" }} />
                         </a>

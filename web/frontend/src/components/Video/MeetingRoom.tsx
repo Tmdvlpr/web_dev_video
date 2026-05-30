@@ -19,6 +19,7 @@ import { meetingsApi } from "../../api/meetings";
 import type { ChatMessage } from "../../types";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
+import ElapsedTimer from "./ElapsedTimer";
 import "./conference.css";
 
 // ─── SVG system ───────────────────────────────────────────────────────────────
@@ -89,15 +90,6 @@ function wsBase(): string {
 
 function fmtTime(d: Date): string {
   return d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-}
-
-function fmtElapsed(s: number): string {
-  if (s <= 0) return "00:00";
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
 // Stable track sources — module-level prevents useTracks from re-subscribing on every render
@@ -333,7 +325,7 @@ const LiveVideoTile = React.memo(function LiveVideoTile({
 });
 
 // ─── Layouts ──────────────────────────────────────────────────────────────────
-function FocusLayout({
+const FocusLayout = React.memo(({
   camTracks, screenTrack, pinnedId, localIdentity, onPin, raisedHands, activeSpeakerId,
 }: {
   camTracks: TrackReferenceOrPlaceholder[];
@@ -343,7 +335,7 @@ function FocusLayout({
   onPin: (id: string | null) => void;
   raisedHands?: Map<number, string>;
   activeSpeakerId?: string | null;
-}) {
+}) => {
   const mainTrack = screenTrack
     ?? (pinnedId ? camTracks.find((t) => t.participant.identity === pinnedId) : null)
     ?? (activeSpeakerId ? camTracks.find((t) => t.participant.identity === activeSpeakerId) : null)
@@ -381,9 +373,9 @@ function FocusLayout({
       </div>
     </>
   );
-}
+});
 
-function GalleryLayout({ camTracks, localIdentity, raisedHands }: { camTracks: TrackReferenceOrPlaceholder[]; localIdentity: string; raisedHands?: Map<number, string> }) {
+const GalleryLayout = React.memo(({ camTracks, localIdentity, raisedHands }: { camTracks: TrackReferenceOrPlaceholder[]; localIdentity: string; raisedHands?: Map<number, string> }) => {
   return (
     <div className="gallerygrid">
       {camTracks.slice(0, 6).map((t) => (
@@ -392,9 +384,9 @@ function GalleryLayout({ camTracks, localIdentity, raisedHands }: { camTracks: T
       ))}
     </div>
   );
-}
+});
 
-function CinemaLayout({
+const CinemaLayout = React.memo(({
   camTracks, screenTrack, pinnedId, localIdentity, onPin, raisedHands, activeSpeakerId,
 }: {
   camTracks: TrackReferenceOrPlaceholder[];
@@ -404,7 +396,7 @@ function CinemaLayout({
   onPin: (id: string | null) => void;
   raisedHands?: Map<number, string>;
   activeSpeakerId?: string | null;
-}) {
+}) => {
   const mainTrack = screenTrack
     ?? (pinnedId ? camTracks.find((t) => t.participant.identity === pinnedId) : null)
     ?? (activeSpeakerId ? camTracks.find((t) => t.participant.identity === activeSpeakerId) : null)
@@ -433,7 +425,7 @@ function CinemaLayout({
       </div>
     </>
   );
-}
+});
 
 // ─── Control button ───────────────────────────────────────────────────────────
 function CtrlBtn({
@@ -498,7 +490,7 @@ function ReactionsPopup({ onReact, onClose }: { onReact: (e: string) => void; on
   );
 }
 
-function ControlBar({
+const ControlBar = React.memo(({
   micOn, camOn, screenOn, handUp, isRecording, canRecord, showReactions, activePanel, participantCount, unread,
   onMic, onCam, onScreen, onHand, onRecord, onReact, setShowReactions,
   onParticipants, onChat, onSettings, onLeave,
@@ -508,7 +500,7 @@ function ControlBar({
   onMic: () => void; onCam: () => void; onScreen: () => void; onHand: () => void; onRecord: () => void;
   onReact: (e: string) => void; setShowReactions: (v: boolean | ((p: boolean) => boolean)) => void;
   onParticipants: () => void; onChat: () => void; onSettings: () => void; onLeave: () => void;
-}) {
+}) => {
   const { t } = useLocale();
   const [reactDropState, setReactDropState] = useState<"closed" | "open" | "closing">("closed");
   const prevShowReactionsRef = useRef(false);
@@ -589,7 +581,7 @@ function ControlBar({
       </div>
     </div>
   );
-}
+});
 
 // ─── Chat panel ───────────────────────────────────────────────────────────────
 function ChatPanelInner({
@@ -704,8 +696,11 @@ function ParticipantsPanel({
       return true;
     });
   }, [participants]);
-  const filtered = deduped.filter((p) =>
-    (p.name ?? p.identity).toLowerCase().includes(search.toLowerCase())
+  const filtered = useMemo(() =>
+    deduped.filter((p) =>
+      (p.name ?? p.identity).toLowerCase().includes(search.toLowerCase())
+    ),
+    [deduped, search],
   );
 
   const handleCreateInvite = async () => {
@@ -947,10 +942,10 @@ function Sidebar({
 
 // ─── Header ───────────────────────────────────────────────────────────────────
 function MeetingHeader({
-  title, elapsed, isRecording, isSharingScreen, layoutMode, participantCount,
+  title, startedAt, isRecording, isSharingScreen, layoutMode, participantCount,
   onLayoutChange, onInfoClick,
 }: {
-  title: string; elapsed: number; isRecording: boolean; isSharingScreen: boolean;
+  title: string; startedAt: number; isRecording: boolean; isSharingScreen: boolean;
   layoutMode: string; participantCount: number;
   onLayoutChange: (m: string) => void; onInfoClick: () => void;
 }) {
@@ -960,7 +955,7 @@ function MeetingHeader({
       <div className="mhdr__left">
         <span className="mhdr__title">{title}</span>
         <div className="mhdr__badges">
-          <span className="mhdr__badge"><Ic.Clock sz={11} />{fmtElapsed(elapsed)}</span>
+          <span className="mhdr__badge"><Ic.Clock sz={11} /><ElapsedTimer startedAt={startedAt} /></span>
           <span className="mhdr__badge"><Ic.Users sz={11} />{participantCount}</span>
           {isRecording && (
             <span className="mhdr__badge mhdr__badge--rec">
@@ -1302,6 +1297,33 @@ function WaitingRoom({ startTime, onLeave, onJoin }: { startTime: string; onLeav
 }
 
 // ─── Settings panel (noise/blur + recordings) ────────────────────────────────
+const KNOB_ON: React.CSSProperties = {
+  position: "absolute", top: "50%", left: 2,
+  transform: "translate(19px, -50%)",
+  width: 16, height: 16,
+  borderRadius: "50%", background: "#fff",
+  transition: "transform 0.2s ease-in-out",
+  willChange: "transform",
+};
+const KNOB_OFF: React.CSSProperties = {
+  position: "absolute", top: "50%", left: 2,
+  transform: "translateY(-50%)",
+  width: 16, height: 16,
+  borderRadius: "50%", background: "#fff",
+  transition: "transform 0.2s ease-in-out",
+  willChange: "transform",
+};
+const TRACK_ON: React.CSSProperties = {
+  position: "relative", width: 40, height: 22, borderRadius: 11, flexShrink: 0,
+  background: "var(--accent)", cursor: "pointer",
+  border: "none", transition: "background 0.2s",
+};
+const TRACK_OFF: React.CSSProperties = {
+  position: "relative", width: 40, height: 22, borderRadius: 11, flexShrink: 0,
+  background: "var(--brd)", cursor: "pointer",
+  border: "none", transition: "background 0.2s",
+};
+
 function SettingsPanel({ bookingId, noiseOn, blurOn, onNoise, onBlur }: {
   bookingId: number;
   noiseOn: boolean;
@@ -1326,20 +1348,6 @@ function SettingsPanel({ bookingId, noiseOn, blurOn, onNoise, onBlur }: {
     padding: "10px 12px", borderRadius: 6, background: "var(--bg)",
     border: "1px solid var(--brd)", marginBottom: 8,
   };
-  const knobStyle = (on: boolean): React.CSSProperties => ({
-    position: "absolute", top: "50%", left: 2,
-    transform: on ? "translate(19px, -50%)" : "translateY(-50%)",
-    width: 16, height: 16,
-    borderRadius: "50%", background: "#fff",
-    transition: "transform 0.2s ease-in-out",
-    willChange: "transform",
-  });
-  const trackStyle = (on: boolean): React.CSSProperties => ({
-    position: "relative", width: 40, height: 22, borderRadius: 11, flexShrink: 0,
-    background: on ? "var(--accent)" : "var(--brd)", cursor: "pointer",
-    border: "none", transition: "background 0.2s",
-  });
-
   return (
     <div className="chatpanel">
       <div className="chatpanel__msgs" style={{ padding: "12px 10px" }}>
@@ -1351,8 +1359,8 @@ function SettingsPanel({ bookingId, noiseOn, blurOn, onNoise, onBlur }: {
             <p style={{ fontSize: 13, fontWeight: 600, color: "var(--tx1)", margin: 0 }}>Шумоподавление</p>
             <p style={{ fontSize: 11, color: "var(--tx3)", margin: 0 }}>Krisp AI</p>
           </div>
-          <button style={trackStyle(noiseOn)} onClick={onNoise}>
-            <span style={knobStyle(noiseOn)} />
+          <button style={noiseOn ? TRACK_ON : TRACK_OFF} onClick={onNoise}>
+            <span style={noiseOn ? KNOB_ON : KNOB_OFF} />
           </button>
         </div>
         <div style={rowStyle}>
@@ -1360,8 +1368,8 @@ function SettingsPanel({ bookingId, noiseOn, blurOn, onNoise, onBlur }: {
             <p style={{ fontSize: 13, fontWeight: 600, color: "var(--tx1)", margin: 0 }}>Размытие фона</p>
             <p style={{ fontSize: 11, color: "var(--tx3)", margin: 0 }}>Камера</p>
           </div>
-          <button style={trackStyle(blurOn)} onClick={onBlur}>
-            <span style={knobStyle(blurOn)} />
+          <button style={blurOn ? TRACK_ON : TRACK_OFF} onClick={onBlur}>
+            <span style={blurOn ? KNOB_ON : KNOB_OFF} />
           </button>
         </div>
         <p style={{ fontSize: 13, fontWeight: 700, color: "var(--tx2)", margin: "16px 0 10px" }}>
@@ -1552,7 +1560,6 @@ function ConferenceUI({
   const [raisedHands, setRaisedHands] = useState<Map<number, string>>(new Map());
   const [floatReactions, setFloatReactions] = useState<{ id: number; emoji: string }[]>([]);
   const [modal, setModal] = useState<"info" | "leave" | null>(null);
-  const [elapsed, setElapsed] = useState(0);
   const startedAt = useRef(new Date(joinData.start_time).getTime());
   const [pendingAdmissions, setPendingAdmissions] = useState<AdmissionRequest[]>([]);
   const dismissedAdmissions = useRef<Set<string>>(new Set());
@@ -1616,18 +1623,35 @@ function ConferenceUI({
     return () => clearInterval(t);
   }, [bookingId, isOrganizer]);
 
-  useEffect(() => {
-    const t = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt.current) / 1000)), 1000);
-    return () => clearInterval(t);
-  }, []);
+  const togglePanel = useCallback((panel: "chat" | "participants" | "settings") =>
+    setActivePanel((p) => (p === panel ? null : panel)), []);
 
-  const togglePanel = (panel: "chat" | "participants" | "settings") =>
-    setActivePanel((p) => (p === panel ? null : panel));
-
-  const addReaction = (emoji: string) => {
+  const addReaction = useCallback((emoji: string) => {
     sendReaction(emoji);
     setFloatReactions((prev) => [...prev, { id: Date.now(), emoji }]);
-  };
+  }, [sendReaction]);
+
+  const handleMic = useCallback(
+    () => localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled).catch(console.warn),
+    [localParticipant, isMicrophoneEnabled],
+  );
+  const handleCam = useCallback(
+    () => localParticipant.setCameraEnabled(!isCameraEnabled).catch(console.warn),
+    [localParticipant, isCameraEnabled],
+  );
+  const handleScreen = useCallback(
+    () => localParticipant.setScreenShareEnabled(!isScreenShareEnabled).catch(console.warn),
+    [localParticipant, isScreenShareEnabled],
+  );
+  const handleHand = useCallback(() => {
+    const next = !handUp;
+    setHandUp(next);
+    sendHandRaise(next);
+  }, [handUp, sendHandRaise]);
+  const handleParticipants = useCallback(() => togglePanel("participants"), [togglePanel]);
+  const handleChat = useCallback(() => togglePanel("chat"), [togglePanel]);
+  const handleSettings = useCallback(() => togglePanel("settings"), [togglePanel]);
+  const handleOpenLeave = useCallback(() => setModal("leave"), []);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
@@ -1747,7 +1771,7 @@ function ConferenceUI({
     <div className={`conf conf-root fixed inset-0 z-[9999] l-${layoutMode}`}>
       <MeetingHeader
         title="Видеоконференция"
-        elapsed={elapsed}
+        startedAt={startedAt.current}
         isRecording={isRecording}
         isSharingScreen={!!screenTrack}
         layoutMode={layoutMode}
@@ -1814,17 +1838,17 @@ function ConferenceUI({
         activePanel={activePanel}
         participantCount={allParticipants.length}
         unread={unread}
-        onMic={() => localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled).catch(console.warn)}
-        onCam={() => localParticipant.setCameraEnabled(!isCameraEnabled).catch(console.warn)}
-        onScreen={() => localParticipant.setScreenShareEnabled(!isScreenShareEnabled).catch(console.warn)}
-        onHand={() => { const next = !handUp; setHandUp(next); sendHandRaise(next); }}
+        onMic={handleMic}
+        onCam={handleCam}
+        onScreen={handleScreen}
+        onHand={handleHand}
         onRecord={handleRecord}
         onReact={addReaction}
         setShowReactions={setShowReactions}
-        onParticipants={() => togglePanel("participants")}
-        onChat={() => togglePanel("chat")}
-        onSettings={() => togglePanel("settings")}
-        onLeave={() => setModal("leave")}
+        onParticipants={handleParticipants}
+        onChat={handleChat}
+        onSettings={handleSettings}
+        onLeave={handleOpenLeave}
       />
 
       {/* Floating reactions */}

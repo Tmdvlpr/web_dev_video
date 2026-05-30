@@ -89,7 +89,7 @@ export function AvatarPicker({ user, onClose }: Props) {
                 boxShadow: user.avatar === src ? "0 0 0 2px var(--primary)" : undefined,
               }}
             >
-              <img src={src} alt="" className="w-full h-full object-cover" />
+              <img loading="lazy" src={src} alt="" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
