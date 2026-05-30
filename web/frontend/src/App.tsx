@@ -96,6 +96,7 @@ function getSeenInviteIds(): Set<number> {
 }
 
 function useInviteNotifications(userId: number | undefined) {
+  const { t } = useLocale();
   useEffect(() => {
     if (!userId) return;
     const check = async () => {
@@ -113,8 +114,8 @@ function useInviteNotifications(userId: number | undefined) {
           if (seen.has(b.id) || existingIds.has(b.id)) continue;
           addNotification({
             id: `invite-${b.id}-${b.created_at}`,
-            title: "Приглашение на встречу",
-            body: `Вас пригласили на: ${b.title}`,
+            title: b.title,   // raw booking title — translated at render time
+            body: "",
             time: new Date(b.created_at).getTime(),
             type: "meeting_invited",
             bookingId: b.id,
@@ -127,7 +128,7 @@ function useInviteNotifications(userId: number | undefined) {
     check();
     const timer = setInterval(check, 60_000);
     return () => clearInterval(timer);
-  }, [userId]);
+  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 // ── Toast ────────────────────────────────────────────────────────────────────
