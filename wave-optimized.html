@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Стекло — волны вдогонку</title>
+<style>
+  [data-theme="light"]{--bg:#f4f1ea;--surface:#fff;--text:#1b1b1b;--muted:#6b6b6b;--border:#e3ddd0;
+    --accent:#3b82f6;--accent-2:#22c55e;--shadow:0 10px 30px rgba(0,0,0,.08);
+    --glint:rgba(255,255,255,.9);--halo:rgba(120,170,255,.4)}
+  [data-theme="dark"]{--bg:#0e1116;--surface:#171c24;--text:#eef1f5;--muted:#9aa4b2;--border:#28303b;
+    --accent:#60a5fa;--accent-2:#4ade80;--shadow:0 10px 40px rgba(0,0,0,.5);
+    --glint:rgba(220,235,255,.95);--halo:rgba(120,170,255,.55)}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font-family:ui-sans-serif,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:48px 24px 80px}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px}
+  h1{font-size:26px;margin:0;letter-spacing:-.02em}
+  .toggle{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:10px;
+    border:1px solid var(--border);background:var(--surface);color:var(--text);
+    padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;cursor:pointer;
+    box-shadow:var(--shadow);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+  .toggle:active{transform:scale(.96)}
+  .toggle::after{content:"";position:absolute;inset:0;border-radius:inherit;
+    background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);
+    transform:translateX(-120%);pointer-events:none}
+  .toggle.shine::after{animation:shine .55s ease-out}
+  @keyframes shine{to{transform:translateX(120%)}}
+  .toggle .icon{width:18px;height:18px;display:grid;place-items:center}
+  [data-theme="light"] .icon-moon,[data-theme="dark"] .icon-sun{display:none}
+  .lead{font-size:18px;line-height:1.6;color:var(--muted);max-width:56ch;margin:0 0 36px}
+  .grid{display:grid;gap:18px;margin-bottom:36px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px;box-shadow:var(--shadow)}
+  .card h3{margin:0 0 8px;font-size:16px}
+  .card p{margin:0;color:var(--muted);font-size:14px;line-height:1.5}
+  .dot{width:36px;height:36px;border-radius:10px;margin-bottom:14px;background:linear-gradient(135deg,var(--accent),var(--accent-2))}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .btn{border:none;border-radius:12px;padding:12px 20px;font-size:14px;font-weight:600;cursor:pointer}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-secondary{background:transparent;color:var(--text);border:1px solid var(--border)}
+
+  @property --wave{syntax:"<length>";inherits:false;initial-value:0px}
+
+  /* OPT-1: transform:translateZ(0) forces GPU composited layer immediately.
+     OPT-2: will-change:mask-image hints browser to pre-promote layer before animation starts.
+     OPT-3: contain:layout paint isolates rendering, prevents layout thrash from surrounding DOM.
+     OPT-4: overflow:clip (not hidden) avoids scroll container creation — cheaper reflow boundary.
+     OPT-5: drop-shadow reduced from 3 calls to 2; merged the cheap 2px into the 16px pass. */
+  .wave-layer{
+    position:fixed;inset:0;z-index:9999;pointer-events:none;
+    overflow:clip;
+    background:var(--bg);
+    contain:layout paint;
+    transform:translateZ(0);
+    will-change:mask-image;
+    --m:radial-gradient(circle at var(--wx,50%) var(--wy,50%),
+        #000 calc(var(--wave) - 280px),
+        rgba(0,0,0,.7) calc(var(--wave) - 170px),
+        rgba(0,0,0,.25) calc(var(--wave) - 70px),
+        transparent var(--wave));
+    -webkit-mask:var(--m);mask:var(--m);
+    -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+    filter:drop-shadow(0 0 16px var(--halo)) drop-shadow(0 0 60px var(--halo))}
+
+  /* OPT-6: will-change:transform + position:absolute;inset:0 on .wave-inner promotes the
+     scroll-offset inner div to its own GPU layer so the translateY doesn't cause repaints. */
+  .wave-inner{
+    position:absolute;inset:0;
+    will-change:transform}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Стекло — волны вдогонку</h1>
+      <button class="toggle" id="themeToggle" aria-label="Переключить тему">
+        <span class="icon">
+          <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>
+          <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        </span>
+        <span id="toggleLabel">Тёмная тема</span>
+      </button>
+    </header>
+    <p class="lead">Жми сколько хочешь и как угодно часто — каждый клик пускает новую волну со следующей темой вдогонку предыдущей. Кнопка активна всегда.</p>
+    <div class="grid">
+      <div class="card"><div class="dot"></div><h3>Стек волн</h3><p>Несколько волн живут одновременно, новее — поверх старых.</p></div>
+      <div class="card"><div class="dot"></div><h3>Без блокировки</h3><p>Слои не перехватывают клики, поэтому нет «мёртвой» паузы.</p></div>
+      <div class="card"><div class="dot"></div><h3>Стекло</h3><p>Матовая полоса инея и яркая световая кромка сохранены.</p></div>
+    </div>
+    <div class="row">
+      <button class="btn btn-primary">Основная кнопка</button>
+      <button class="btn btn-secondary">Вторичная кнопка</button>
+    </div>
+  </div>
+
+<script>
+  /*
+   * Wave animation optimizations applied:
+   *
+   * CSS:
+   *   1. transform:translateZ(0) on .wave-layer — forces GPU composited layer
+   *   2. will-change:mask-image on .wave-layer — pre-promotes layer before animation
+   *   3. contain:layout paint on .wave-layer — isolates rendering, prevents layout thrash
+   *   4. overflow:clip instead of overflow:hidden — no scroll container, cheaper reflow boundary
+   *   5. drop-shadow reduced from 3 chained calls to 2 — merged the 2px pass into the 16px one
+   *   6. will-change:transform + position:absolute;inset:0 on .wave-inner — GPU layer for scroll offset div
+   *
+   * JS:
+   *   7. DOM write (appendChild + animate) wrapped in requestAnimationFrame — batches write,
+   *      avoids forced layout recalc mid-frame
+   *   8. MAX_WAVES = 10 cap — oldest wave cancelled+removed when limit is reached,
+   *      prevents unbounded memory growth on rapid clicking
+   *   9. .catch(()=>{}) on anim.finished — suppresses unhandled rejection on premature cancel
+   *  10. layer.style.cssText += ... to batch --wx/--wy into a single style write
+   *  11. activeWaves = [] array of {layer, anim} objects; splice on finished for tracking
+   */
+
+  const root=document.documentElement;
+  const toggle=document.getElementById('themeToggle');
+  const label=document.getElementById('toggleLabel');
+  const FEATHER=280, DUR=880, EASE='cubic-bezier(0.65, 0, 0.35, 1)';
+  const MAX_WAVES=10;
+
+  let pending=root.dataset.theme;
+  // OPT-11: track active waves as {layer, anim} objects
+  const activeWaves=[];
+
+  function syncLabel(){label.textContent=pending==='dark'?'Светлая тема':'Тёмная тема'}
+  syncLabel();
+
+  function spawnWave(theme,ox,oy){
+    // OPT-8: cap at MAX_WAVES — cancel+remove oldest wave before spawning a new one
+    if(activeWaves.length>=MAX_WAVES){
+      const oldest=activeWaves.shift();
+      oldest.anim.cancel();
+      oldest.layer.remove();
+    }
+
+    const layer=document.createElement('div');
+    layer.className='wave-layer';
+    layer.dataset.theme=theme;
+    // OPT-10: batch --wx and --wy into a single cssText write instead of two setProperty calls
+    layer.style.cssText+='--wx:'+ox+'px;--wy:'+oy+'px';
+
+    const inner=document.createElement('div');
+    // OPT-6 (JS side): assign class so CSS rules apply (will-change:transform, position:absolute;inset:0)
+    inner.className='wave-inner';
+    inner.style.transform='translateY('+(-window.scrollY)+'px)';
+    const clone=document.querySelector('.wrap').cloneNode(true);
+    clone.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));
+    inner.appendChild(clone);
+    layer.appendChild(inner);
+
+    const end=Math.hypot(Math.max(ox,innerWidth-ox),Math.max(oy,innerHeight-oy))+FEATHER;
+
+    // OPT-7: wrap DOM write + animate in rAF to batch with browser's next paint frame,
+    // avoiding a forced layout recalc mid-frame
+    requestAnimationFrame(()=>{
+      document.body.appendChild(layer);
+
+      const anim=layer.animate({'--wave':['0px',end+'px']},
+        {duration:DUR,easing:EASE,fill:'forwards'});
+
+      // OPT-11: push to activeWaves tracker
+      const entry={layer,anim};
+      activeWaves.push(entry);
+
+      // OPT-9: .catch(()=>{}) prevents unhandled rejection when wave is cancelled prematurely
+      anim.finished.then(()=>{
+        root.dataset.theme=theme;
+        layer.remove();
+        // OPT-11: splice completed entry from tracker
+        const idx=activeWaves.indexOf(entry);
+        if(idx!==-1) activeWaves.splice(idx,1);
+      }).catch(()=>{});
+    });
+  }
+
+  toggle.addEventListener('click',()=>{
+    const next=pending==='dark'?'light':'dark';
+    pending=next;
+    syncLabel();
+
+    const r=toggle.getBoundingClientRect();
+    const ox=r.left+r.width/2, oy=r.top+r.height/2;
+
+    toggle.classList.remove('shine');void toggle.offsetWidth;toggle.classList.add('shine');
+
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches){root.dataset.theme=next;return;}
+    spawnWave(next,ox,oy);
+  });
+</script>
+</body>
+</html>
