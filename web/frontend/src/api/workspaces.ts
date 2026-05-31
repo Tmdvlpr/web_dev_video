@@ -1,5 +1,5 @@
 import { apiClient } from "./axios";
-import type { Workspace, WorkspaceDetail, WorkspaceMember } from "../types";
+import type { Workspace, WorkspaceDetail, WorkspaceMember, WorkspacePosition } from "../types";
 
 export interface WorkspaceAnalytics {
   period_days: number;
@@ -69,8 +69,23 @@ export const workspacesApi = {
     const res = await apiClient.get<WorkspaceAnalytics>(`/api/v1/workspaces/${id}/analytics`, { params: { period_days: periodDays } });
     return res.data;
   },
-  updateMemberProfile: async (wsId: number, memberId: number, payload: { first_name?: string; last_name?: string; position?: string }): Promise<WorkspaceMember> => {
+  updateMemberProfile: async (wsId: number, memberId: number, payload: { first_name?: string; last_name?: string; position?: string; position_id?: number | null }): Promise<WorkspaceMember> => {
     const res = await apiClient.patch<WorkspaceMember>(`/api/v1/workspaces/${wsId}/members/${memberId}`, payload);
     return res.data;
+  },
+  listPositions: async (wsId: number): Promise<WorkspacePosition[]> => {
+    const res = await apiClient.get<WorkspacePosition[]>(`/api/v1/workspaces/${wsId}/positions`);
+    return res.data;
+  },
+  createPosition: async (wsId: number, payload: { name_ru: string; name_uz: string }): Promise<WorkspacePosition> => {
+    const res = await apiClient.post<WorkspacePosition>(`/api/v1/workspaces/${wsId}/positions`, payload);
+    return res.data;
+  },
+  updatePosition: async (wsId: number, posId: number, payload: { name_ru?: string; name_uz?: string }): Promise<WorkspacePosition> => {
+    const res = await apiClient.patch<WorkspacePosition>(`/api/v1/workspaces/${wsId}/positions/${posId}`, payload);
+    return res.data;
+  },
+  deletePosition: async (wsId: number, posId: number): Promise<void> => {
+    await apiClient.delete(`/api/v1/workspaces/${wsId}/positions/${posId}`);
   },
 };

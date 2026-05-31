@@ -342,6 +342,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "ALTER TABLE workspace_members ADD COLUMN IF NOT EXISTS invite_notified_at TIMESTAMPTZ",
             "ALTER TABLE workspace_members ADD COLUMN IF NOT EXISTS invite_token VARCHAR(32)",
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_wm_invite_token ON workspace_members(invite_token) WHERE invite_token IS NOT NULL",
+            # workspace positions
+            """CREATE TABLE IF NOT EXISTS workspace_positions (
+                id SERIAL PRIMARY KEY,
+                workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+                name_ru VARCHAR(100) NOT NULL,
+                name_uz VARCHAR(100) NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_wp_workspace ON workspace_positions(workspace_id)",
+            "ALTER TABLE workspace_members ADD COLUMN IF NOT EXISTS position_id INTEGER REFERENCES workspace_positions(id) ON DELETE SET NULL",
         ]
         for sql in migrations:
             try:

@@ -9,14 +9,14 @@ import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
-import type { RoomJoinRequest, WorkspaceMember, WorkspaceRoom } from "../../types";
+import type { RoomJoinRequest, WorkspaceMember, WorkspacePosition, WorkspaceRoom } from "../../types";
 
 interface WorkspaceSettingsModalProps {
   open: boolean;
   onClose: () => void;
 }
 
-type Tab = "general" | "members" | "rooms" | "analytics";
+type Tab = "general" | "members" | "rooms" | "analytics" | "positions";
 
 const TIMEZONES = [
   "UTC",
@@ -26,21 +26,6 @@ const TIMEZONES = [
   "Asia/Baku",
 ];
 
-const POSITIONS = [
-  "Начальник департамента/отдела",
-  "PM",
-  "Аналитик",
-  "Программист и др.",
-  "Дизайнер",
-];
-
-const POSITION_T_KEYS: Record<string, string> = {
-  "Начальник департамента/отдела": "pos.chief",
-  "PM": "pos.pm",
-  "Аналитик": "pos.analyst",
-  "Программист и др.": "pos.programmer",
-  "Дизайнер": "pos.designer",
-};
 
 export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModalProps) {
   const { isDark } = useTheme();
@@ -48,7 +33,7 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
   const { user } = useAuth();
   const { activeWorkspace, myRooms, refetchWorkspaces, refetchRooms } = useWorkspace();
   const [tab, setTab] = useState<Tab>("general");
-  const TAB_KEYS: Tab[] = ["general", "members", "rooms", "analytics"];
+  const TAB_KEYS: Tab[] = ["general", "members", "rooms", "analytics", "positions"];
   const prevTabRef = useRef<Tab>("general");
   const tabDirRef = useRef<1 | -1>(1);
   const tabs = useMemo<[Tab, string][]>(() => [
@@ -56,6 +41,7 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
     ["members", t("ws.tabMembers")],
     ["rooms", t("ws.tabRooms")],
     ["analytics", t("ws.tabAnalytics")],
+    ["positions", t("ws.tabPositions")],
   ], [t]);
 
   const handleTabChange = (newTab: Tab) => {
@@ -160,6 +146,9 @@ export function WorkspaceSettingsModal({ open, onClose }: WorkspaceSettingsModal
           )}
           {tab === "analytics" && isAdmin && (
             <AnalyticsTab workspaceId={activeWorkspace.id} />
+          )}
+          {tab === "positions" && (
+            <PositionsTab workspaceId={activeWorkspace.id} isAdmin={isAdmin} />
           )}
         </div>
       </div>
@@ -552,21 +541,26 @@ function GeneralTab({
 }
 
 function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: { workspaceId: number; myUserId: number | null; isAdmin: boolean; isOwner: boolean; isSuperadmin: boolean }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
+  const [positions, setPositions] = useState<WorkspacePosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviting, setInviting] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [editMemberId, setEditMemberId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState({ first_name: "", last_name: "", position: "", role: "member" });
+  const [editForm, setEditForm] = useState({ first_name: "", last_name: "", position_id: null as number | null, role: "member" });
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
-      const list = await workspacesApi.listMembers(workspaceId);
+      const [list, posList] = await Promise.all([
+        workspacesApi.listMembers(workspaceId),
+        workspacesApi.listPositions(workspaceId),
+      ]);
       setMembers(list);
+      setPositions(posList);
     } catch { /* swallow */ }
     finally { setLoading(false); }
   };
@@ -706,19 +700,21 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                         </p>
                         <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
                           {[
-                            m.user?.position ? (POSITION_T_KEYS[m.user.position] ? t(POSITION_T_KEYS[m.user.position] as Parameters<typeof t>[0]) : m.user.position) : undefined,
+                            m.position
+                              ? (locale === "uz" ? m.position.name_uz : m.position.name_ru)
+                              : (m.user?.position || undefined),
                             m.user?.role && m.user.role !== "user" ? (m.user.role === "superadmin" ? t("ws.roleSuperadmin") : t("ws.roleAdminLabel")) : null,
                           ].filter(Boolean).join(" · ") || roleLabel(m.role, t)}
                         </p>
                       </div>
                       <RoleBadge role={m.role} />
-                      {(isAdmin || isSuperadmin) && m.user && (
+                      {m.user && ((isAdmin || isSuperadmin) || m.user_id === myUserId) && positions.length > 0 && (
                         <button onClick={() => {
                           setEditMemberId(editMemberId === m.id ? null : m.id);
                           setEditForm({
                             first_name: m.user?.first_name ?? "",
                             last_name: m.user?.last_name ?? "",
-                            position: m.user?.position ?? "",
+                            position_id: m.position_id ?? null,
                             role: m.role,
                           });
                         }}
@@ -748,26 +744,31 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                     {editMemberId === m.id && (
                       <PanelReveal>
                       <div className="mt-1 px-3 py-3 rounded-md space-y-2" style={{ background: "var(--input-bg)", border: "1px solid var(--primary-border)" }}>
-                        <div className="grid grid-cols-2 gap-2">
-                          <input value={editForm.first_name} onChange={e => setEditForm(f => ({ ...f, first_name: e.target.value }))}
-                            placeholder={t("profile.firstName")}
-                            className="rounded px-2.5 py-1.5 text-xs outline-none"
-                            style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
-                          <input value={editForm.last_name} onChange={e => setEditForm(f => ({ ...f, last_name: e.target.value }))}
-                            placeholder={t("profile.lastName")}
-                            className="rounded px-2.5 py-1.5 text-xs outline-none"
-                            style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
-                        </div>
-                        <CustomSelect size="xs"
-                          value={editForm.position}
-                          onChange={v => setEditForm(f => ({ ...f, position: v }))}
-                          options={[
-                            ...(editForm.position && !POSITIONS.includes(editForm.position)
-                              ? [{ value: editForm.position, label: editForm.position }]
-                              : []),
-                            ...POSITIONS.map(p => ({ value: p, label: POSITION_T_KEYS[p] ? t(POSITION_T_KEYS[p] as Parameters<typeof t>[0]) : p })),
-                          ]}
-                        />
+                        {(isAdmin || isSuperadmin) && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <input value={editForm.first_name} onChange={e => setEditForm(f => ({ ...f, first_name: e.target.value }))}
+                              placeholder={t("profile.firstName")}
+                              className="rounded px-2.5 py-1.5 text-xs outline-none"
+                              style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
+                            <input value={editForm.last_name} onChange={e => setEditForm(f => ({ ...f, last_name: e.target.value }))}
+                              placeholder={t("profile.lastName")}
+                              className="rounded px-2.5 py-1.5 text-xs outline-none"
+                              style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
+                          </div>
+                        )}
+                        {positions.length > 0 && (
+                          <CustomSelect size="xs"
+                            value={editForm.position_id !== null ? String(editForm.position_id) : ""}
+                            onChange={v => setEditForm(f => ({ ...f, position_id: v ? Number(v) : null }))}
+                            options={[
+                              { value: "", label: t("ws.pos.noPosition") },
+                              ...positions.map(p => ({
+                                value: String(p.id),
+                                label: locale === "uz" ? p.name_uz : p.name_ru,
+                              })),
+                            ]}
+                          />
+                        )}
                         {(isOwner || isSuperadmin) && (m.role !== "owner" || isSuperadmin) && (
                           <CustomSelect size="xs"
                             value={editForm.role}
@@ -790,9 +791,11 @@ function MembersTab({ workspaceId, myUserId, isAdmin, isOwner, isSuperadmin }: {
                             setSaving(true);
                             try {
                               await workspacesApi.updateMemberProfile(workspaceId, m.id, {
-                                first_name: editForm.first_name || undefined,
-                                last_name: editForm.last_name || undefined,
-                                position: editForm.position || undefined,
+                                ...((isAdmin || isSuperadmin) ? {
+                                  first_name: editForm.first_name || undefined,
+                                  last_name: editForm.last_name || undefined,
+                                } : {}),
+                                ...(positions.length > 0 ? { position_id: editForm.position_id } : {}),
                               });
                             } catch { setErr(t("ws.saveFail")); setSaving(false); return; }
                             try {
@@ -1504,6 +1507,180 @@ function PanelReveal({ children }: { children: React.ReactNode }) {
 
 function Label({ children }: { children: React.ReactNode }) {
   return <p className="text-xs font-semibold mb-1.5" style={{ color: "var(--text-sec)" }}>{children}</p>;
+}
+
+function PositionsTab({ workspaceId, isAdmin }: { workspaceId: number; isAdmin: boolean }) {
+  const { t, locale } = useLocale();
+  const [positions, setPositions] = useState<WorkspacePosition[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editRu, setEditRu] = useState("");
+  const [editUz, setEditUz] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [newRu, setNewRu] = useState("");
+  const [newUz, setNewUz] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const list = await workspacesApi.listPositions(workspaceId);
+      setPositions(list);
+    } catch { /* swallow */ }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [workspaceId]);
+
+  const startEdit = (p: WorkspacePosition) => {
+    setEditId(p.id);
+    setEditRu(p.name_ru);
+    setEditUz(p.name_uz);
+    setErr(null);
+  };
+
+  const cancelEdit = () => { setEditId(null); setErr(null); };
+
+  const saveEdit = async (id: number) => {
+    if (!editRu.trim() || !editUz.trim()) { setErr(t("ws.nameEmpty")); return; }
+    setSaving(true); setErr(null);
+    try {
+      await workspacesApi.updatePosition(workspaceId, id, { name_ru: editRu.trim(), name_uz: editUz.trim() });
+      setEditId(null);
+      await load();
+    } catch {
+      setErr(t("ws.pos.updateFail"));
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id: number) => {
+    setDeleting(id);
+    try {
+      await workspacesApi.deletePosition(workspaceId, id);
+      await load();
+    } catch {
+      setErr(t("ws.pos.deleteFail"));
+    } finally { setDeleting(null); }
+  };
+
+  const handleAdd = async () => {
+    if (!newRu.trim() || !newUz.trim()) { setErr(t("ws.nameEmpty")); return; }
+    setAdding(true); setErr(null);
+    try {
+      await workspacesApi.createPosition(workspaceId, { name_ru: newRu.trim(), name_uz: newUz.trim() });
+      setNewRu(""); setNewUz("");
+      await load();
+    } catch {
+      setErr(t("ws.pos.createFail"));
+    } finally { setAdding(false); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs" style={{ color: "var(--text-muted)" }}>{t("ws.pos.desc")}</p>
+
+      {loading ? (
+        <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>{t("ws.loading")}</p>
+      ) : (
+        <>
+          {positions.length === 0 && !isAdmin && (
+            <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>{t("ws.pos.empty")}</p>
+          )}
+
+          {positions.length > 0 && (
+            <div className="space-y-2">
+              {positions.map(p => (
+                <div key={p.id}>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-md"
+                    style={{ background: "var(--elevated)", border: "1px solid var(--border)" }}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+                        {locale === "uz" ? p.name_uz : p.name_ru}
+                      </p>
+                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                        {locale === "uz" ? p.name_ru : p.name_uz}
+                      </p>
+                    </div>
+                    {isAdmin && (
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => editId === p.id ? cancelEdit() : startEdit(p)}
+                          className="w-7 h-7 flex items-center justify-center rounded transition-all"
+                          style={editId === p.id
+                            ? { background: "var(--primary)", color: "#fff", border: "1px solid var(--primary)" }
+                            : { background: "var(--elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                        </button>
+                        <button onClick={() => handleDelete(p.id)} disabled={deleting === p.id}
+                          className="w-7 h-7 flex items-center justify-center rounded disabled:opacity-50"
+                          style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#dc2626" }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {editId === p.id && (
+                    <PanelReveal>
+                      <div className="mt-1 px-3 py-3 rounded-md space-y-2" style={{ background: "var(--input-bg)", border: "1px solid var(--primary-border)" }}>
+                        <input value={editRu} onChange={e => setEditRu(e.target.value)}
+                          placeholder={t("ws.pos.nameRu")}
+                          className="w-full rounded px-2.5 py-1.5 text-xs outline-none"
+                          style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
+                        <input value={editUz} onChange={e => setEditUz(e.target.value)}
+                          placeholder={t("ws.pos.nameUz")}
+                          className="w-full rounded px-2.5 py-1.5 text-xs outline-none"
+                          style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text)" }} />
+                        <div className="flex gap-2 justify-end">
+                          <button onClick={cancelEdit}
+                            className="px-3 py-1.5 rounded text-xs font-semibold"
+                            style={{ background: "var(--elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+                            {t("common.cancel")}
+                          </button>
+                          <button disabled={saving} onClick={() => saveEdit(p.id)}
+                            className="px-3 py-1.5 rounded text-xs font-bold text-white disabled:opacity-50"
+                            style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
+                            {saving ? "…" : t("common.save")}
+                          </button>
+                        </div>
+                      </div>
+                    </PanelReveal>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {isAdmin && (
+            <div className="pt-2 border-t" style={{ borderColor: "var(--border)" }}>
+              <Label>{t("ws.pos.add")}</Label>
+              <div className="space-y-2">
+                <input value={newRu} onChange={e => setNewRu(e.target.value)}
+                  placeholder={t("ws.pos.nameRu")}
+                  className="w-full rounded-md px-3 py-2 text-sm outline-none"
+                  style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }} />
+                <input value={newUz} onChange={e => setNewUz(e.target.value)}
+                  placeholder={t("ws.pos.nameUz")}
+                  className="w-full rounded-md px-3 py-2 text-sm outline-none"
+                  style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }} />
+                <button onClick={handleAdd} disabled={adding || !newRu.trim() || !newUz.trim()}
+                  className="px-4 py-2 rounded-md text-xs font-bold text-white disabled:opacity-50"
+                  style={{ background: "linear-gradient(135deg,#1565a8,#114e85)" }}>
+                  {adding ? "…" : `+ ${t("ws.pos.add")}`}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {err && <p className="text-xs mt-1" style={{ color: "#dc2626" }}>{err}</p>}
+        </>
+      )}
+    </div>
+  );
 }
 
 function AnalyticsTab({ workspaceId }: { workspaceId: number }) {

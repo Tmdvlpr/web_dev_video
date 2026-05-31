@@ -16,6 +16,18 @@ class WorkspaceMemberStatus(str, enum.Enum):
     pending = "pending"
 
 
+class WorkspacePosition(Base):
+    __tablename__ = "workspace_positions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"))
+    name_ru: Mapped[str] = mapped_column(String(100))
+    name_uz: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="positions")
+
+
 class Workspace(Base):
     __tablename__ = "workspaces"
 
@@ -32,6 +44,7 @@ class Workspace(Base):
 
     members: Mapped[list["WorkspaceMember"]] = relationship("WorkspaceMember", back_populates="workspace", cascade="all, delete-orphan")
     workspace_rooms: Mapped[list["WorkspaceRoom"]] = relationship("WorkspaceRoom", back_populates="workspace", cascade="all, delete-orphan")
+    positions: Mapped[list["WorkspacePosition"]] = relationship("WorkspacePosition", back_populates="workspace", cascade="all, delete-orphan", order_by="WorkspacePosition.id")
 
 
 class WorkspaceMember(Base):
@@ -45,6 +58,7 @@ class WorkspaceMember(Base):
     role: Mapped[WorkspaceMemberRole] = mapped_column(Enum(WorkspaceMemberRole), default=WorkspaceMemberRole.member, server_default="member")
     status: Mapped[WorkspaceMemberStatus] = mapped_column(Enum(WorkspaceMemberStatus), default=WorkspaceMemberStatus.active, server_default="active")
     invited_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    position_id: Mapped[int | None] = mapped_column(ForeignKey("workspace_positions.id", ondelete="SET NULL"), nullable=True)
     invite_token: Mapped[str | None] = mapped_column(String(32), nullable=True, unique=True, index=True)
     invite_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     invite_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -54,3 +68,4 @@ class WorkspaceMember(Base):
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="members")
     user: Mapped["User | None"] = relationship("User", foreign_keys=[user_id])  # noqa: F821
     invited_by: Mapped["User | None"] = relationship("User", foreign_keys=[invited_by_user_id])  # noqa: F821
+    position: Mapped["WorkspacePosition | None"] = relationship("WorkspacePosition", foreign_keys=[position_id])

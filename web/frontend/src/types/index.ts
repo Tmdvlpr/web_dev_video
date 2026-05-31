@@ -196,6 +196,14 @@ export interface WorkspaceRoom {
   created_at: string;
 }
 
+export interface WorkspacePosition {
+  id: number;
+  workspace_id: number;
+  name_ru: string;
+  name_uz: string;
+  created_at: string;
+}
+
 export interface WorkspaceMember {
   id: number;
   workspace_id: number;
@@ -204,6 +212,8 @@ export interface WorkspaceMember {
   role: "owner" | "admin" | "member";
   status: "active" | "pending";
   user: User | null;
+  position_id?: number | null;
+  position?: WorkspacePosition | null;
   created_at: string;
   invite_deep_link?: string | null;
   invite_expires_at?: string | null;

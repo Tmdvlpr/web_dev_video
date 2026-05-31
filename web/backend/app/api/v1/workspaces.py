@@ -18,6 +18,7 @@ from app.models.workspace import (
     WorkspaceMember,
     WorkspaceMemberRole,
     WorkspaceMemberStatus,
+    WorkspacePosition,
 )
 from app.schemas.workspace import (
     JoinRequest,
@@ -25,6 +26,9 @@ from app.schemas.workspace import (
     WorkspaceCreate,
     WorkspaceDetailResponse,
     WorkspaceMemberResponse,
+    WorkspacePositionCreate,
+    WorkspacePositionResponse,
+    WorkspacePositionUpdate,
     WorkspaceResponse,
     WorkspaceUpdate,
 )
@@ -135,12 +139,14 @@ class MemberPatchBody(BaseModel):
       - {"approve": true|false}   — approve/reject pending member
       - {"role": "admin"|"member"} — change role (owner only)
       - profile fields            — edit user profile (admin/owner only)
+      - {"position_id": N|null}   — assign workspace position (admin/owner only)
     """
     approve: bool | None = None
     role: WorkspaceMemberRole | None = None
     first_name: str | None = None
     last_name: str | None = None
     position: str | None = None
+    position_id: int | None = None
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
@@ -279,7 +285,7 @@ async def join_workspace(
 
     res = await db.execute(
         select(WorkspaceMember)
-        .options(selectinload(WorkspaceMember.user))
+        .options(selectinload(WorkspaceMember.user), selectinload(WorkspaceMember.position))
         .where(WorkspaceMember.id == member.id)
     )
     return res.scalar_one()
@@ -320,7 +326,7 @@ async def claim_invite_web(
         await db.delete(member)
         await db.commit()
         res = await db.execute(
-            select(WorkspaceMember).options(selectinload(WorkspaceMember.user)).where(WorkspaceMember.id == existing.id)
+            select(WorkspaceMember).options(selectinload(WorkspaceMember.user), selectinload(WorkspaceMember.position)).where(WorkspaceMember.id == existing.id)
         )
         return res.scalar_one()
 
@@ -330,7 +336,7 @@ async def claim_invite_web(
     member.invite_token = None
     await db.commit()
     res = await db.execute(
-        select(WorkspaceMember).options(selectinload(WorkspaceMember.user)).where(WorkspaceMember.id == member.id)
+        select(WorkspaceMember).options(selectinload(WorkspaceMember.user), selectinload(WorkspaceMember.position)).where(WorkspaceMember.id == member.id)
     )
     return res.scalar_one()
 
@@ -356,7 +362,7 @@ async def get_workspace(
 
     ws_res = await db.execute(
         select(Workspace)
-        .options(selectinload(Workspace.members).selectinload(WorkspaceMember.user))
+        .options(selectinload(Workspace.members).options(selectinload(WorkspaceMember.user), selectinload(WorkspaceMember.position)))
         .where(Workspace.id == ws_id)
     )
     workspace = ws_res.scalar_one()
@@ -481,7 +487,7 @@ async def list_members(
 
     result = await db.execute(
         select(WorkspaceMember)
-        .options(selectinload(WorkspaceMember.user))
+        .options(selectinload(WorkspaceMember.user), selectinload(WorkspaceMember.position))
         .where(and_(*conditions))
         .order_by(WorkspaceMember.created_at)
     )
@@ -581,7 +587,7 @@ async def update_member(
 
     mem_res = await db.execute(
         select(WorkspaceMember)
-        .options(selectinload(WorkspaceMember.user))
+        .options(selectinload(WorkspaceMember.user), selectinload(WorkspaceMember.position))
         .where(WorkspaceMember.id == mid, WorkspaceMember.workspace_id == ws_id)
     )
     target = mem_res.scalar_one_or_none()
@@ -600,7 +606,7 @@ async def update_member(
             await db.commit()
             res = await db.execute(
                 select(WorkspaceMember)
-                .options(selectinload(WorkspaceMember.user))
+                .options(selectinload(WorkspaceMember.user), selectinload(WorkspaceMember.position))
                 .where(WorkspaceMember.id == target.id)
             )
             return res.scalar_one()
@@ -637,31 +643,53 @@ async def update_member(
         await db.commit()
         res = await db.execute(
             select(WorkspaceMember)
-            .options(selectinload(WorkspaceMember.user))
+            .options(selectinload(WorkspaceMember.user), selectinload(WorkspaceMember.position))
             .where(WorkspaceMember.id == target.id)
         )
         return res.scalar_one()
 
-    if any(v is not None for v in [payload.first_name, payload.last_name, payload.position]):
-        if my_membership.role not in (WorkspaceMemberRole.owner, WorkspaceMemberRole.admin):
+    has_profile_fields = any(v is not None for v in [payload.first_name, payload.last_name, payload.position])
+    has_position_id = "position_id" in payload.model_fields_set
+    if has_profile_fields or has_position_id:
+        is_admin_or_owner = my_membership.role in (WorkspaceMemberRole.owner, WorkspaceMemberRole.admin)
+        is_self = target.user_id == current_user.id
+
+        # Profile fields (name) — admin/owner only
+        if has_profile_fields and not is_admin_or_owner:
             raise HTTPException(403, "Only admins can edit user profiles")
+        # position_id — admin/owner can assign to anyone; members can only self-assign
+        if has_position_id and not is_admin_or_owner and not is_self:
+            raise HTTPException(403, "You can only change your own position")
+
+        if has_position_id:
+            if payload.position_id is not None:
+                pos_check = await db.scalar(
+                    select(WorkspacePosition).where(
+                        WorkspacePosition.id == payload.position_id,
+                        WorkspacePosition.workspace_id == ws_id,
+                    )
+                )
+                if not pos_check:
+                    raise HTTPException(404, "Position not found in this workspace")
+            target.position_id = payload.position_id
+
         user = target.user
-        if user:
+        if user and has_profile_fields:
             if payload.first_name is not None:
                 user.first_name = payload.first_name
             if payload.last_name is not None:
                 user.last_name = payload.last_name
             if payload.position is not None:
                 user.position = payload.position
-            await db.commit()
+        await db.commit()
         res = await db.execute(
             select(WorkspaceMember)
-            .options(selectinload(WorkspaceMember.user))
+            .options(selectinload(WorkspaceMember.user), selectinload(WorkspaceMember.position))
             .where(WorkspaceMember.id == target.id)
         )
         return res.scalar_one()
 
-    raise HTTPException(400, "Body must contain either `approve` or `role`")
+    raise HTTPException(400, "Body must contain a valid field to update")
 
 
 @router.delete("/{ws_id}/members/{mid}", status_code=status.HTTP_204_NO_CONTENT)
@@ -696,6 +724,99 @@ async def remove_member(
         raise HTTPException(400, "Owner cannot remove themselves")
 
     await db.delete(target)
+    await db.commit()
+
+
+@router.get("/{ws_id}/positions", response_model=list[WorkspacePositionResponse])
+async def list_positions(
+    ws_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[WorkspacePositionResponse]:
+    """List all positions defined for this workspace (visible to all active members)."""
+    await _get_my_membership(ws_id, current_user, db)
+    result = await db.execute(
+        select(WorkspacePosition)
+        .where(WorkspacePosition.workspace_id == ws_id)
+        .order_by(WorkspacePosition.id)
+    )
+    return list(result.scalars().all())
+
+
+@router.post("/{ws_id}/positions", response_model=WorkspacePositionResponse, status_code=status.HTTP_201_CREATED)
+async def create_position(
+    ws_id: int,
+    payload: WorkspacePositionCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> WorkspacePositionResponse:
+    """Create a new position for this workspace (admin/owner only)."""
+    member = await _get_my_membership(ws_id, current_user, db)
+    _require_admin_or_owner(member)
+
+    pos = WorkspacePosition(
+        workspace_id=ws_id,
+        name_ru=payload.name_ru,
+        name_uz=payload.name_uz,
+    )
+    db.add(pos)
+    await db.commit()
+    await db.refresh(pos)
+    return pos
+
+
+@router.patch("/{ws_id}/positions/{pos_id}", response_model=WorkspacePositionResponse)
+async def update_position(
+    ws_id: int,
+    pos_id: int,
+    payload: WorkspacePositionUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> WorkspacePositionResponse:
+    """Update a workspace position's name(s) (admin/owner only)."""
+    member = await _get_my_membership(ws_id, current_user, db)
+    _require_admin_or_owner(member)
+
+    pos = await db.scalar(
+        select(WorkspacePosition).where(
+            WorkspacePosition.id == pos_id,
+            WorkspacePosition.workspace_id == ws_id,
+        )
+    )
+    if not pos:
+        raise HTTPException(404, "Position not found")
+
+    if payload.name_ru is not None:
+        pos.name_ru = payload.name_ru
+    if payload.name_uz is not None:
+        pos.name_uz = payload.name_uz
+
+    await db.commit()
+    await db.refresh(pos)
+    return pos
+
+
+@router.delete("/{ws_id}/positions/{pos_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_position(
+    ws_id: int,
+    pos_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Delete a workspace position (admin/owner only). Members with this position get position_id=null."""
+    member = await _get_my_membership(ws_id, current_user, db)
+    _require_admin_or_owner(member)
+
+    pos = await db.scalar(
+        select(WorkspacePosition).where(
+            WorkspacePosition.id == pos_id,
+            WorkspacePosition.workspace_id == ws_id,
+        )
+    )
+    if not pos:
+        raise HTTPException(404, "Position not found")
+
+    await db.delete(pos)
     await db.commit()
 
 

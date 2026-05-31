@@ -15,6 +15,27 @@ class WorkspaceUpdate(BaseModel):
     telegram_chat_id: int | None = None
 
 
+class WorkspacePositionResponse(BaseModel):
+    id: int
+    workspace_id: int
+    name_ru: str
+    name_uz: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class WorkspacePositionCreate(BaseModel):
+    name_ru: str = Field(..., min_length=1, max_length=100)
+    name_uz: str = Field(..., min_length=1, max_length=100)
+
+
+class WorkspacePositionUpdate(BaseModel):
+    name_ru: str | None = Field(None, min_length=1, max_length=100)
+    name_uz: str | None = Field(None, min_length=1, max_length=100)
+
+
 class WorkspaceMemberResponse(BaseModel):
     id: int
     workspace_id: int
@@ -23,6 +44,8 @@ class WorkspaceMemberResponse(BaseModel):
     role: WorkspaceMemberRole
     status: WorkspaceMemberStatus
     user: UserPublicResponse | None
+    position_id: int | None = None
+    position: WorkspacePositionResponse | None = None
     created_at: datetime
     invite_deep_link: str | None = None
     invite_expires_at: datetime | None = None
