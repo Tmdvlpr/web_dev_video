@@ -46,18 +46,10 @@ async def cmd_start(message: Message, command: CommandObject) -> None:
             )
 
         if resp.status_code == 200:
-            data = resp.json()
-            if not data.get("profile_complete", True):
-                await message.answer(
-                    "✅ Авторизация подтверждена!\n\n"
-                    "Выберите вашу должность, чтобы завершить регистрацию:",
-                    reply_markup=_position_keyboard(),
-                )
-            else:
-                await message.answer(
-                    "✅ Авторизация подтверждена!\n"
-                    "Вернитесь в браузер — страница обновится автоматически."
-                )
+            await message.answer(
+                "✅ Авторизация подтверждена!\n"
+                "Вернитесь в браузер — страница обновится автоматически."
+            )
         elif resp.status_code == 410:
             detail = resp.json().get("detail", "")
             if "expired" in detail.lower():

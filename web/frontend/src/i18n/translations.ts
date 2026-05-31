@@ -38,6 +38,8 @@ export const T: Dict = {
   "profile.lastName":          { ru: "Фамилия", uz: "Фамилия" },
   "profile.required":          { ru: "Имя обязательно", uz: "Исм мажбурий" },
   "profile.saveError":         { ru: "Не удалось сохранить: {detail}", uz: "Сақлаб бўлмади: {detail}" },
+  "profile.positionTitle":      { ru: "Регистрация не завершена",                                               uz: "Рўйхатдан ўтиш тугалланмаган" },
+  "profile.positionSubtitle":   { ru: "Завершите регистрацию в Telegram Mini App, чтобы получить доступ к системе.", uz: "Тизимга кириш учун Telegram Mini App'да рўйхатдан ўтишни якунланг." },
 
   // ── Login / Auth ─────────────────────────────────────────────────────
   "auth.qrHint":               { ru: "Отсканируйте QR-код для авторизации через Telegram", uz: "Telegram орқали авторизация учун QR-кодни сканерланг" },
