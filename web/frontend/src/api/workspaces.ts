@@ -1,6 +1,15 @@
 import { apiClient } from "./axios";
 import type { Workspace, WorkspaceDetail, WorkspaceMember, WorkspacePosition } from "../types";
 
+export interface PendingJoinRequestItem {
+  member_id: number;
+  workspace_id: number;
+  workspace_name: string;
+  user_id: number;
+  user_display_name: string;
+  created_at: string;
+}
+
 export interface WorkspaceAnalytics {
   period_days: number;
   total_members: number;
@@ -87,5 +96,9 @@ export const workspacesApi = {
   },
   deletePosition: async (wsId: number, posId: number): Promise<void> => {
     await apiClient.delete(`/api/v1/workspaces/${wsId}/positions/${posId}`);
+  },
+  getPendingJoinRequests: async (): Promise<PendingJoinRequestItem[]> => {
+    const res = await apiClient.get<PendingJoinRequestItem[]>("/api/v1/workspaces/pending-requests");
+    return res.data;
   },
 };

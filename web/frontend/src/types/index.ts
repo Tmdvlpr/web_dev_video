@@ -161,10 +161,15 @@ export interface NotificationRecord {
   title: string;
   body: string;
   time: number;
-  type?: "reminder" | "room_request" | "room_approved" | "room_rejected" | "member_joined" | "member_invited" | "meeting_invited";
+  type?: "reminder" | "room_request" | "room_approved" | "room_rejected" | "member_joined" | "member_invited" | "meeting_invited" | "workspace_join_request";
   bookingId?: number;
   reminderMinutes?: number;
   rsvpStatus?: GuestRsvpStatus;
+  workspaceJoinMemberId?: number;
+  workspaceId?: number;
+  requestedUserName?: string;
+  workspaceName?: string;
+  joinRequestStatus?: "accepted" | "declined";
 }
 
 export interface Room {

@@ -78,6 +78,15 @@ class JoinRequest(BaseModel):
     invite_code: str
 
 
+class PendingJoinRequestItem(BaseModel):
+    member_id: int
+    workspace_id: int
+    workspace_name: str
+    user_id: int
+    user_display_name: str
+    created_at: datetime
+
+
 class RebindRequest(BaseModel):
     chat_id: int | None
 

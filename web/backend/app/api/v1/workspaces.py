@@ -22,6 +22,7 @@ from app.models.workspace import (
 )
 from app.schemas.workspace import (
     JoinRequest,
+    PendingJoinRequestItem,
     RebindRequest,
     WorkspaceCreate,
     WorkspaceDetailResponse,
@@ -247,6 +248,67 @@ async def search_workspaces(
     return [_workspace_to_response(ws, None) for ws in workspaces]
 
 
+@router.get("/pending-requests", response_model=list[PendingJoinRequestItem])
+async def get_pending_join_requests(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[PendingJoinRequestItem]:
+    """Return all pending join requests for workspaces where the caller is owner or admin."""
+    # Find workspaces where current user is owner/admin
+    mem_res = await db.execute(
+        select(WorkspaceMember).where(
+            WorkspaceMember.user_id == current_user.id,
+            WorkspaceMember.status == WorkspaceMemberStatus.active,
+            WorkspaceMember.role.in_([WorkspaceMemberRole.owner, WorkspaceMemberRole.admin]),
+        )
+    )
+    admin_memberships = mem_res.scalars().all()
+    if not admin_memberships:
+        return []
+
+    ws_ids = [m.workspace_id for m in admin_memberships]
+
+    # Load those workspaces for name lookup
+    ws_res = await db.execute(
+        select(Workspace).where(Workspace.id.in_(ws_ids), Workspace.archived_at.is_(None))
+    )
+    ws_map = {ws.id: ws.name for ws in ws_res.scalars().all()}
+
+    # Get pending members with real user_id (join requests, not anonymous invites)
+    pending_res = await db.execute(
+        select(WorkspaceMember)
+        .options(selectinload(WorkspaceMember.user))
+        .where(
+            WorkspaceMember.workspace_id.in_(ws_ids),
+            WorkspaceMember.status == WorkspaceMemberStatus.pending,
+            WorkspaceMember.user_id.is_not(None),
+            WorkspaceMember.invite_token.is_(None),
+        )
+        .order_by(WorkspaceMember.created_at.desc())
+    )
+    pending = pending_res.scalars().all()
+
+    results = []
+    for m in pending:
+        if m.user_id is None or m.workspace_id not in ws_map:
+            continue
+        user = m.user
+        display_name = (
+            f"{user.first_name or ''} {user.last_name or ''}".strip()
+            or user.username
+            or f"user#{m.user_id}"
+        ) if user else f"user#{m.user_id}"
+        results.append(PendingJoinRequestItem(
+            member_id=m.id,
+            workspace_id=m.workspace_id,
+            workspace_name=ws_map[m.workspace_id],
+            user_id=m.user_id,
+            user_display_name=display_name,
+            created_at=m.created_at,
+        ))
+    return results
+
+
 @router.post("/join", response_model=WorkspaceMemberResponse, status_code=status.HTTP_201_CREATED)
 async def join_workspace(
     payload: JoinRequest,
@@ -278,7 +340,7 @@ async def join_workspace(
         workspace_id=workspace.id,
         user_id=current_user.id,
         role=WorkspaceMemberRole.member,
-        status=WorkspaceMemberStatus.active,
+        status=WorkspaceMemberStatus.pending,
     )
     db.add(member)
     await db.commit()

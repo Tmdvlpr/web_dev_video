@@ -4,12 +4,13 @@ import { workspacesApi } from "../../api/workspaces";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
+import type { Workspace } from "../../types";
 
 interface WorkspaceSelectorProps {
   onSettingsOpen: () => void;
 }
 
-type InlineMode = "none" | "create" | "join";
+type InlineMode = "none" | "create" | "join" | "search";
 
 const BuildingIcon = ({ size = 14 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -52,6 +53,13 @@ const KeyIcon = () => (
   </svg>
 );
 
+const SearchIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.35-4.35" />
+  </svg>
+);
+
 function truncate(s: string, n: number) {
   return s.length > n ? `${s.slice(0, n - 1)}…` : s;
 }
@@ -72,6 +80,9 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Workspace[]>([]);
+  const [searchBusy, setSearchBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -80,6 +91,7 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
         setOpen(false);
         setInline("none");
         setName(""); setCode(""); setError(null); setInfo(null);
+        setSearchQuery(""); setSearchResults([]);
       }
     };
     document.addEventListener("mousedown", onDown);
@@ -120,6 +132,42 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       setError(msg ?? "Не удалось присоединиться");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (inline !== "search") return;
+    if (!searchQuery.trim()) { setSearchResults([]); return; }
+    const timer = setTimeout(async () => {
+      setSearchBusy(true);
+      try {
+        const results = await workspacesApi.search(searchQuery.trim());
+        setSearchResults(results);
+      } catch { setSearchResults([]); }
+      finally { setSearchBusy(false); }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, inline]);
+
+  const handleSearchJoin = async (ws: Workspace) => {
+    if (busy) return;
+    setBusy(true); setError(null); setInfo(null);
+    try {
+      const member = await workspacesApi.join(ws.invite_code);
+      await refetchWorkspaces();
+      if (member.status === "active") {
+        setActiveWorkspaceId(member.workspace_id);
+        setInline("none"); setSearchQuery(""); setSearchResults([]); setOpen(false);
+      } else {
+        setInfo("Заявка отправлена");
+        setSearchResults([]);
+        setSearchQuery("");
+      }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(msg ?? "Не удалось отправить заявку");
     } finally {
       setBusy(false);
     }
@@ -216,6 +264,15 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
                   <KeyIcon />
                   Войти по коду
                 </button>
+                <button onClick={() => { setInline("search"); setError(null); setInfo(null); setSearchQuery(""); setSearchResults([]); }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-semibold transition-all text-left"
+                  style={{ color: "var(--text-sec)", transition: "background-color 0.15s ease, color 0.15s ease" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "var(--elevated)"; e.currentTarget.style.color = "var(--primary)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-sec)"; }}
+                >
+                  <SearchIcon />
+                  Найти по названию
+                </button>
               </div>
             )}
 
@@ -287,6 +344,50 @@ export function WorkspaceSelector({ onSettingsOpen }: WorkspaceSelectorProps) {
                 </div>
               </div>
             )}
+            {inline === "search" && (
+              <div className="px-3 pb-2 pt-1 space-y-2">
+                <input
+                  autoFocus value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Название пространства"
+                  className="w-full rounded px-2.5 py-1.5 text-xs outline-none"
+                  style={{ background: "var(--input-bg)", border: "1.5px solid var(--input-border)", color: "var(--text)" }}
+                  onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(21,101,168,0.12)"; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = "var(--input-border)"; e.currentTarget.style.boxShadow = "none"; }}
+                />
+                {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}
+                {info && <p className="text-xs" style={{ color: "#16a34a" }}>{info}</p>}
+                {searchBusy && <p className="text-xs" style={{ color: "var(--text-muted)" }}>Поиск…</p>}
+                {!searchBusy && searchQuery.trim() && searchResults.length === 0 && !info && (
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>Ничего не найдено</p>
+                )}
+                {searchResults.length > 0 && (
+                  <div className="space-y-0.5 max-h-40 overflow-y-auto">
+                    {searchResults.map(ws => (
+                      <motion.button
+                        key={ws.id}
+                        onClick={() => handleSearchJoin(ws)}
+                        disabled={busy}
+                        whileHover={{ backgroundColor: "var(--elevated)" }}
+                        whileTap={{ scale: 0.98 }}
+                        transition={{ duration: 0.12 }}
+                        className="w-full flex items-center justify-between px-2.5 py-2 rounded text-left disabled:opacity-50"
+                        style={{ color: "var(--text)" }}>
+                        <span className="text-xs font-semibold truncate">{ws.name}</span>
+                        <span className="text-xs ml-2 shrink-0" style={{ color: "var(--primary)" }}>
+                          {busy ? "…" : "Вступить →"}
+                        </span>
+                      </motion.button>
+                    ))}
+                  </div>
+                )}
+                <button onClick={() => { setInline("none"); setSearchQuery(""); setSearchResults([]); setError(null); setInfo(null); }}
+                  className="w-full py-1.5 rounded text-xs font-semibold"
+                  style={{ background: "var(--elevated)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
+                  Отмена
+                </button>
+              </div>
+            )}
+
           </motion.div>
         )}
       </AnimatePresence>

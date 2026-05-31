@@ -129,6 +129,10 @@ export const T: Dict = {
   "notif.rsvpDeclined":   { ru: "Вы отказались от встречи",      uz: "Сиз учрашувдан бош тортдингиз" },
   "notif.accept":         { ru: "Принять",                       uz: "Қабул қилиш" },
   "notif.decline":        { ru: "Отказаться",                    uz: "Рад этиш" },
+  "notif.wsJoinRequest":  { ru: "Запрос на вступление",          uz: "Қўшилиш сўрови" },
+  "notif.wsJoinRequestBody": { ru: "{name} хочет вступить в пространство «{ws}»", uz: "{name} «{ws}» ҳудудига қўшилмоқчи" },
+  "notif.wsJoinAccepted": { ru: "Запрос принят",                 uz: "Сўров қабул қилинди" },
+  "notif.wsJoinDeclined": { ru: "Запрос отклонён",               uz: "Сўров рад этилди" },
 
   // ── Guest RSVP status ────────────────────────────────────────────────────
   "guests.status.title":   { ru: "Статус гостей",                uz: "Меҳмонлар статуси" },

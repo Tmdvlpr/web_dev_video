@@ -8,6 +8,7 @@ const GuestJoinPage = React.lazy(() =>
   import("./components/Video/GuestJoinPage").then((m) => ({ default: m.GuestJoinPage }))
 );
 import { bookingsApi } from "./api/bookings";
+import { workspacesApi } from "./api/workspaces";
 import LoginPage from "./components/Auth/LoginPage";
 import RegistrationPage from "./components/Auth/RegistrationPage";
 import SessionAuthPage from "./components/Auth/SessionAuthPage";
@@ -130,6 +131,50 @@ function useInviteNotifications(userId: number | undefined) {
   }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
+// ── Workspace join-request notifications (polls for admins/owners) ───────────
+const WS_JOIN_SEEN_KEY = "corpmeet_ws_join_seen";
+function getSeenJoinIds(): Set<number> {
+  try { return new Set(JSON.parse(localStorage.getItem(WS_JOIN_SEEN_KEY) || "[]")); }
+  catch { return new Set(); }
+}
+
+function useWorkspaceJoinRequestNotifications(userId: number | undefined) {
+  useEffect(() => {
+    if (!userId) return;
+    const check = async () => {
+      try {
+        const requests = await workspacesApi.getPendingJoinRequests();
+        if (!requests.length) return;
+        const seen = getSeenJoinIds();
+        const existingIds = new Set(
+          getStoredNotifications()
+            .filter(n => n.type === "workspace_join_request" && n.workspaceJoinMemberId != null)
+            .map(n => n.workspaceJoinMemberId!)
+        );
+        for (const r of requests) {
+          if (seen.has(r.member_id) || existingIds.has(r.member_id)) continue;
+          addNotification({
+            id: `ws-join-${r.member_id}`,
+            title: r.workspace_name,
+            body: "",
+            time: new Date(r.created_at).getTime(),
+            type: "workspace_join_request",
+            workspaceJoinMemberId: r.member_id,
+            workspaceId: r.workspace_id,
+            requestedUserName: r.user_display_name,
+            workspaceName: r.workspace_name,
+          });
+          seen.add(r.member_id);
+        }
+        localStorage.setItem(WS_JOIN_SEEN_KEY, JSON.stringify([...seen]));
+      } catch { /* ignore */ }
+    };
+    check();
+    const timer = setInterval(check, 60_000);
+    return () => clearInterval(timer);
+  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 // ── Toast ────────────────────────────────────────────────────────────────────
 interface Toast { id: number; message: string; type: "success" | "error" | "info"; }
 let _tid = 0;
@@ -230,6 +275,7 @@ function Dashboard() {
   const { isMiniApp: miniApp } = useTelegram();
   const { isDark, toggle } = useTheme();
   useInviteNotifications(user?.id);
+  useWorkspaceJoinRequestNotifications(user?.id);
   const { t, locale, setLocale } = useLocale();
   const { toasts, add: addToast } = useToasts();
   const { workspaces, isLoading: wsLoading, wsFetched } = useWorkspace();

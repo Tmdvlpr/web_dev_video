@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLocale } from "../../contexts/LocaleContext";
 import { bookingsApi } from "../../api/bookings";
+import { workspacesApi } from "../../api/workspaces";
 import type { NotificationRecord, GuestRsvpStatus } from "../../types";
 
 // ── RSVP icon animation (success check / decline cross) ──────────────────────
@@ -95,6 +96,12 @@ export function updateNotificationRsvp(notifId: string, rsvpStatus: GuestRsvpSta
   localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 }
 
+export function updateNotificationJoinStatus(notifId: string, joinRequestStatus: "accepted" | "declined") {
+  const existing = getStoredNotifications();
+  const updated = existing.map(n => n.id === notifId ? { ...n, joinRequestStatus } : n);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+}
+
 export function getReminderMinutes(): number[] {
   try {
     const stored = localStorage.getItem(REMINDER_KEY);
@@ -119,6 +126,7 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
   const [notifications, setNotifications] = useState<NotificationRecord[]>(() => getStoredNotifications());
   const [reminderMins, setReminderMins] = useState<number[]>(() => getReminderMinutes());
   const [rsvpLoading, setRsvpLoading] = useState<Record<string, boolean>>({});
+  const [joinLoading, setJoinLoading] = useState<Record<string, boolean>>({});
   const [iconAnim, setIconAnim] = useState<Record<string, "check" | "cross">>({});
   const iconAnimRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -155,6 +163,24 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
       // silently ignore
     } finally {
       setRsvpLoading(prev => ({ ...prev, [notif.id]: false }));
+    }
+  };
+
+  const handleJoinRequest = async (notif: NotificationRecord, approve: boolean) => {
+    if (!notif.workspaceId || !notif.workspaceJoinMemberId || joinLoading[notif.id]) return;
+    setJoinLoading(prev => ({ ...prev, [notif.id]: true }));
+    try {
+      await workspacesApi.updateMember(notif.workspaceId, notif.workspaceJoinMemberId, { approve });
+      const status = approve ? "accepted" : "declined";
+      updateNotificationJoinStatus(notif.id, status);
+      setNotifications(prev =>
+        prev.map(n => n.id === notif.id ? { ...n, joinRequestStatus: status } : n)
+      );
+      triggerIconAnim(notif.id, approve ? "check" : "cross");
+    } catch {
+      // silently ignore
+    } finally {
+      setJoinLoading(prev => ({ ...prev, [notif.id]: false }));
     }
   };
 
@@ -301,12 +327,22 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold mb-0.5" style={{ color: "var(--text)" }}>
-                          {n.type === "meeting_invited" ? t("notif.meetingInvited") : n.title}
+                          {n.type === "meeting_invited"
+                            ? t("notif.meetingInvited")
+                            : n.type === "workspace_join_request"
+                            ? t("notif.wsJoinRequest")
+                            : n.title}
                         </p>
                         <p className="text-xs leading-relaxed" style={{ color: "var(--text-sec)" }}>
-                          {n.type === "meeting_invited" ? t("notif.meetingInvitedBody", { title: n.title }) : n.body}
+                          {n.type === "meeting_invited"
+                            ? t("notif.meetingInvitedBody", { title: n.title })
+                            : n.type === "workspace_join_request"
+                            ? t("notif.wsJoinRequestBody", { name: n.requestedUserName ?? "", ws: n.workspaceName ?? n.title })
+                            : n.body}
                         </p>
                         <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{timeAgo(n.time)}</p>
+
+                        {/* Meeting invite RSVP buttons */}
                         {n.type === "meeting_invited" && n.bookingId && (
                           <div className="mt-1.5">
                             {n.rsvpStatus === "accepted" ? (
@@ -350,6 +386,56 @@ export function NotificationCenter({ isOpen, onClose, onBack }: Props) {
                                   className="flex-1 py-1 rounded text-xs font-bold disabled:opacity-50"
                                   style={{ background: "rgba(239,68,68,0.07)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.22)" }}>
                                   {rsvpLoading[n.id] ? "…" : t("notif.decline")}
+                                </motion.button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Workspace join request approve/reject buttons */}
+                        {n.type === "workspace_join_request" && n.workspaceJoinMemberId && (
+                          <div className="mt-1.5">
+                            {n.joinRequestStatus === "accepted" ? (
+                              <motion.span
+                                initial={{ opacity: 0, y: 4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.18 }}
+                                className="inline-flex items-center gap-1 text-xs font-medium"
+                                style={{ color: "#16a34a" }}>
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#16a34a", display: "inline-block" }} />
+                                {t("notif.wsJoinAccepted")}
+                              </motion.span>
+                            ) : n.joinRequestStatus === "declined" ? (
+                              <motion.span
+                                initial={{ opacity: 0, y: 4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.18 }}
+                                className="inline-flex items-center gap-1 text-xs font-medium"
+                                style={{ color: "#ef4444" }}>
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", display: "inline-block" }} />
+                                {t("notif.wsJoinDeclined")}
+                              </motion.span>
+                            ) : (
+                              <div className="flex gap-1.5">
+                                <motion.button
+                                  disabled={joinLoading[n.id]}
+                                  onClick={() => handleJoinRequest(n, true)}
+                                  whileHover={{ scale: 1.03, backgroundColor: "rgba(34,197,94,0.22)" }}
+                                  whileTap={{ scale: 0.96 }}
+                                  transition={{ duration: 0.14, ease: "easeOut" }}
+                                  className="flex-1 py-1 rounded text-xs font-bold disabled:opacity-50"
+                                  style={{ background: "rgba(34,197,94,0.12)", color: "#16a34a", border: "1px solid rgba(34,197,94,0.3)" }}>
+                                  {joinLoading[n.id] ? "…" : t("notif.accept")}
+                                </motion.button>
+                                <motion.button
+                                  disabled={joinLoading[n.id]}
+                                  onClick={() => handleJoinRequest(n, false)}
+                                  whileHover={{ scale: 1.03, backgroundColor: "rgba(239,68,68,0.15)" }}
+                                  whileTap={{ scale: 0.96 }}
+                                  transition={{ duration: 0.14, ease: "easeOut" }}
+                                  className="flex-1 py-1 rounded text-xs font-bold disabled:opacity-50"
+                                  style={{ background: "rgba(239,68,68,0.07)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.22)" }}>
+                                  {joinLoading[n.id] ? "…" : t("notif.decline")}
                                 </motion.button>
                               </div>
                             )}
