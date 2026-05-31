@@ -932,7 +932,8 @@ async def consume_session_bot(
     # /api/v1/auth/session/{token} в обмен на JWT. Иначе фронт получает 410.
     await db.commit()
 
-    return {"ok": True}
+    profile_complete = bool(user and user.position)
+    return {"ok": True, "profile_complete": profile_complete}
 
 
 # ── Эндпоинты: пространства ──────────────────────────────────────────────────
