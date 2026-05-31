@@ -132,6 +132,13 @@ async def consume_session(
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=202, content={"status": "pending"})
 
+    # Don't issue JWT until the user has completed registration (position required)
+    user_result = await db.execute(select(User).where(User.id == session.user_id))
+    user = user_result.scalar_one_or_none()
+    if user and not user.position:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=202, content={"status": "pending"})
+
     if session.used:
         raise HTTPException(status_code=410, detail="Session already consumed")
     session.used = True
