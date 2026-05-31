@@ -562,6 +562,7 @@ export const T: Dict = {
   "ws.pos.createFail":      { ru: "Не удалось создать должность",        uz: "Lavozim yaratib bo'lmadi" },
   "ws.pos.updateFail":      { ru: "Не удалось обновить должность",       uz: "Lavozimni yangilab bo'lmadi" },
   "ws.pos.deleteFail":      { ru: "Не удалось удалить должность",        uz: "Lavozimni o'chirib bo'lmadi" },
+  "ws.pos.loadFail":        { ru: "Не удалось загрузить должности",       uz: "Lavozimlarni yuklab bo'lmadi" },
   "ws.pos.noPosition":      { ru: "— Без должности —",                  uz: "— Lavozim yo'q —" },
   "cal.filters":            { ru: "Фильтры",                            uz: "Фильтрлар" },
   "cal.tabRooms":           { ru: "Комнаты",                            uz: "Хоналар" },

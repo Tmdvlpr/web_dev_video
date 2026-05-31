@@ -1525,11 +1525,13 @@ function PositionsTab({ workspaceId, isAdmin }: { workspaceId: number; isAdmin: 
 
   const load = async () => {
     setLoading(true);
+    setErr(null);
     try {
       const list = await workspacesApi.listPositions(workspaceId);
       setPositions(list);
-    } catch { /* swallow */ }
-    finally { setLoading(false); }
+    } catch {
+      setErr(t("ws.pos.loadFail"));
+    } finally { setLoading(false); }
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [workspaceId]);
@@ -1585,7 +1587,7 @@ function PositionsTab({ workspaceId, isAdmin }: { workspaceId: number; isAdmin: 
         <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>{t("ws.loading")}</p>
       ) : (
         <>
-          {positions.length === 0 && !isAdmin && (
+          {positions.length === 0 && (
             <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>{t("ws.pos.empty")}</p>
           )}
 
