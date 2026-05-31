@@ -36,6 +36,14 @@ from app.schemas.workspace import (
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 
+DEFAULT_POSITIONS = [
+    {"name_ru": "Начальник департамента/отдела", "name_uz": "Бўлим/Департамент бошлиғи"},
+    {"name_ru": "PM",                            "name_uz": "PM"},
+    {"name_ru": "Аналитик",                      "name_uz": "Таҳлилчи"},
+    {"name_ru": "Программист и др.",             "name_uz": "Дастурчи ва ҳоказо"},
+    {"name_ru": "Дизайнер",                      "name_uz": "Дизайнер"},
+]
+
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -221,6 +229,8 @@ async def create_workspace(
         status=WorkspaceMemberStatus.active,
     )
     db.add(owner_member)
+    for pos in DEFAULT_POSITIONS:
+        db.add(WorkspacePosition(workspace_id=ws.id, name_ru=pos["name_ru"], name_uz=pos["name_uz"]))
     await db.commit()
     await db.refresh(ws)
 
