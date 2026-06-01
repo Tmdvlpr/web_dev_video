@@ -8,7 +8,6 @@ from app.database import Base
 
 class MeetingInvitation(Base):
     __tablename__ = "meeting_invitations"
-    __table_args__ = {"schema": "video"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     booking_id: Mapped[int] = mapped_column(
@@ -28,7 +27,6 @@ class MeetingInvitation(Base):
 
 class MeetingSession(Base):
     __tablename__ = "meeting_sessions"
-    __table_args__ = {"schema": "video"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     booking_id: Mapped[int] = mapped_column(
@@ -46,11 +44,10 @@ class MeetingSession(Base):
 
 class MeetingParticipantLog(Base):
     __tablename__ = "meeting_participant_logs"
-    __table_args__ = {"schema": "video"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[int] = mapped_column(
-        ForeignKey("video.meeting_sessions.id", ondelete="CASCADE"), index=True
+        ForeignKey("meeting_sessions.id", ondelete="CASCADE"), index=True
     )
     user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id"), nullable=True, index=True
@@ -64,7 +61,6 @@ class MeetingParticipantLog(Base):
 
 class MeetingChatFile(Base):
     __tablename__ = "meeting_chat_files"
-    __table_args__ = {"schema": "video"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     booking_id: Mapped[int] = mapped_column(
@@ -82,7 +78,6 @@ class MeetingChatFile(Base):
 
 class MeetingChatMessage(Base):
     __tablename__ = "meeting_chat_messages"
-    __table_args__ = {"schema": "video"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     booking_id: Mapped[int] = mapped_column(
@@ -91,7 +86,7 @@ class MeetingChatMessage(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     body: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     file_id: Mapped[int | None] = mapped_column(
-        ForeignKey("video.meeting_chat_files.id"), nullable=True
+        ForeignKey("meeting_chat_files.id"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
