@@ -645,17 +645,17 @@ async def update_member(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> WorkspaceMemberResponse | None:
-    """Approve/reject pending members or change roles.
+    """Approve/reject pending members or change roles/position.
 
     Unified body:
-      - `approve: true`  → set status=active
-      - `approve: false` → delete the membership row (reject)
-      - `role: "admin"`  → owner-only: change role of admins/members
+      - `approve: true`    → admin/owner: set status=active
+      - `approve: false`   → admin/owner: delete the membership row (reject)
+      - `role: "admin"`    → owner-only: change role of admins/members
+      - `position_id: N`   → admin/owner can assign to anyone; members can self-assign
 
     Returns the updated member, or `null` if the row was deleted.
     """
     my_membership = await _get_my_membership(ws_id, current_user, db)
-    _require_admin_or_owner(my_membership)
 
     mem_res = await db.execute(
         select(WorkspaceMember)
@@ -667,6 +667,7 @@ async def update_member(
         raise HTTPException(404, "Member not found")
 
     if payload.approve is not None:
+        _require_admin_or_owner(my_membership)
         # Approve or reject a pending request
         if target.status != WorkspaceMemberStatus.pending:
             raise HTTPException(400, "Member is not in pending state")
